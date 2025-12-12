@@ -2,3 +2,6 @@ project_id = "omyrlnrqvfofijxwozop"
 
 [functions.check-feature-access]
 verify_jwt = false
+
+[functions.usaspending-search]
+verify_jwt = false
