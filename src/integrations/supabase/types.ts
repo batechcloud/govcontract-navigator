@@ -119,6 +119,102 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_searches: {
+        Row: {
+          created_at: string
+          filters: Json | null
+          id: string
+          last_run_at: string | null
+          name: string
+          query: string
+          result_count: number | null
+          search_type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          filters?: Json | null
+          id?: string
+          last_run_at?: string | null
+          name: string
+          query: string
+          result_count?: number | null
+          search_type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          filters?: Json | null
+          id?: string
+          last_run_at?: string | null
+          name?: string
+          query?: string
+          result_count?: number | null
+          search_type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tracked_contracts: {
+        Row: {
+          contract_agency: string | null
+          contract_id: string
+          contract_title: string
+          contract_value: string | null
+          created_at: string
+          id: string
+          match_score: number | null
+          naics_code: string | null
+          notes: string | null
+          posted_date: string | null
+          priority: string | null
+          response_deadline: string | null
+          set_aside: string | null
+          status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          contract_agency?: string | null
+          contract_id: string
+          contract_title: string
+          contract_value?: string | null
+          created_at?: string
+          id?: string
+          match_score?: number | null
+          naics_code?: string | null
+          notes?: string | null
+          posted_date?: string | null
+          priority?: string | null
+          response_deadline?: string | null
+          set_aside?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          contract_agency?: string | null
+          contract_id?: string
+          contract_title?: string
+          contract_value?: string | null
+          created_at?: string
+          id?: string
+          match_score?: number | null
+          naics_code?: string | null
+          notes?: string | null
+          posted_date?: string | null
+          priority?: string | null
+          response_deadline?: string | null
+          set_aside?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string

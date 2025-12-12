@@ -1,0 +1,102 @@
+import { useState, ReactNode } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Search,
+  LayoutDashboard,
+  FileText,
+  Kanban,
+  Settings,
+  Bell,
+  Menu,
+} from "lucide-react";
+import { DashboardSidebar } from "./DashboardSidebar";
+
+interface DashboardLayoutProps {
+  children: ReactNode;
+  title: string;
+}
+
+export const DashboardLayout = ({ children, title }: DashboardLayoutProps) => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const location = useLocation();
+
+  return (
+    <div className="min-h-screen flex">
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <DashboardSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top Bar */}
+        <header className="sticky top-0 z-30 glass border-b border-border">
+          <div className="flex items-center justify-between px-4 sm:px-6 h-16">
+            <div className="flex items-center gap-4">
+              <button
+                className="lg:hidden text-muted-foreground hover:text-foreground"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+              <h1 className="font-heading font-semibold text-lg text-foreground">{title}</h1>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="hidden sm:block relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search contracts..."
+                  className="pl-9 w-64"
+                />
+              </div>
+              <Button variant="ghost" size="icon" className="relative">
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-accent rounded-full" />
+              </Button>
+            </div>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="flex-1 p-4 sm:p-6 overflow-y-auto pb-20 lg:pb-6">
+          {children}
+        </main>
+
+        {/* Mobile Bottom Navigation */}
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 glass border-t border-border z-40">
+          <div className="flex items-center justify-around py-2">
+            {[
+              { icon: LayoutDashboard, label: "Home", href: "/dashboard" },
+              { icon: Search, label: "Search", href: "/dashboard/search" },
+              { icon: Kanban, label: "Pipeline", href: "/dashboard/journey" },
+              { icon: FileText, label: "Proposals", href: "/dashboard/proposals" },
+              { icon: Settings, label: "Settings", href: "/dashboard/settings" },
+            ].map((item) => {
+              const isActive = location.pathname === item.href;
+              return (
+                <Link
+                  key={item.label}
+                  to={item.href}
+                  className={`flex flex-col items-center gap-1 px-3 py-2 ${
+                    isActive ? "text-primary" : "text-muted-foreground"
+                  }`}
+                >
+                  <item.icon className="w-5 h-5" />
+                  <span className="text-xs">{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      </div>
+    </div>
+  );
+};
