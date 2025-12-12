@@ -80,6 +80,59 @@ export type Database = {
         }
         Relationships: []
       }
+      competitor_awards: {
+        Row: {
+          award_amount: number | null
+          award_date: string | null
+          award_description: string | null
+          award_id: string
+          awarding_agency: string | null
+          created_at: string | null
+          id: string
+          naics_code: string | null
+          place_of_performance: string | null
+          psc_code: string | null
+          tracked_competitor_id: string
+          user_id: string
+        }
+        Insert: {
+          award_amount?: number | null
+          award_date?: string | null
+          award_description?: string | null
+          award_id: string
+          awarding_agency?: string | null
+          created_at?: string | null
+          id?: string
+          naics_code?: string | null
+          place_of_performance?: string | null
+          psc_code?: string | null
+          tracked_competitor_id: string
+          user_id: string
+        }
+        Update: {
+          award_amount?: number | null
+          award_date?: string | null
+          award_description?: string | null
+          award_id?: string
+          awarding_agency?: string | null
+          created_at?: string | null
+          id?: string
+          naics_code?: string | null
+          place_of_performance?: string | null
+          psc_code?: string | null
+          tracked_competitor_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competitor_awards_tracked_competitor_id_fkey"
+            columns: ["tracked_competitor_id"]
+            isOneToOne: false
+            referencedRelation: "tracked_competitors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feature_usage: {
         Row: {
           created_at: string | null
@@ -310,6 +363,51 @@ export type Database = {
         }
         Relationships: []
       }
+      tracked_competitors: {
+        Row: {
+          competitor_cage: string | null
+          competitor_name: string
+          competitor_uei: string | null
+          created_at: string | null
+          id: string
+          last_synced_at: string | null
+          naics_codes: string[] | null
+          notes: string | null
+          total_awards: number | null
+          total_value: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          competitor_cage?: string | null
+          competitor_name: string
+          competitor_uei?: string | null
+          created_at?: string | null
+          id?: string
+          last_synced_at?: string | null
+          naics_codes?: string[] | null
+          notes?: string | null
+          total_awards?: number | null
+          total_value?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          competitor_cage?: string | null
+          competitor_name?: string
+          competitor_uei?: string | null
+          created_at?: string | null
+          id?: string
+          last_synced_at?: string | null
+          naics_codes?: string[] | null
+          notes?: string | null
+          total_awards?: number | null
+          total_value?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       tracked_contracts: {
         Row: {
           contract_agency: string | null
@@ -472,6 +570,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      win_loss_records: {
+        Row: {
+          agency: string | null
+          award_amount: number | null
+          bid_amount: number | null
+          bid_date: string | null
+          created_at: string | null
+          decision_date: string | null
+          id: string
+          lessons_learned: string | null
+          loss_reason: string | null
+          opportunity_id: string | null
+          opportunity_title: string
+          outcome: string
+          updated_at: string | null
+          user_id: string
+          winner_name: string | null
+          winner_uei: string | null
+        }
+        Insert: {
+          agency?: string | null
+          award_amount?: number | null
+          bid_amount?: number | null
+          bid_date?: string | null
+          created_at?: string | null
+          decision_date?: string | null
+          id?: string
+          lessons_learned?: string | null
+          loss_reason?: string | null
+          opportunity_id?: string | null
+          opportunity_title: string
+          outcome: string
+          updated_at?: string | null
+          user_id: string
+          winner_name?: string | null
+          winner_uei?: string | null
+        }
+        Update: {
+          agency?: string | null
+          award_amount?: number | null
+          bid_amount?: number | null
+          bid_date?: string | null
+          created_at?: string | null
+          decision_date?: string | null
+          id?: string
+          lessons_learned?: string | null
+          loss_reason?: string | null
+          opportunity_id?: string | null
+          opportunity_title?: string
+          outcome?: string
+          updated_at?: string | null
+          user_id?: string
+          winner_name?: string | null
+          winner_uei?: string | null
+        }
+        Relationships: []
       }
     }
     Views: {

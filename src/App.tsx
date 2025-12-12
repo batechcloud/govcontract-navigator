@@ -18,6 +18,9 @@ import SearchHub from "./pages/SearchHub";
 import TrackedContracts from "./pages/TrackedContracts";
 import JourneyHub from "./pages/JourneyHub";
 import CompanyProfile from "./pages/CompanyProfile";
+import CompetitorAnalysis from "./pages/CompetitorAnalysis";
+import TrackedCompetitors from "./pages/TrackedCompetitors";
+import WinLossAnalysis from "./pages/WinLossAnalysis";
 
 const queryClient = new QueryClient();
 
@@ -88,6 +91,32 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <CompanyProfile />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Competitor Intelligence routes */}
+            <Route 
+              path="/dashboard/analytics" 
+              element={
+                <ProtectedRoute>
+                  <CompetitorAnalysis />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/dashboard/competitors" 
+              element={
+                <ProtectedRoute>
+                  <TrackedCompetitors />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/dashboard/win-loss" 
+              element={
+                <ProtectedRoute>
+                  <WinLossAnalysis />
                 </ProtectedRoute>
               } 
             />
