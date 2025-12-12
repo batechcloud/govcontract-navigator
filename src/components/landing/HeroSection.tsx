@@ -1,8 +1,8 @@
-import { motion, useInView } from "framer-motion";
+import { motion, useInView, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Sparkles, FileText, TrendingUp, ArrowRight, Play } from "lucide-react";
+import { Search, Sparkles, FileText, TrendingUp, ArrowRight, Play, Shield, Zap } from "lucide-react";
 import { useRef, useEffect, useState } from "react";
 
 const rotatingWords = ["Contracts", "Opportunities", "Revenue", "Success"];
@@ -34,11 +34,11 @@ function AnimatedStat({ value, suffix, label }: { value: number; suffix: string;
   const { count, ref } = useCountUp(value, 2000);
   
   return (
-    <div ref={ref} className="text-center">
-      <div className="text-2xl sm:text-3xl font-heading font-bold gradient-text-gold">
+    <div ref={ref} className="text-center group">
+      <div className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold gradient-text-gold mb-1 group-hover:scale-105 transition-transform">
         {count.toLocaleString()}{suffix}
       </div>
-      <div className="text-sm text-muted-foreground">{label}</div>
+      <div className="text-sm text-muted-foreground font-medium">{label}</div>
     </div>
   );
 }
@@ -49,111 +49,117 @@ function RotatingText() {
   useEffect(() => {
     const interval = setInterval(() => {
       setIndex((prev) => (prev + 1) % rotatingWords.length);
-    }, 3000);
+    }, 2500);
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <span className="relative inline-block w-[200px] sm:w-[280px] text-left">
-      {rotatingWords.map((word, i) => (
+    <span className="relative inline-flex h-[1.2em] overflow-hidden align-bottom">
+      <AnimatePresence mode="wait">
         <motion.span
-          key={word}
-          className="absolute left-0 gradient-text-primary"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ 
-            opacity: i === index ? 1 : 0,
-            y: i === index ? 0 : -20,
+          key={rotatingWords[index]}
+          className="gradient-text-gold"
+          initial={{ y: 40, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: -40, opacity: 0 }}
+          transition={{ 
+            duration: 0.4, 
+            ease: [0.22, 1, 0.36, 1] 
           }}
-          transition={{ duration: 0.5 }}
         >
-          {word}
+          {rotatingWords[index]}
         </motion.span>
-      ))}
+      </AnimatePresence>
     </span>
   );
 }
 
-const trustedLogos = [
-  "TechBridge", "SecureNet", "GreenTech", "DataFlow", "CloudFirst"
-];
-
 export function HeroSection() {
   return (
-    <section id="hero" className="relative min-h-screen flex items-center justify-center pt-16 overflow-hidden">
-      {/* Background Effects */}
+    <section id="hero" className="relative min-h-screen flex items-center justify-center pt-20 pb-12 overflow-hidden">
+      {/* Enhanced Background Effects */}
       <div className="absolute inset-0 overflow-hidden">
-        {/* Gradient Orbs */}
+        {/* Primary gradient orb */}
         <motion.div 
-          className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl"
+          className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/15 rounded-full blur-[120px]"
           animate={{ 
-            scale: [1, 1.2, 1],
-            opacity: [0.2, 0.3, 0.2],
+            scale: [1, 1.3, 1],
+            opacity: [0.15, 0.25, 0.15],
+            x: [0, 50, 0],
           }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
         />
+        {/* Accent gradient orb */}
         <motion.div 
-          className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl"
+          className="absolute bottom-1/3 right-1/4 w-[400px] h-[400px] bg-accent/8 rounded-full blur-[100px]"
           animate={{ 
             scale: [1.2, 1, 1.2],
-            opacity: [0.15, 0.25, 0.15],
+            opacity: [0.08, 0.15, 0.08],
+            y: [0, -30, 0],
           }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 2 }}
         />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-primary/5 to-transparent rounded-full" />
+        {/* Center radial glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-gradient-radial from-primary/5 via-transparent to-transparent rounded-full" />
         
-        {/* Dot Grid */}
-        <div className="absolute inset-0 dot-grid opacity-30" />
+        {/* Refined dot grid */}
+        <div className="absolute inset-0 dot-grid opacity-20" />
+        
+        {/* Horizontal gradient line */}
+        <div className="absolute top-1/2 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
       </div>
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="max-w-4xl mx-auto text-center">
+        <div className="max-w-5xl mx-auto text-center">
+          {/* Badge */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.5 }}
           >
-            <Badge variant="gold" className="mb-6 animate-glow-pulse">
-              <Sparkles className="w-3 h-3 mr-1" />
+            <Badge variant="gold" className="mb-8 px-4 py-1.5 text-sm animate-glow-pulse">
+              <Sparkles className="w-4 h-4 mr-2" />
               AI-Powered Contract Discovery
             </Badge>
           </motion.div>
 
+          {/* Main Headline */}
           <motion.h1
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-heading font-bold text-foreground mb-6 leading-tight text-shadow-lg"
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="text-4xl sm:text-6xl lg:text-7xl xl:text-8xl font-heading font-bold text-foreground mb-6 leading-[1.1] tracking-tight"
           >
-            Win Government{" "}
-            <br className="sm:hidden" />
-            <RotatingText />
+            Win Government
             <br />
-            <span className="text-muted-foreground text-2xl sm:text-4xl lg:text-5xl">with AI</span>
+            <RotatingText />
           </motion.h1>
 
+          {/* Subheadline */}
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-base sm:text-lg lg:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto text-balance"
+            className="text-lg sm:text-xl lg:text-2xl text-muted-foreground mb-10 max-w-3xl mx-auto leading-relaxed"
           >
             Search, understand, and bid on federal, state, and grant opportunities. 
-            Our AI finds the perfect contracts, generates winning proposals, and guides you every step of the way.
+            <span className="text-foreground font-medium"> Our AI finds the perfect contracts</span>, generates winning proposals, and guides you every step of the way.
           </motion.p>
 
+          {/* CTA Buttons */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12"
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
           >
-            <Button variant="hero" size="xl" asChild className="w-full sm:w-auto">
+            <Button variant="hero" size="xl" asChild className="w-full sm:w-auto text-base px-8 shadow-lg shadow-primary/25">
               <Link to="/auth?mode=signup">
                 Start Free Trial
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Link>
             </Button>
-            <Button variant="glass" size="xl" asChild className="w-full sm:w-auto group">
+            <Button variant="glass" size="xl" asChild className="w-full sm:w-auto text-base px-8 group">
               <Link to="/demo">
                 <Play className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
                 Watch Demo
@@ -161,63 +167,68 @@ export function HeroSection() {
             </Button>
           </motion.div>
 
-          {/* Stats */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            className="grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-3xl mx-auto mb-12"
-          >
-            <AnimatedStat value={50} suffix="K+" label="Active Contracts" />
-            <AnimatedStat value={95} suffix="%" label="AI Accuracy" />
-            <AnimatedStat value={2} suffix="B+" label="Contracts Won" />
-            <AnimatedStat value={10} suffix="K+" label="Users" />
-          </motion.div>
-
-          {/* Trusted By */}
+          {/* Trust Badges */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
-            className="text-center"
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="flex flex-wrap items-center justify-center gap-6 mb-16 text-sm text-muted-foreground"
           >
-            <p className="text-xs text-muted-foreground mb-4 uppercase tracking-wider">
-              Trusted by leading contractors
-            </p>
-            <div className="flex items-center justify-center gap-8 flex-wrap opacity-50">
-              {trustedLogos.map((logo) => (
-                <span key={logo} className="text-sm font-heading font-semibold text-muted-foreground">
-                  {logo}
-                </span>
-              ))}
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-success" />
+              <span>No credit card required</span>
             </div>
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-accent" />
+              <span>14-day free trial</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <span>Cancel anytime</span>
+            </div>
+          </motion.div>
+
+          {/* Stats */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.5 }}
+            className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12 max-w-4xl mx-auto mb-20 py-8 px-6 glass rounded-2xl"
+          >
+            <AnimatedStat value={50} suffix="K+" label="Active Contracts" />
+            <AnimatedStat value={95} suffix="%" label="AI Accuracy" />
+            <AnimatedStat value={2} suffix="B+" label="Contract Value" />
+            <AnimatedStat value={10} suffix="K+" label="Happy Users" />
           </motion.div>
         </div>
 
-        {/* Feature Icons */}
+        {/* Feature Cards */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.6 }}
-          className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto"
+          transition={{ duration: 0.7, delay: 0.6 }}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto"
         >
           {[
-            { icon: Search, label: "Smart Search", desc: "Natural language queries" },
-            { icon: Sparkles, label: "AI Match", desc: "Perfect opportunities" },
-            { icon: FileText, label: "Auto Proposals", desc: "One-click generation" },
-            { icon: TrendingUp, label: "Win Analytics", desc: "Track performance" },
+            { icon: Search, label: "Smart Search", desc: "Natural language queries that understand your needs" },
+            { icon: Sparkles, label: "AI Match", desc: "Get perfectly matched opportunities instantly" },
+            { icon: FileText, label: "Auto Proposals", desc: "Generate winning proposals with one click" },
+            { icon: TrendingUp, label: "Win Analytics", desc: "Track performance and improve your win rate" },
           ].map((feature, index) => (
             <motion.div 
               key={feature.label} 
-              className="glass-hover rounded-xl p-4 text-center group"
-              whileHover={{ y: -4 }}
-              transition={{ type: "spring", stiffness: 400 }}
+              className="glass-hover rounded-xl p-6 text-center group cursor-pointer"
+              whileHover={{ y: -6, scale: 1.02 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{ transitionDelay: `${0.7 + index * 0.1}s` }}
             >
-              <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center mx-auto mb-3 group-hover:bg-primary/30 transition-colors">
-                <feature.icon className="w-6 h-6 text-primary group-hover:scale-110 transition-transform" />
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mx-auto mb-4 group-hover:from-primary/30 group-hover:to-primary/10 transition-all duration-300">
+                <feature.icon className="w-7 h-7 text-primary group-hover:scale-110 transition-transform duration-300" />
               </div>
-              <div className="font-heading font-semibold text-foreground text-sm mb-1">{feature.label}</div>
-              <div className="text-xs text-muted-foreground">{feature.desc}</div>
+              <h3 className="font-heading font-semibold text-foreground text-lg mb-2">{feature.label}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">{feature.desc}</p>
             </motion.div>
           ))}
         </motion.div>
