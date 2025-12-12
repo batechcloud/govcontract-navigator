@@ -21,6 +21,7 @@ import CompanyProfile from "./pages/CompanyProfile";
 import CompetitorAnalysis from "./pages/CompetitorAnalysis";
 import TrackedCompetitors from "./pages/TrackedCompetitors";
 import WinLossAnalysis from "./pages/WinLossAnalysis";
+import SavedSearches from "./pages/SavedSearches";
 
 const queryClient = new QueryClient();
 
@@ -117,6 +118,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <WinLossAnalysis />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/dashboard/saved-searches" 
+              element={
+                <ProtectedRoute>
+                  <SavedSearches />
                 </ProtectedRoute>
               } 
             />
