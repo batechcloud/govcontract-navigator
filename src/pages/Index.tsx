@@ -6,6 +6,7 @@ import { PricingSection } from "@/components/landing/PricingSection";
 import { TestimonialsSection } from "@/components/landing/TestimonialsSection";
 import { CTASection } from "@/components/landing/CTASection";
 import { TrustedBySection } from "@/components/landing/TrustedBySection";
+import { ComparisonSection } from "@/components/landing/ComparisonSection";
 import { BackToTop } from "@/components/ui/back-to-top";
 import { Helmet } from "react-helmet-async";
 
@@ -32,6 +33,7 @@ const Index = () => {
           <section id="features">
             <FeaturesSection />
           </section>
+          <ComparisonSection />
           <section id="testimonials">
             <TestimonialsSection />
           </section>
