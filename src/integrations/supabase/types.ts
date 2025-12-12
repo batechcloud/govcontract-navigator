@@ -285,6 +285,60 @@ export type Database = {
         }
         Relationships: []
       }
+      proposals: {
+        Row: {
+          agency: string | null
+          ai_generated_at: string | null
+          created_at: string
+          executive_summary: string | null
+          id: string
+          management_plan: string | null
+          match_score: number | null
+          opportunity_id: string
+          opportunity_title: string
+          past_performance: string | null
+          pricing_notes: string | null
+          status: string
+          technical_approach: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agency?: string | null
+          ai_generated_at?: string | null
+          created_at?: string
+          executive_summary?: string | null
+          id?: string
+          management_plan?: string | null
+          match_score?: number | null
+          opportunity_id: string
+          opportunity_title: string
+          past_performance?: string | null
+          pricing_notes?: string | null
+          status?: string
+          technical_approach?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agency?: string | null
+          ai_generated_at?: string | null
+          created_at?: string
+          executive_summary?: string | null
+          id?: string
+          management_plan?: string | null
+          match_score?: number | null
+          opportunity_id?: string
+          opportunity_title?: string
+          past_performance?: string | null
+          pricing_notes?: string | null
+          status?: string
+          technical_approach?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       saved_searches: {
         Row: {
           created_at: string
