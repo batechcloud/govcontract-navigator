@@ -6,6 +6,7 @@ import { PricingSection } from "@/components/landing/PricingSection";
 import { TestimonialsSection } from "@/components/landing/TestimonialsSection";
 import { CTASection } from "@/components/landing/CTASection";
 import { TrustedBySection } from "@/components/landing/TrustedBySection";
+import { BackToTop } from "@/components/ui/back-to-top";
 import { Helmet } from "react-helmet-async";
 
 const Index = () => {
@@ -25,13 +26,22 @@ const Index = () => {
         <Navbar />
         <main>
           <HeroSection />
-          <TrustedBySection />
-          <FeaturesSection />
-          <TestimonialsSection />
-          <PricingSection />
+          <section id="trusted">
+            <TrustedBySection />
+          </section>
+          <section id="features">
+            <FeaturesSection />
+          </section>
+          <section id="testimonials">
+            <TestimonialsSection />
+          </section>
+          <section id="pricing">
+            <PricingSection />
+          </section>
           <CTASection />
         </main>
         <Footer />
+        <BackToTop />
       </div>
     </>
   );

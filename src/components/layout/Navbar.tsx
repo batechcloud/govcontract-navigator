@@ -5,12 +5,20 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const navLinks = [
-  { to: "/solutions", label: "Solutions" },
-  { to: "/pricing", label: "Pricing" },
-  { to: "/docs", label: "Docs" },
-  { to: "/tutorials", label: "Tutorials" },
-  { to: "/blog", label: "Blog" },
+  { to: "/solutions", label: "Solutions", isSection: false },
+  { to: "/#features", label: "Features", isSection: true },
+  { to: "/#pricing", label: "Pricing", isSection: true },
+  { to: "/docs", label: "Docs", isSection: false },
+  { to: "/tutorials", label: "Tutorials", isSection: false },
+  { to: "/blog", label: "Blog", isSection: false },
 ];
+
+const scrollToSection = (sectionId: string) => {
+  const element = document.querySelector(sectionId);
+  if (element) {
+    element.scrollIntoView({ behavior: "smooth" });
+  }
+};
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -42,10 +50,22 @@ export function Navbar() {
     setIsOpen(false);
   }, [location.pathname]);
 
-  const isActiveLink = (path: string) => {
-    if (path === "/" && location.pathname === "/") return true;
-    if (path !== "/" && location.pathname.startsWith(path)) return true;
+  const isActiveLink = (link: typeof navLinks[0]) => {
+    if (link.isSection) {
+      // For section links, check if we're on home page
+      return location.pathname === "/" && location.hash === link.to.replace("/", "");
+    }
+    if (link.to === "/" && location.pathname === "/") return true;
+    if (link.to !== "/" && location.pathname.startsWith(link.to)) return true;
     return false;
+  };
+
+  const handleNavClick = (e: React.MouseEvent, link: typeof navLinks[0]) => {
+    if (link.isSection && location.pathname === "/") {
+      e.preventDefault();
+      const sectionId = link.to.replace("/#", "#");
+      scrollToSection(sectionId);
+    }
   };
 
   return (
@@ -84,14 +104,15 @@ export function Navbar() {
               <Link 
                 key={link.to}
                 to={link.to} 
+                onClick={(e) => handleNavClick(e, link)}
                 className={`relative text-sm font-medium transition-colors link-underline py-1 ${
-                  isActiveLink(link.to) 
+                  isActiveLink(link) 
                     ? "text-foreground" 
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {link.label}
-                {isActiveLink(link.to) && (
+                {isActiveLink(link) && (
                   <motion.div 
                     layoutId="activeNav"
                     className="absolute -bottom-0.5 left-0 right-0 h-0.5 bg-primary rounded-full"
@@ -172,8 +193,9 @@ export function Navbar() {
                     >
                       <Link 
                         to={link.to} 
+                        onClick={(e) => handleNavClick(e, link)}
                         className={`flex items-center gap-2 px-3 py-3 rounded-lg transition-colors text-sm font-medium ${
-                          isActiveLink(link.to)
+                          isActiveLink(link)
                             ? "text-foreground bg-secondary/50"
                             : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
                         }`}
