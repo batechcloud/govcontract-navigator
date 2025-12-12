@@ -9,6 +9,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import SearchHub from "./pages/SearchHub";
 import TrackedContracts from "./pages/TrackedContracts";
+import JourneyHub from "./pages/JourneyHub";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard/search" element={<SearchHub />} />
             <Route path="/dashboard/tracked" element={<TrackedContracts />} />
+            <Route path="/dashboard/journey" element={<JourneyHub />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
