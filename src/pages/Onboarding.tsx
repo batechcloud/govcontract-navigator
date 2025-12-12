@@ -156,8 +156,24 @@ const Onboarding = () => {
     }
   };
 
-  const handleSkip = () => {
-    navigate("/dashboard");
+  const handleSkip = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Mark onboarding as complete so the user can access the dashboard
+        await supabase
+          .from("profiles")
+          .update({ onboarding_completed: true })
+          .eq("id", user.id);
+      }
+      
+      navigate("/dashboard");
+    } catch (error) {
+      console.error("Error skipping onboarding:", error);
+      // Still navigate even if the update fails
+      navigate("/dashboard");
+    }
   };
 
   const slideVariants = {
