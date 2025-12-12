@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import WelcomeStep from "@/components/onboarding/WelcomeStep";
 import CompanyInfoStep from "@/components/onboarding/CompanyInfoStep";
 import CapabilitiesStep from "@/components/onboarding/CapabilitiesStep";
@@ -55,9 +57,11 @@ const steps = [
 
 const Onboarding = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
   const [data, setData] = useState<OnboardingData>(initialData);
   const [direction, setDirection] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const progress = (currentStep / steps.length) * 100;
 
@@ -70,7 +74,6 @@ const Onboarding = () => {
       setDirection(1);
       setCurrentStep((prev) => prev + 1);
     } else {
-      // Complete onboarding
       handleComplete();
     }
   };
@@ -82,10 +85,75 @@ const Onboarding = () => {
     }
   };
 
-  const handleComplete = () => {
-    // TODO: Save onboarding data to database
-    console.log("Onboarding complete:", data);
-    navigate("/dashboard");
+  const handleComplete = async () => {
+    setIsSubmitting(true);
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast({
+          title: "Please sign in",
+          description: "You need to be signed in to complete onboarding.",
+          variant: "destructive",
+        });
+        navigate("/auth");
+        return;
+      }
+
+      // Save company profile
+      const { error: companyError } = await supabase
+        .from("company_profiles")
+        .upsert({
+          user_id: user.id,
+          company_name: data.companyName || "My Company",
+          sam_uei: data.samUei || null,
+          cage_code: data.cageCode || null,
+          year_founded: data.yearFounded ? parseInt(data.yearFounded) : null,
+          employee_count: data.employeeCount || null,
+          annual_revenue: data.annualRevenue || null,
+          naics_codes: data.naicsCodes,
+          certifications: data.certifications,
+          capabilities: data.capabilities,
+          contract_types: data.contractTypes,
+          preferred_agencies: data.preferredAgencies,
+          min_contract_value: data.minContractValue || null,
+          max_contract_value: data.maxContractValue || null,
+        });
+
+      if (companyError) throw companyError;
+
+      // Update profile to mark onboarding as complete
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          onboarding_completed: true,
+          notification_preferences: {
+            email_frequency: data.emailFrequency,
+            quiet_hours_start: null,
+            quiet_hours_end: null,
+          },
+        })
+        .eq("id", user.id);
+
+      if (profileError) throw profileError;
+
+      toast({
+        title: "Welcome aboard!",
+        description: "Your profile has been set up successfully.",
+      });
+
+      navigate("/dashboard");
+    } catch (error: any) {
+      console.error("Onboarding error:", error);
+      toast({
+        title: "Error saving profile",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSkip = () => {
@@ -210,9 +278,20 @@ const Onboarding = () => {
             <div className="text-sm text-muted-foreground">
               Step {currentStep} of {steps.length}
             </div>
-            <Button variant="hero" onClick={nextStep}>
-              {currentStep === steps.length ? "Complete Setup" : "Continue"}
-              {currentStep < steps.length && <ChevronRight className="w-4 h-4 ml-1" />}
+            <Button variant="hero" onClick={nextStep} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : currentStep === steps.length ? (
+                "Complete Setup"
+              ) : (
+                <>
+                  Continue
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </>
+              )}
             </Button>
           </div>
         </footer>
