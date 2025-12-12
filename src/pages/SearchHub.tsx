@@ -1,16 +1,25 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
   Search,
   FileText,
   Building2,
   Sparkles,
-  Filter,
   SlidersHorizontal,
   Clock,
   DollarSign,
@@ -18,100 +27,101 @@ import {
   Star,
   Target,
   ArrowUpRight,
+  Save,
+  X,
+  Bookmark,
+  ExternalLink,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useTrackContract, useTrackedContracts } from "@/hooks/useTrackedContracts";
+import { useSmartSearch, useSaveSearch, SearchFilters, SearchResult } from "@/hooks/useSearch";
+import { toast } from "sonner";
 
-// Mock search results - in production, this would come from SAM.gov API
-const mockSearchResults = [
-  {
-    id: "SAM-2024-001",
-    title: "IT Infrastructure Modernization Support",
-    agency: "Department of Defense",
-    type: "Federal",
-    setAside: "SDVOSB",
-    value: "$4,200,000",
-    deadline: "2026-01-15",
-    postedDate: "2024-12-10",
-    location: "Washington, DC",
-    naicsCode: "541512",
-    matchScore: 96,
-    description: "IT infrastructure modernization and support services for DOD systems.",
-  },
-  {
-    id: "SAM-2024-002",
-    title: "Cybersecurity Risk Assessment Services",
-    agency: "Department of Homeland Security",
-    type: "Federal",
-    setAside: "8(a)",
-    value: "$1,800,000",
-    deadline: "2026-01-22",
-    postedDate: "2024-12-08",
-    location: "Arlington, VA",
-    naicsCode: "541519",
-    matchScore: 92,
-    description: "Comprehensive cybersecurity risk assessment and monitoring services.",
-  },
-  {
-    id: "SAM-2024-003",
-    title: "Cloud Migration and Management",
-    agency: "General Services Administration",
-    type: "Federal",
-    setAside: "Small Business",
-    value: "$2,500,000",
-    deadline: "2026-02-01",
-    postedDate: "2024-12-05",
-    location: "Remote",
-    naicsCode: "541511",
-    matchScore: 88,
-    description: "Cloud infrastructure migration, management, and optimization services.",
-  },
-  {
-    id: "SAM-2024-004",
-    title: "Data Analytics Platform Development",
-    agency: "Department of Veterans Affairs",
-    type: "Federal",
-    setAside: "WOSB",
-    value: "$3,100,000",
-    deadline: "2026-02-10",
-    postedDate: "2024-12-03",
-    location: "Multiple Locations",
-    naicsCode: "541512",
-    matchScore: 85,
-    description: "Development and implementation of advanced data analytics platform.",
-  },
-  {
-    id: "SAM-2024-005",
-    title: "Network Security Operations Center",
-    agency: "Department of Energy",
-    type: "Federal",
-    setAside: "HUBZone",
-    value: "$5,700,000",
-    deadline: "2026-02-28",
-    postedDate: "2024-12-01",
-    location: "Oak Ridge, TN",
-    naicsCode: "541519",
-    matchScore: 82,
-    description: "24/7 network security operations center management and support.",
-  },
+const quickFilters = [
+  { label: "Federal", filter: { opportunity_type: "Federal" } },
+  { label: "SDVOSB", filter: { set_aside: ["SDVOSB"] } },
+  { label: "8(a)", filter: { set_aside: ["8(a)"] } },
+  { label: "HUBZone", filter: { set_aside: ["HUBZone"] } },
+  { label: "WOSB", filter: { set_aside: ["WOSB"] } },
+  { label: "Small Business", filter: { set_aside: ["Small Business"] } },
 ];
 
-const quickFilters = ["Federal", "State", "Grants", "SDVOSB", "8(a)", "HUBZone", "WOSB"];
-
 const SearchHub = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
-  const [isSearching, setIsSearching] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [searchName, setSearchName] = useState("");
+  
+  const { 
+    search, 
+    searchWithFilters,
+    isSearching, 
+    results, 
+    parsedFilters, 
+    total,
+    isParsing 
+  } = useSmartSearch();
+  
   const trackContract = useTrackContract();
   const { data: trackedContracts } = useTrackedContracts();
+  const saveSearch = useSaveSearch();
 
   const trackedIds = new Set(trackedContracts?.map(c => c.contract_id) || []);
 
-  const handleSearch = () => {
-    setIsSearching(true);
-    setTimeout(() => setIsSearching(false), 1000);
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      toast.error("Please enter a search query");
+      return;
+    }
+    
+    try {
+      await search(searchQuery);
+    } catch (error) {
+      // Error already handled in hook
+    }
   };
 
-  const handleTrack = (result: typeof mockSearchResults[0]) => {
+  const handleQuickFilter = async (filter: typeof quickFilters[0]) => {
+    const filterKey = filter.label;
+    let newActiveFilters: string[];
+    
+    if (activeFilters.includes(filterKey)) {
+      newActiveFilters = activeFilters.filter(f => f !== filterKey);
+    } else {
+      newActiveFilters = [...activeFilters, filterKey];
+    }
+    
+    setActiveFilters(newActiveFilters);
+    
+    // Build combined filters
+    const combinedFilters: SearchFilters = {
+      keywords: searchQuery ? searchQuery.split(' ').filter(w => w.length > 2) : [],
+      naics_codes: [],
+      set_aside: [],
+      agencies: [],
+      min_value: null,
+      max_value: null,
+      location: null,
+      opportunity_type: null
+    };
+    
+    newActiveFilters.forEach(key => {
+      const qf = quickFilters.find(f => f.label === key);
+      if (qf?.filter.set_aside) {
+        combinedFilters.set_aside.push(...qf.filter.set_aside);
+      }
+      if (qf?.filter.opportunity_type) {
+        combinedFilters.opportunity_type = qf.filter.opportunity_type;
+      }
+    });
+    
+    if (newActiveFilters.length > 0 || searchQuery) {
+      await searchWithFilters(combinedFilters);
+    }
+  };
+
+  const handleTrack = (result: SearchResult) => {
     trackContract.mutate({
       contract_id: result.id,
       contract_title: result.title,
@@ -128,6 +138,31 @@ const SearchHub = () => {
     });
   };
 
+  const handleGenerateProposal = (result: SearchResult) => {
+    navigate(`/dashboard/proposals/generator?opportunityId=${result.id}&title=${encodeURIComponent(result.title)}&agency=${encodeURIComponent(result.agency)}`);
+  };
+
+  const handleSaveSearch = () => {
+    if (!searchName.trim()) {
+      toast.error("Please enter a name for your search");
+      return;
+    }
+    
+    if (!parsedFilters) {
+      toast.error("Please perform a search first");
+      return;
+    }
+    
+    saveSearch.mutate({
+      name: searchName,
+      query: searchQuery,
+      filters: parsedFilters
+    });
+    
+    setSaveDialogOpen(false);
+    setSearchName("");
+  };
+
   return (
     <DashboardLayout title="Search Hub">
       <motion.div
@@ -140,9 +175,21 @@ const SearchHub = () => {
         <Card variant="glass" className="overflow-hidden relative">
           <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-accent/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
           <CardContent className="p-6 relative">
-            <div className="flex items-center gap-2 mb-4">
-              <Sparkles className="w-5 h-5 text-accent" />
-              <span className="font-heading font-semibold text-foreground">AI-Powered Search</span>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-accent" />
+                <span className="font-heading font-semibold text-foreground">AI-Powered Search</span>
+              </div>
+              {parsedFilters && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setSaveDialogOpen(true)}
+                >
+                  <Bookmark className="w-4 h-4 mr-2" />
+                  Save Search
+                </Button>
+              )}
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="flex-1 relative">
@@ -161,15 +208,72 @@ const SearchHub = () => {
                   <SlidersHorizontal className="w-4 h-4 sm:mr-2" />
                   <span className="hidden sm:inline">Filters</span>
                 </Button>
-                <Button variant="hero" className="h-12" onClick={handleSearch}>
-                  <Search className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Search</span>
+                <Button 
+                  variant="hero" 
+                  className="h-12" 
+                  onClick={handleSearch}
+                  disabled={isSearching}
+                >
+                  {isParsing ? (
+                    <Sparkles className="w-4 h-4 sm:mr-2 animate-spin" />
+                  ) : (
+                    <Search className="w-4 h-4 sm:mr-2" />
+                  )}
+                  <span className="hidden sm:inline">
+                    {isParsing ? "Parsing..." : isSearching ? "Searching..." : "Search"}
+                  </span>
                 </Button>
               </div>
             </div>
             <p className="text-xs text-muted-foreground mt-3">
               Ask in natural language. Our AI understands set-asides, NAICS codes, agencies, and more.
             </p>
+            
+            {/* Show parsed filters */}
+            <AnimatePresence>
+              {parsedFilters && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mt-4 pt-4 border-t border-border/50"
+                >
+                  <p className="text-xs text-muted-foreground mb-2">AI extracted these filters:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {parsedFilters.keywords.length > 0 && (
+                      <Badge variant="glass">
+                        Keywords: {parsedFilters.keywords.join(", ")}
+                      </Badge>
+                    )}
+                    {parsedFilters.set_aside.length > 0 && (
+                      <Badge variant="gold">
+                        Set-aside: {parsedFilters.set_aside.join(", ")}
+                      </Badge>
+                    )}
+                    {parsedFilters.naics_codes.length > 0 && (
+                      <Badge variant="outline">
+                        NAICS: {parsedFilters.naics_codes.join(", ")}
+                      </Badge>
+                    )}
+                    {parsedFilters.agencies.length > 0 && (
+                      <Badge variant="outline">
+                        Agencies: {parsedFilters.agencies.join(", ")}
+                      </Badge>
+                    )}
+                    {parsedFilters.min_value && (
+                      <Badge variant="outline">
+                        Min: ${(parsedFilters.min_value / 1000000).toFixed(1)}M
+                      </Badge>
+                    )}
+                    {parsedFilters.max_value && (
+                      <Badge variant="outline">
+                        Max: ${(parsedFilters.max_value / 1000000).toFixed(1)}M
+                      </Badge>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </CardContent>
         </Card>
 
@@ -177,12 +281,15 @@ const SearchHub = () => {
         <div className="flex flex-wrap gap-2">
           {quickFilters.map((filter) => (
             <Badge
-              key={filter}
-              variant="glass"
+              key={filter.label}
+              variant={activeFilters.includes(filter.label) ? "gold" : "glass"}
               className="cursor-pointer hover:bg-primary/20 transition-colors"
-              onClick={() => setSearchQuery(searchQuery ? `${searchQuery} ${filter}` : filter)}
+              onClick={() => handleQuickFilter(filter)}
             >
-              {filter}
+              {activeFilters.includes(filter.label) && (
+                <X className="w-3 h-3 mr-1" />
+              )}
+              {filter.label}
             </Badge>
           ))}
         </div>
@@ -191,12 +298,15 @@ const SearchHub = () => {
         <div>
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm text-muted-foreground">
-              Showing <span className="text-foreground font-semibold">{mockSearchResults.length}</span> opportunities sorted by match score
+              {results.length > 0 ? (
+                <>
+                  Showing <span className="text-foreground font-semibold">{results.length}</span> of{" "}
+                  <span className="text-foreground font-semibold">{total}</span> opportunities sorted by match score
+                </>
+              ) : (
+                "Enter a search query to find government contracts"
+              )}
             </p>
-            <Button variant="ghost" size="sm">
-              <Filter className="w-4 h-4 mr-2" />
-              Sort
-            </Button>
           </div>
 
           <div className="space-y-4">
@@ -215,8 +325,8 @@ const SearchHub = () => {
                   </CardContent>
                 </Card>
               ))
-            ) : (
-              mockSearchResults.map((result, index) => {
+            ) : results.length > 0 ? (
+              results.map((result, index) => {
                 const isTracked = trackedIds.has(result.id);
                 return (
                   <motion.div
@@ -249,7 +359,9 @@ const SearchHub = () => {
                             <div className="flex flex-wrap items-center gap-2 mb-2">
                               <Badge variant="outline">{result.type}</Badge>
                               <Badge variant="gold">{result.setAside}</Badge>
-                              <Badge variant="glass">{result.naicsCode}</Badge>
+                              {result.naicsCode && (
+                                <Badge variant="glass">{result.naicsCode}</Badge>
+                              )}
                             </div>
                             <h3 className="font-heading font-semibold text-lg text-foreground mb-2">
                               {result.title}
@@ -263,10 +375,12 @@ const SearchHub = () => {
                                 <DollarSign className="w-4 h-4" />
                                 {result.value}
                               </span>
-                              <span className="flex items-center gap-1 text-muted-foreground">
-                                <Clock className="w-4 h-4" />
-                                Due: {new Date(result.deadline).toLocaleDateString()}
-                              </span>
+                              {result.deadline && (
+                                <span className="flex items-center gap-1 text-muted-foreground">
+                                  <Clock className="w-4 h-4" />
+                                  Due: {new Date(result.deadline).toLocaleDateString()}
+                                </span>
+                              )}
                               <span className="flex items-center gap-1 text-muted-foreground">
                                 <MapPin className="w-4 h-4" />
                                 {result.location}
@@ -276,7 +390,11 @@ const SearchHub = () => {
 
                           {/* Actions */}
                           <div className="flex lg:flex-col gap-2">
-                            <Button variant="hero" size="sm">
+                            <Button 
+                              variant="hero" 
+                              size="sm"
+                              onClick={() => handleGenerateProposal(result)}
+                            >
                               <FileText className="w-4 h-4 mr-2" />
                               Generate Proposal
                             </Button>
@@ -298,10 +416,16 @@ const SearchHub = () => {
                                 </>
                               )}
                             </Button>
-                            <Button variant="ghost" size="sm">
-                              <ArrowUpRight className="w-4 h-4 mr-2" />
-                              Details
-                            </Button>
+                            {result.link && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => window.open(result.link, '_blank')}
+                              >
+                                <ExternalLink className="w-4 h-4 mr-2" />
+                                SAM.gov
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </CardContent>
@@ -309,10 +433,56 @@ const SearchHub = () => {
                   </motion.div>
                 );
               })
+            ) : (
+              <Card variant="glass" className="text-center py-12">
+                <CardContent>
+                  <Search className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="font-heading font-semibold text-lg mb-2">No results yet</h3>
+                  <p className="text-muted-foreground">
+                    Enter a search query above to find government contracts that match your capabilities.
+                  </p>
+                </CardContent>
+              </Card>
             )}
           </div>
         </div>
       </motion.div>
+
+      {/* Save Search Dialog */}
+      <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save Search</DialogTitle>
+            <DialogDescription>
+              Save this search to quickly run it again later.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="searchName">Search Name</Label>
+              <Input
+                id="searchName"
+                placeholder="e.g., IT Cybersecurity SDVOSB"
+                value={searchName}
+                onChange={(e) => setSearchName(e.target.value)}
+              />
+            </div>
+            <div className="text-sm text-muted-foreground">
+              <p className="font-medium mb-1">Query:</p>
+              <p className="bg-muted/50 p-2 rounded">{searchQuery}</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveSearch} disabled={saveSearch.isPending}>
+              <Save className="w-4 h-4 mr-2" />
+              Save Search
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };
