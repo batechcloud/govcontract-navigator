@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,8 +10,6 @@ import {
   Clock,
   DollarSign,
   GripVertical,
-  ChevronRight,
-  ChevronLeft,
   Building2,
   Target,
 } from "lucide-react";
@@ -29,103 +28,80 @@ const PIPELINE_STAGES = [
 
 interface KanbanCardProps {
   contract: TrackedContract;
-  onMoveLeft: () => void;
-  onMoveRight: () => void;
-  canMoveLeft: boolean;
-  canMoveRight: boolean;
+  index: number;
   isMoving: boolean;
 }
 
-const KanbanCard = ({ contract, onMoveLeft, onMoveRight, canMoveLeft, canMoveRight, isMoving }: KanbanCardProps) => {
+const KanbanCard = ({ contract, index, isMoving }: KanbanCardProps) => {
   const deadline = contract.response_deadline ? new Date(contract.response_deadline) : null;
   const isOverdue = deadline ? isPast(deadline) : false;
   const deadlineText = deadline ? format(deadline, "MMM d") : "No deadline";
   const timeRemaining = deadline && !isOverdue ? formatDistanceToNow(deadline, { addSuffix: false }) : null;
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: isMoving ? 0.5 : 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      className="group"
-    >
-      <Card variant="glass-hover" className="cursor-grab active:cursor-grabbing">
-        <CardContent className="p-3">
-          <div className="flex items-start gap-2 mb-2">
-            <GripVertical className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5" />
-            <div className="flex-1 min-w-0">
-              <h4 className="font-heading font-medium text-sm text-foreground line-clamp-2 mb-1">
-                {contract.contract_title}
-              </h4>
-              <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
-                <Building2 className="w-3 h-3 shrink-0" />
-                {contract.contract_agency || "Unknown Agency"}
-              </p>
-            </div>
-          </div>
+    <Draggable draggableId={contract.id} index={index}>
+      {(provided, snapshot) => (
+        <div
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          className={`group transition-shadow ${snapshot.isDragging ? "shadow-2xl" : ""}`}
+        >
+          <Card 
+            variant="glass-hover" 
+            className={`cursor-grab active:cursor-grabbing ${
+              snapshot.isDragging ? "ring-2 ring-primary/50 rotate-2" : ""
+            } ${isMoving ? "opacity-50" : ""}`}
+          >
+            <CardContent className="p-3">
+              <div className="flex items-start gap-2 mb-2">
+                <div {...provided.dragHandleProps} className="shrink-0 mt-0.5">
+                  <GripVertical className="w-4 h-4 text-muted-foreground opacity-50 group-hover:opacity-100 transition-opacity" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-heading font-medium text-sm text-foreground line-clamp-2 mb-1">
+                    {contract.contract_title}
+                  </h4>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                    <Building2 className="w-3 h-3 shrink-0" />
+                    {contract.contract_agency || "Unknown Agency"}
+                  </p>
+                </div>
+              </div>
 
-          <div className="flex items-center justify-between gap-2 mb-2">
-            {contract.contract_value && (
-              <span className="text-xs text-accent font-semibold flex items-center gap-1">
-                <DollarSign className="w-3 h-3" />
-                {contract.contract_value}
-              </span>
-            )}
-            <span className={`text-xs flex items-center gap-1 ${isOverdue ? "text-destructive" : "text-muted-foreground"}`}>
-              <Clock className="w-3 h-3" />
-              {deadlineText}
-              {timeRemaining && <span className="hidden sm:inline">({timeRemaining})</span>}
-            </span>
-          </div>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                {contract.contract_value && (
+                  <span className="text-xs text-accent font-semibold flex items-center gap-1">
+                    <DollarSign className="w-3 h-3" />
+                    {contract.contract_value}
+                  </span>
+                )}
+                <span className={`text-xs flex items-center gap-1 ${isOverdue ? "text-destructive" : "text-muted-foreground"}`}>
+                  <Clock className="w-3 h-3" />
+                  {deadlineText}
+                  {timeRemaining && <span className="hidden sm:inline">({timeRemaining})</span>}
+                </span>
+              </div>
 
-          {contract.match_score && (
-            <Badge variant="success" className="text-xs mb-2">
-              {contract.match_score}% Match
-            </Badge>
-          )}
-
-          {/* Move Buttons */}
-          <div className="flex items-center justify-between gap-1 pt-2 border-t border-border/50">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={onMoveLeft}
-              disabled={!canMoveLeft || isMoving}
-            >
-              <ChevronLeft className="w-3 h-3 mr-1" />
-              Back
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={onMoveRight}
-              disabled={!canMoveRight || isMoving}
-            >
-              Next
-              <ChevronRight className="w-3 h-3 ml-1" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
+              {contract.match_score && (
+                <Badge variant="success" className="text-xs">
+                  {contract.match_score}% Match
+                </Badge>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </Draggable>
   );
 };
 
 interface KanbanColumnProps {
   stage: typeof PIPELINE_STAGES[0];
   contracts: TrackedContract[];
-  onMove: (contractId: string, newStatus: string) => void;
   movingContractId: string | null;
 }
 
-const KanbanColumn = ({ stage, contracts, onMove, movingContractId }: KanbanColumnProps) => {
-  const stageIndex = PIPELINE_STAGES.findIndex(s => s.id === stage.id);
-  const prevStage = stageIndex > 0 ? PIPELINE_STAGES[stageIndex - 1] : null;
-  const nextStage = stageIndex < PIPELINE_STAGES.length - 1 ? PIPELINE_STAGES[stageIndex + 1] : null;
-
+const KanbanColumn = ({ stage, contracts, movingContractId }: KanbanColumnProps) => {
   return (
     <div className="flex flex-col min-w-[280px] w-[280px] shrink-0">
       <div className={`flex items-center gap-2 p-3 rounded-t-lg border-t-2 ${stage.borderColor} bg-secondary/30`}>
@@ -135,26 +111,36 @@ const KanbanColumn = ({ stage, contracts, onMove, movingContractId }: KanbanColu
           {contracts.length}
         </Badge>
       </div>
-      <div className="flex-1 bg-secondary/10 rounded-b-lg p-2 space-y-2 min-h-[400px] max-h-[calc(100vh-280px)] overflow-y-auto">
-        {contracts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
-            <Target className="w-8 h-8 mb-2 opacity-50" />
-            <p className="text-xs text-center">No contracts in this stage</p>
+      <Droppable droppableId={stage.id}>
+        {(provided, snapshot) => (
+          <div
+            ref={provided.innerRef}
+            {...provided.droppableProps}
+            className={`flex-1 rounded-b-lg p-2 space-y-2 min-h-[400px] max-h-[calc(100vh-280px)] overflow-y-auto transition-colors ${
+              snapshot.isDraggingOver 
+                ? "bg-primary/10 ring-2 ring-primary/30 ring-inset" 
+                : "bg-secondary/10"
+            }`}
+          >
+            {contracts.length === 0 && !snapshot.isDraggingOver ? (
+              <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
+                <Target className="w-8 h-8 mb-2 opacity-50" />
+                <p className="text-xs text-center">Drop contracts here</p>
+              </div>
+            ) : (
+              contracts.map((contract, index) => (
+                <KanbanCard
+                  key={contract.id}
+                  contract={contract}
+                  index={index}
+                  isMoving={movingContractId === contract.id}
+                />
+              ))
+            )}
+            {provided.placeholder}
           </div>
-        ) : (
-          contracts.map((contract) => (
-            <KanbanCard
-              key={contract.id}
-              contract={contract}
-              onMoveLeft={() => prevStage && onMove(contract.id, prevStage.id)}
-              onMoveRight={() => nextStage && onMove(contract.id, nextStage.id)}
-              canMoveLeft={!!prevStage}
-              canMoveRight={!!nextStage}
-              isMoving={movingContractId === contract.id}
-            />
-          ))
         )}
-      </div>
+      </Droppable>
     </div>
   );
 };
@@ -164,10 +150,23 @@ const JourneyHub = () => {
   const updateStatus = useUpdateContractStatus();
   const [movingContractId, setMovingContractId] = useState<string | null>(null);
 
-  const handleMove = (contractId: string, newStatus: string) => {
-    setMovingContractId(contractId);
+  const handleDragEnd = (result: DropResult) => {
+    const { destination, source, draggableId } = result;
+
+    // Dropped outside a valid droppable
+    if (!destination) return;
+
+    // Dropped in the same place
+    if (destination.droppableId === source.droppableId && destination.index === source.index) {
+      return;
+    }
+
+    // Update the contract status
+    const newStatus = destination.droppableId;
+    setMovingContractId(draggableId);
+    
     updateStatus.mutate(
-      { id: contractId, status: newStatus },
+      { id: draggableId, status: newStatus },
       {
         onSettled: () => setMovingContractId(null),
       }
@@ -238,6 +237,9 @@ const JourneyHub = () => {
             <CardTitle className="text-lg flex items-center gap-2">
               <FileText className="w-5 h-5 text-primary" />
               Pipeline Board
+              <span className="text-xs font-normal text-muted-foreground ml-2">
+                Drag cards to move between stages
+              </span>
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4">
@@ -267,17 +269,18 @@ const JourneyHub = () => {
                 </Button>
               </div>
             ) : (
-              <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4">
-                {PIPELINE_STAGES.map((stage) => (
-                  <KanbanColumn
-                    key={stage.id}
-                    stage={stage}
-                    contracts={contractsByStage[stage.id]}
-                    onMove={handleMove}
-                    movingContractId={movingContractId}
-                  />
-                ))}
-              </div>
+              <DragDropContext onDragEnd={handleDragEnd}>
+                <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4">
+                  {PIPELINE_STAGES.map((stage) => (
+                    <KanbanColumn
+                      key={stage.id}
+                      stage={stage}
+                      contracts={contractsByStage[stage.id]}
+                      movingContractId={movingContractId}
+                    />
+                  ))}
+                </div>
+              </DragDropContext>
             )}
           </CardContent>
         </Card>
