@@ -80,6 +80,119 @@ export type Database = {
         }
         Relationships: []
       }
+      feature_usage: {
+        Row: {
+          created_at: string | null
+          feature_id: string
+          id: string
+          period_end: string | null
+          period_start: string | null
+          updated_at: string | null
+          usage_count: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          feature_id: string
+          id?: string
+          period_end?: string | null
+          period_start?: string | null
+          updated_at?: string | null
+          usage_count?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          feature_id?: string
+          id?: string
+          period_end?: string | null
+          period_start?: string | null
+          updated_at?: string | null
+          usage_count?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feature_usage_feature_id_fkey"
+            columns: ["feature_id"]
+            isOneToOne: false
+            referencedRelation: "features"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      features: {
+        Row: {
+          code: string
+          created_at: string | null
+          description: string | null
+          feature_type: string
+          id: string
+          module: string
+          name: string
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          description?: string | null
+          feature_type?: string
+          id?: string
+          module: string
+          name: string
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          description?: string | null
+          feature_type?: string
+          id?: string
+          module?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      plan_features: {
+        Row: {
+          created_at: string | null
+          feature_id: string
+          id: string
+          is_enabled: boolean | null
+          plan_id: string
+          usage_limit: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          feature_id: string
+          id?: string
+          is_enabled?: boolean | null
+          plan_id: string
+          usage_limit?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          feature_id?: string
+          id?: string
+          is_enabled?: boolean | null
+          plan_id?: string
+          usage_limit?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_features_feature_id_fkey"
+            columns: ["feature_id"]
+            isOneToOne: false
+            referencedRelation: "features"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_features_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -158,6 +271,45 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_plans: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          display_name: string
+          id: string
+          is_active: boolean | null
+          monthly_price: number
+          name: string
+          sort_order: number | null
+          updated_at: string | null
+          yearly_price: number
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          display_name: string
+          id?: string
+          is_active?: boolean | null
+          monthly_price?: number
+          name: string
+          sort_order?: number | null
+          updated_at?: string | null
+          yearly_price?: number
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          display_name?: string
+          id?: string
+          is_active?: boolean | null
+          monthly_price?: number
+          name?: string
+          sort_order?: number | null
+          updated_at?: string | null
+          yearly_price?: number
+        }
+        Relationships: []
+      }
       tracked_contracts: {
         Row: {
           contract_agency: string | null
@@ -215,6 +367,50 @@ export type Database = {
         }
         Relationships: []
       }
+      user_feature_overrides: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          feature_id: string
+          granted_by: string | null
+          id: string
+          is_enabled: boolean
+          reason: string | null
+          usage_limit_override: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          feature_id: string
+          granted_by?: string | null
+          id?: string
+          is_enabled: boolean
+          reason?: string | null
+          usage_limit_override?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          feature_id?: string
+          granted_by?: string | null
+          id?: string
+          is_enabled?: boolean
+          reason?: string | null
+          usage_limit_override?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_feature_overrides_feature_id_fkey"
+            columns: ["feature_id"]
+            isOneToOne: false
+            referencedRelation: "features"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -236,17 +432,71 @@ export type Database = {
         }
         Relationships: []
       }
+      user_subscriptions: {
+        Row: {
+          created_at: string | null
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          plan_id: string
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          plan_id: string
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          plan_id?: string
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      check_feature_access: {
+        Args: { _feature_code: string; _user_id: string }
+        Returns: {
+          current_usage: number
+          has_access: boolean
+          is_override: boolean
+          usage_limit: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_feature_usage: {
+        Args: { _feature_code: string; _increment?: number; _user_id: string }
+        Returns: number
       }
     }
     Enums: {
