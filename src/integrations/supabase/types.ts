@@ -14,16 +14,147 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      company_profiles: {
+        Row: {
+          annual_revenue: string | null
+          cage_code: string | null
+          capabilities: string[] | null
+          certifications: string[] | null
+          company_name: string
+          contract_types: string[] | null
+          created_at: string
+          duns_number: string | null
+          employee_count: string | null
+          id: string
+          max_contract_value: string | null
+          min_contract_value: string | null
+          naics_codes: string[] | null
+          past_performance: Json | null
+          preferred_agencies: string[] | null
+          sam_uei: string | null
+          updated_at: string
+          user_id: string
+          year_founded: number | null
+        }
+        Insert: {
+          annual_revenue?: string | null
+          cage_code?: string | null
+          capabilities?: string[] | null
+          certifications?: string[] | null
+          company_name: string
+          contract_types?: string[] | null
+          created_at?: string
+          duns_number?: string | null
+          employee_count?: string | null
+          id?: string
+          max_contract_value?: string | null
+          min_contract_value?: string | null
+          naics_codes?: string[] | null
+          past_performance?: Json | null
+          preferred_agencies?: string[] | null
+          sam_uei?: string | null
+          updated_at?: string
+          user_id: string
+          year_founded?: number | null
+        }
+        Update: {
+          annual_revenue?: string | null
+          cage_code?: string | null
+          capabilities?: string[] | null
+          certifications?: string[] | null
+          company_name?: string
+          contract_types?: string[] | null
+          created_at?: string
+          duns_number?: string | null
+          employee_count?: string | null
+          id?: string
+          max_contract_value?: string | null
+          min_contract_value?: string | null
+          naics_codes?: string[] | null
+          past_performance?: Json | null
+          preferred_agencies?: string[] | null
+          sam_uei?: string | null
+          updated_at?: string
+          user_id?: string
+          year_founded?: number | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          first_name: string | null
+          id: string
+          is_suspended: boolean | null
+          last_active_at: string | null
+          last_name: string | null
+          notification_preferences: Json | null
+          onboarding_completed: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          first_name?: string | null
+          id: string
+          is_suspended?: boolean | null
+          last_active_at?: string | null
+          last_name?: string | null
+          notification_preferences?: Json | null
+          onboarding_completed?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          first_name?: string | null
+          id?: string
+          is_suspended?: boolean | null
+          last_active_at?: string | null
+          last_name?: string | null
+          notification_preferences?: Json | null
+          onboarding_completed?: boolean | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user" | "superadmin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +281,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user", "superadmin"],
+    },
   },
 } as const
