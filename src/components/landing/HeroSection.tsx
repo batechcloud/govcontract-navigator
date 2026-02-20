@@ -100,13 +100,13 @@ export function HeroSection() {
             className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
           >
             <Button variant="hero" size="xl" asChild className="w-full sm:w-auto text-base px-8 shadow-lg shadow-primary/25">
-              <Link to="/dashboard/search">
+              <Link to="/auth?mode=signup">
                 <Search className="w-5 h-5 mr-2" />
                 Find Contracts Now
               </Link>
             </Button>
             <Button variant="glass" size="xl" asChild className="w-full sm:w-auto text-base px-8">
-              <Link to="/dashboard">
+              <Link to="/auth?mode=signup">
                 See How It Works
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Link>

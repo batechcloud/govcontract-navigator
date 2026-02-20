@@ -3,6 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "@/hooks/useAuth";
+import { ProtectedRoute, PublicOnlyRoute } from "@/components/auth/ProtectedRoute";
 
 // Public pages
 import Index from "./pages/Index";
@@ -38,56 +40,61 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          {/* Public routes */}
-          <Route path="/" element={<Index />} />
-          <Route path="/solutions" element={<Solutions />} />
-          <Route path="/docs" element={<Docs />} />
-          <Route path="/tutorials" element={<Tutorials />} />
-          <Route path="/blog" element={<Blog />} />
-          <Route path="/help" element={<Help />} />
-          <Route path="/pricing" element={<Pricing />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/privacy" element={<Privacy />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/capability-statement" element={<CapabilityStatement />} />
-          <Route path="/auth" element={<Auth />} />
-          
-          {/* Dashboard routes */}
-          <Route path="/onboarding" element={<Onboarding />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/dashboard/search" element={<SearchHub />} />
-          <Route path="/dashboard/tracked" element={<TrackedContracts />} />
-          <Route path="/dashboard/company" element={<CompanyProfile />} />
-          <Route path="/dashboard/proposals" element={<Proposals />} />
-          <Route path="/dashboard/proposals/generator" element={<ProposalGenerator />} />
-          <Route path="/dashboard/proposals/:id" element={<ProposalEditor />} />
-          <Route path="/dashboard/ai" element={<AIAssistant />} />
-          <Route path="/dashboard/settings" element={<Settings />} />
-          
-          {/* Redirects from old routes */}
-          <Route path="/dashboard/journey" element={<Navigate to="/dashboard/tracked" replace />} />
-          <Route path="/dashboard/analytics" element={<Navigate to="/dashboard/ai" replace />} />
-          <Route path="/dashboard/competitors" element={<Navigate to="/dashboard/ai" replace />} />
-          <Route path="/dashboard/win-loss" element={<Navigate to="/dashboard/ai" replace />} />
-          <Route path="/dashboard/saved-searches" element={<Navigate to="/dashboard/search" replace />} />
-          <Route path="/dashboard/calendar" element={<Navigate to="/dashboard/tracked" replace />} />
-          <Route path="/dashboard/teaming" element={<Navigate to="/dashboard/ai" replace />} />
-          <Route path="/dashboard/market" element={<Navigate to="/dashboard/ai" replace />} />
-          <Route path="/dashboard/documents" element={<Navigate to="/dashboard/proposals" replace />} />
-          
-          {/* Catch-all */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<Index />} />
+            <Route path="/solutions" element={<Solutions />} />
+            <Route path="/docs" element={<Docs />} />
+            <Route path="/tutorials" element={<Tutorials />} />
+            <Route path="/blog" element={<Blog />} />
+            <Route path="/help" element={<Help />} />
+            <Route path="/pricing" element={<Pricing />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/capability-statement" element={<CapabilityStatement />} />
+            <Route path="/auth" element={<PublicOnlyRoute><Auth /></PublicOnlyRoute>} />
+            
+            {/* /demo redirect */}
+            <Route path="/demo" element={<Navigate to="/contact" replace />} />
+            
+            {/* Protected dashboard routes */}
+            <Route path="/onboarding" element={<ProtectedRoute requireOnboarding={false}><Onboarding /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/search" element={<ProtectedRoute><SearchHub /></ProtectedRoute>} />
+            <Route path="/dashboard/tracked" element={<ProtectedRoute><TrackedContracts /></ProtectedRoute>} />
+            <Route path="/dashboard/company" element={<ProtectedRoute><CompanyProfile /></ProtectedRoute>} />
+            <Route path="/dashboard/proposals" element={<ProtectedRoute><Proposals /></ProtectedRoute>} />
+            <Route path="/dashboard/proposals/generator" element={<ProtectedRoute><ProposalGenerator /></ProtectedRoute>} />
+            <Route path="/dashboard/proposals/:id" element={<ProtectedRoute><ProposalEditor /></ProtectedRoute>} />
+            <Route path="/dashboard/ai" element={<ProtectedRoute><AIAssistant /></ProtectedRoute>} />
+            <Route path="/dashboard/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            
+            {/* Redirects from old routes */}
+            <Route path="/dashboard/journey" element={<Navigate to="/dashboard/tracked" replace />} />
+            <Route path="/dashboard/analytics" element={<Navigate to="/dashboard/ai" replace />} />
+            <Route path="/dashboard/competitors" element={<Navigate to="/dashboard/ai" replace />} />
+            <Route path="/dashboard/win-loss" element={<Navigate to="/dashboard/ai" replace />} />
+            <Route path="/dashboard/saved-searches" element={<Navigate to="/dashboard/search" replace />} />
+            <Route path="/dashboard/calendar" element={<Navigate to="/dashboard/tracked" replace />} />
+            <Route path="/dashboard/teaming" element={<Navigate to="/dashboard/ai" replace />} />
+            <Route path="/dashboard/market" element={<Navigate to="/dashboard/ai" replace />} />
+            <Route path="/dashboard/documents" element={<Navigate to="/dashboard/proposals" replace />} />
+            
+            {/* Catch-all */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 
