@@ -24,6 +24,7 @@ import Terms from "./pages/Terms";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import CapabilityStatement from "./pages/CapabilityStatement";
+import SectorBrowse from "./pages/SectorBrowse";
 
 // Dashboard pages
 import Onboarding from "./pages/Onboarding";
@@ -70,6 +71,7 @@ const App = () => (
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/capability-statement" element={<CapabilityStatement />} />
+            <Route path="/sectors" element={<SectorBrowse />} />
             <Route path="/auth" element={<PublicOnlyRoute><Auth /></PublicOnlyRoute>} />
             
             {/* /demo redirect */}
