@@ -35,7 +35,7 @@ serve(async (req) => {
       });
     }
 
-    const { opportunityId, opportunityTitle, customInstructions } = await req.json();
+    const { opportunityId, opportunityTitle, agency, customInstructions } = await req.json();
 
     if (!opportunityTitle) {
       return new Response(JSON.stringify({ error: "Opportunity title is required" }), {
@@ -151,7 +151,7 @@ Generate the proposal in the following JSON structure using the tool provided. E
           { role: "system", content: systemPrompt },
           {
             role: "user",
-            content: `Generate a complete proposal for: "${opportunityTitle}"${opportunityId ? ` (Opportunity ID: ${opportunityId})` : ""}`,
+            content: `Generate a complete proposal for: "${opportunityTitle}"${opportunityId ? ` (Opportunity ID: ${opportunityId})` : ""}${agency ? ` from ${agency}` : ""}`,
           },
         ],
         tools: [
@@ -226,6 +226,7 @@ Generate the proposal in the following JSON structure using the tool provided. E
         user_id: user.id,
         opportunity_id: opportunityId || `custom-${Date.now()}`,
         opportunity_title: opportunityTitle,
+        agency: agency || null,
         executive_summary: proposal.executive_summary,
         technical_approach: proposal.technical_approach,
         management_plan: proposal.management_plan,
