@@ -71,7 +71,7 @@ const App = () => (
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/capability-statement" element={<CapabilityStatement />} />
-            <Route path="/sectors" element={<ProtectedRoute><ErrorBoundary><SectorBrowse /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/sectors" element={<Navigate to="/dashboard/sectors" replace />} />
             <Route path="/auth" element={<PublicOnlyRoute><Auth /></PublicOnlyRoute>} />
             
             {/* /demo redirect */}
@@ -89,6 +89,7 @@ const App = () => (
              <Route path="/dashboard/ai" element={<ProtectedRoute><ErrorBoundary><AIAssistant /></ErrorBoundary></ProtectedRoute>} />
              <Route path="/dashboard/ai/chat" element={<ProtectedRoute><ErrorBoundary><AIOpportunityChat /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/dashboard/settings" element={<ProtectedRoute><ErrorBoundary><Settings /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/dashboard/sectors" element={<ProtectedRoute><ErrorBoundary><SectorBrowse /></ErrorBoundary></ProtectedRoute>} />
             
             {/* Redirects from old routes */}
             <Route path="/dashboard/journey" element={<Navigate to="/dashboard/tracked" replace />} />

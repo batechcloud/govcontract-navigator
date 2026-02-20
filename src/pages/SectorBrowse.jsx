@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 
 const SECTOR_NAICS = {
   technology:    ["5415", "5182", "5191", "5112", "5179"],
@@ -29,16 +30,16 @@ const SECTOR_NAICS = {
 };
 
 const SECTOR_CONFIG = {
-  all:           { label: "All Sectors",          color: "#94a3b8", icon: "🌐" },
-  technology:    { label: "IT & Cybersecurity",   color: "#3b82f6", icon: "💻" },
-  healthcare:    { label: "Healthcare & Medical", color: "#10b981", icon: "🏥" },
+  all:           { label: "All Sectors",          color: "hsl(var(--muted-foreground))", icon: "🌐" },
+  technology:    { label: "IT & Cybersecurity",   color: "hsl(var(--primary))", icon: "💻" },
+  healthcare:    { label: "Healthcare & Medical", color: "hsl(var(--success))", icon: "🏥" },
   construction:  { label: "Construction",         color: "#f59e0b", icon: "🏗️" },
   consulting:    { label: "Consulting",           color: "#8b5cf6", icon: "📊" },
   engineering:   { label: "Engineering",          color: "#06b6d4", icon: "⚙️" },
   education:     { label: "Education & Training", color: "#f97316", icon: "🎓" },
   logistics:     { label: "Logistics & Supply",   color: "#84cc16", icon: "🚛" },
-  energy:        { label: "Energy & Utilities",   color: "#eab308", icon: "⚡" },
-  defense:       { label: "Defense & Aerospace",  color: "#ef4444", icon: "🛡️" },
+  energy:        { label: "Energy & Utilities",   color: "hsl(var(--accent))", icon: "⚡" },
+  defense:       { label: "Defense & Aerospace",  color: "hsl(var(--destructive))", icon: "🛡️" },
   manufacturing: { label: "Manufacturing",        color: "#64748b", icon: "🏭" },
   environment:   { label: "Environmental",        color: "#22c55e", icon: "🌿" },
   finance:       { label: "Finance & Accounting", color: "#a855f7", icon: "💰" },
@@ -103,10 +104,10 @@ export default function SectorBrowse({ contracts = EMPTY_CONTRACTS }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0f1e] text-white px-6 py-10">
+    <DashboardLayout title="Browse Sectors">
       <div className="max-w-7xl mx-auto mb-10">
-        <h1 className="text-3xl font-bold text-white mb-2">Browse by Industry Sector</h1>
-        <p className="text-slate-400 text-sm mb-6">
+        <h1 className="text-3xl font-heading font-bold text-foreground mb-2">Browse by Industry Sector</h1>
+        <p className="text-muted-foreground text-sm mb-6">
           Explore government contracts across all {sectors.length} industry categories.
           Click any sector to filter the dashboard instantly.
         </p>
@@ -116,28 +117,28 @@ export default function SectorBrowse({ contracts = EMPTY_CONTRACTS }) {
           placeholder="Search sectors..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full max-w-md bg-[#131929] border border-slate-700 rounded-lg
-                     px-4 py-2 text-white placeholder-slate-500 text-sm
-                     focus:outline-none focus:border-blue-500 transition"
+          className="w-full max-w-md bg-card border border-border rounded-lg
+                     px-4 py-2 text-foreground placeholder-muted-foreground text-sm
+                     focus:outline-none focus:border-primary transition"
         />
 
         <button
           onClick={() => handleSectorClick("all")}
           className="mt-6 w-full flex items-center justify-between
-                     bg-gradient-to-r from-blue-600 to-blue-800 rounded-xl
-                     px-6 py-4 hover:from-blue-500 hover:to-blue-700
+                     bg-gradient-primary rounded-xl
+                     px-6 py-4 hover:opacity-90
                      transition-all duration-200 group"
         >
           <div className="flex items-center gap-3">
             <span className="text-2xl">🌐</span>
             <div className="text-left">
-              <p className="font-semibold text-white text-lg">All Sectors</p>
-              <p className="text-blue-200 text-sm">Browse every contract regardless of industry</p>
+              <p className="font-semibold text-primary-foreground text-lg">All Sectors</p>
+              <p className="text-primary-foreground/70 text-sm">Browse every contract regardless of industry</p>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-3xl font-bold text-white">{counts["all"] || 0}</p>
-            <p className="text-blue-200 text-xs">total contracts</p>
+            <p className="text-3xl font-bold text-primary-foreground">{counts["all"] || 0}</p>
+            <p className="text-primary-foreground/70 text-xs">total contracts</p>
           </div>
         </button>
       </div>
@@ -154,10 +155,9 @@ export default function SectorBrowse({ contracts = EMPTY_CONTRACTS }) {
               onClick={() => handleSectorClick(key)}
               onMouseEnter={() => setHovered(key)}
               onMouseLeave={() => setHovered(null)}
-              className="relative text-left rounded-xl border transition-all duration-200 p-5 group overflow-hidden"
+              className="relative text-left rounded-xl border border-border transition-all duration-200 p-5 group overflow-hidden bg-card"
               style={{
-                backgroundColor: isHover ? `${cfg.color}18` : "#131929",
-                borderColor:     isHover ? cfg.color : "#1e293b",
+                borderColor:     isHover ? cfg.color : undefined,
                 boxShadow:       isHover ? `0 0 20px ${cfg.color}30` : "none",
               }}
             >
@@ -170,23 +170,23 @@ export default function SectorBrowse({ contracts = EMPTY_CONTRACTS }) {
                 <span className="text-3xl">{cfg.icon}</span>
                 <div className="text-right">
                   <span className="text-2xl font-bold" style={{ color: cfg.color }}>{count}</span>
-                  <p className="text-slate-500 text-xs">contracts</p>
+                  <p className="text-muted-foreground text-xs">contracts</p>
                 </div>
               </div>
 
               <p
                 className="font-semibold text-sm mb-1 relative z-10 transition-colors"
-                style={{ color: isHover ? cfg.color : "#e2e8f0" }}
+                style={{ color: isHover ? cfg.color : undefined }}
               >
-                {cfg.label}
+                <span className={isHover ? "" : "text-foreground"}>{cfg.label}</span>
               </p>
 
-              <p className="text-slate-600 text-xs relative z-10">
+              <p className="text-muted-foreground/60 text-xs relative z-10">
                 NAICS: {naics.slice(0, 3).join(", ")}{naics.length > 3 ? "..." : ""}
               </p>
 
               <div className="mt-3 relative z-10">
-                <div className="w-full bg-slate-800 rounded-full h-1">
+                <div className="w-full bg-muted rounded-full h-1">
                   <div
                     className="h-1 rounded-full transition-all duration-500"
                     style={{
@@ -215,12 +215,12 @@ export default function SectorBrowse({ contracts = EMPTY_CONTRACTS }) {
           { label: "Active Contracts", value: counts["all"] || 0 },
           { label: "Data Sources",     value: 3 },
         ].map(stat => (
-          <div key={stat.label} className="bg-[#131929] border border-slate-800 rounded-xl py-5">
-            <p className="text-3xl font-bold text-blue-400">{stat.value}</p>
-            <p className="text-slate-400 text-sm mt-1">{stat.label}</p>
+          <div key={stat.label} className="bg-card border border-border rounded-xl py-5">
+            <p className="text-3xl font-bold text-primary">{stat.value}</p>
+            <p className="text-muted-foreground text-sm mt-1">{stat.label}</p>
           </div>
         ))}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
