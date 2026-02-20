@@ -30,6 +30,7 @@ import TrackedContracts from "./pages/TrackedContracts";
 import CompanyProfile from "./pages/CompanyProfile";
 import Proposals from "./pages/Proposals";
 import ProposalGenerator from "./pages/ProposalGenerator";
+import ProposalEditor from "./pages/ProposalEditor";
 import AIAssistant from "./pages/AIAssistant";
 import Settings from "./pages/Settings";
 
@@ -67,6 +68,7 @@ const App = () => (
           <Route path="/dashboard/company" element={<CompanyProfile />} />
           <Route path="/dashboard/proposals" element={<Proposals />} />
           <Route path="/dashboard/proposals/generator" element={<ProposalGenerator />} />
+          <Route path="/dashboard/proposals/:id" element={<ProposalEditor />} />
           <Route path="/dashboard/ai" element={<AIAssistant />} />
           <Route path="/dashboard/settings" element={<Settings />} />
           
