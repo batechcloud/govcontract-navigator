@@ -68,7 +68,7 @@ export default function About() {
             transition={{ duration: 0.6 }}
           >
             <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
-              About <span className="text-primary">GovAI</span>
+              About <span className="text-primary">GC Navigator</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
               We're building the future of government contracting. Our AI-powered platform helps businesses 
@@ -88,7 +88,7 @@ export default function About() {
               <p className="text-lg text-muted-foreground">
                 Government contracts represent over $700 billion in annual opportunities, yet the process 
                 of finding and winning these contracts remains complex and inaccessible for most businesses. 
-                We're changing that. GovAI uses artificial intelligence to simplify every step of the 
+                We're changing that. GC Navigator uses artificial intelligence to simplify every step of the 
                 government contracting journey, from discovery to award. We believe that with the right 
                 tools, any business can compete for and win government contracts.
               </p>

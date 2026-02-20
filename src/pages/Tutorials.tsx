@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 
 const tutorials = [
   {
-    title: "Getting Started with GovAI",
+    title: "Getting Started with GC Navigator",
     description: "Learn the basics of setting up your account and making your first search.",
     duration: "5 min",
     level: "Beginner",
@@ -94,7 +94,7 @@ export default function Tutorials() {
               Learn at Your Own <span className="text-primary">Pace</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Step-by-step video guides to help you master every feature of GovAI.
+              Step-by-step video guides to help you master every feature of GC Navigator.
             </p>
           </motion.div>
 

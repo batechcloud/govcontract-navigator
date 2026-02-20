@@ -100,10 +100,10 @@ export function Footer() {
           <div className="col-span-2 md:col-span-4 lg:col-span-1">
             <Link to="/" className="flex items-center gap-2 mb-4 group">
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center transition-transform group-hover:scale-105">
-                <span className="text-primary-foreground font-heading font-bold text-lg">G</span>
+                <span className="text-primary-foreground font-heading font-bold text-lg">GC</span>
               </div>
               <span className="font-heading font-bold text-xl text-foreground">
-                Gov<span className="gradient-text-gold">AI</span>
+                GC <span className="gradient-text-gold">Navigator</span>
               </span>
             </Link>
             <p className="text-muted-foreground text-sm max-w-xs mb-6">
@@ -207,7 +207,7 @@ export function Footer() {
 
         <div className="mt-12 pt-8 border-t border-border/50 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-muted-foreground text-sm">
-            © {new Date().getFullYear()} GovAI Search. All rights reserved.
+            © {new Date().getFullYear()} GC Navigator. All rights reserved.
           </p>
           <div className="flex items-center gap-4">
             {socialLinks.map((social) => (

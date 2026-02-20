@@ -79,7 +79,7 @@ const plans = [
 const faqs = [
   {
     question: "Do I need government contracting experience?",
-    answer: "Not at all! GovAI is designed specifically for beginners. Our AI guides you through every step, from finding contracts to writing proposals."
+    answer: "Not at all! GC Navigator is designed specifically for beginners. Our AI guides you through every step, from finding contracts to writing proposals."
   },
   {
     question: "Can I try it for free?",

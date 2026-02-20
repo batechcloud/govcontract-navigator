@@ -9,16 +9,16 @@ import { Link } from "react-router-dom";
 
 const faqs = [
   {
-    question: "What is GovAI and how does it work?",
-    answer: "GovAI is an AI-powered platform that helps you discover, understand, and bid on government contracts. Our AI analyzes contract opportunities, matches them to your business capabilities, and helps you create winning proposals."
+    question: "What is GC Navigator and how does it work?",
+    answer: "GC Navigator is an AI-powered platform that helps you discover, understand, and bid on government contracts. Our AI analyzes contract opportunities, matches them to your business capabilities, and helps you create winning proposals."
   },
   {
     question: "Do I need any prior government contracting experience?",
-    answer: "No! GovAI is designed for beginners. We guide you through every step of the process, from understanding contracts to submitting proposals. Our AI explains complex government terminology in plain language."
+    answer: "No! GC Navigator is designed for beginners. We guide you through every step of the process, from understanding contracts to submitting proposals. Our AI explains complex government terminology in plain language."
   },
   {
-    question: "What databases does GovAI search?",
-    answer: "GovAI searches SAM.gov for federal opportunities, as well as state and local databases. We also provide access to DIBBS for defense logistics opportunities and track competitor awards through USAspending.gov."
+    question: "What databases does GC Navigator search?",
+    answer: "GC Navigator searches SAM.gov for federal opportunities, as well as state and local databases. We also provide access to DIBBS for defense logistics opportunities and track competitor awards through USAspending.gov."
   },
   {
     question: "How does the AI proposal generator work?",
@@ -33,12 +33,12 @@ const faqs = [
     answer: "Yes, you can cancel your subscription at any time. There are no long-term contracts or cancellation fees. Your access will continue until the end of your current billing period."
   },
   {
-    question: "What certifications should I have to use GovAI?",
-    answer: "You don't need any specific certifications to use GovAI. However, having certifications like 8(a), HUBZone, WOSB, or SDVOSB can help you qualify for set-aside contracts. GovAI helps you identify opportunities that match your certifications."
+    question: "What certifications should I have to use GC Navigator?",
+    answer: "You don't need any specific certifications to use GC Navigator. However, having certifications like 8(a), HUBZone, WOSB, or SDVOSB can help you qualify for set-aside contracts. GC Navigator helps you identify opportunities that match your certifications."
   },
   {
     question: "How do I get my SAM.gov UEI number?",
-    answer: "You can register for a UEI (Unique Entity Identifier) through SAM.gov. It's free and required for government contracting. GovAI provides guides to help you through the registration process."
+    answer: "You can register for a UEI (Unique Entity Identifier) through SAM.gov. It's free and required for government contracting. GC Navigator provides guides to help you through the registration process."
   }
 ];
 
@@ -55,7 +55,7 @@ const supportOptions = [
     title: "Email Support",
     description: "Get help via email within 24 hours.",
     action: "Send Email",
-    href: "mailto:support@govai.com"
+    href: "mailto:support@gcnavigator.com"
   },
   {
     icon: Phone,

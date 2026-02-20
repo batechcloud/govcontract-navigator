@@ -21,7 +21,7 @@ export default function Terms() {
               <section>
                 <h2 className="text-2xl font-semibold text-foreground mb-4">1. Acceptance of Terms</h2>
                 <p className="text-muted-foreground">
-                  By accessing or using GovAI's platform and services, you agree to be bound by these 
+                  By accessing or using GC Navigator's platform and services, you agree to be bound by these 
                   Terms of Service. If you do not agree to these terms, please do not use our services.
                 </p>
               </section>
@@ -29,7 +29,7 @@ export default function Terms() {
               <section>
                 <h2 className="text-2xl font-semibold text-foreground mb-4">2. Description of Service</h2>
                 <p className="text-muted-foreground">
-                  GovAI provides an AI-powered platform for discovering, analyzing, and bidding on 
+                  GC Navigator provides an AI-powered platform for discovering, analyzing, and bidding on 
                   government contracts. Our services include contract search, AI-assisted proposal 
                   generation, competitive intelligence, and submission management tools.
                 </p>
@@ -79,7 +79,7 @@ export default function Terms() {
               <section>
                 <h2 className="text-2xl font-semibold text-foreground mb-4">7. Intellectual Property</h2>
                 <p className="text-muted-foreground">
-                  GovAI and its content, features, and functionality are owned by us and are protected 
+                  GC Navigator and its content, features, and functionality are owned by us and are protected 
                   by intellectual property laws. You retain ownership of content you create using our platform.
                 </p>
               </section>
@@ -96,7 +96,7 @@ export default function Terms() {
               <section>
                 <h2 className="text-2xl font-semibold text-foreground mb-4">9. Limitation of Liability</h2>
                 <p className="text-muted-foreground">
-                  To the maximum extent permitted by law, GovAI shall not be liable for any indirect, 
+                  To the maximum extent permitted by law, GC Navigator shall not be liable for any indirect, 
                   incidental, special, consequential, or punitive damages resulting from your use of 
                   our services.
                 </p>
@@ -108,7 +108,7 @@ export default function Terms() {
                   For questions about these Terms, please contact us at:
                 </p>
                 <p className="text-muted-foreground mt-4">
-                  Email: legal@govai.com<br />
+                  Email: legal@gcnavigator.com<br />
                   Address: 123 Government Way, Washington, DC 20001
                 </p>
               </section>

@@ -63,7 +63,7 @@ export default function Solutions() {
               <span className="text-primary"> Government Contracting Journey</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              From discovery to award, GovAI provides the tools and intelligence you need to win more contracts.
+              From discovery to award, GC Navigator provides the tools and intelligence you need to win more contracts.
             </p>
           </motion.div>
 

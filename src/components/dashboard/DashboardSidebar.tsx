@@ -47,10 +47,10 @@ export const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => 
         <div className="flex items-center justify-between p-4 border-b border-border">
           <Link to="/" className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-              <span className="text-primary-foreground font-heading font-bold">G</span>
+              <span className="text-primary-foreground font-heading font-bold text-xs">GC</span>
             </div>
             <span className="font-heading font-bold text-lg text-foreground">
-              Gov<span className="gradient-text-gold">AI</span>
+              GC <span className="gradient-text-gold">Navigator</span>
             </span>
           </Link>
           <button

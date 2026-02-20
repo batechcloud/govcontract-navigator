@@ -41,7 +41,7 @@ export function CTASection() {
             </h2>
             
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
-              Thousands of small businesses have already found contracts with GovAI. 
+              Thousands of small businesses have already found contracts with GC Navigator. 
               It takes less than a minute to start searching.
             </p>
             
