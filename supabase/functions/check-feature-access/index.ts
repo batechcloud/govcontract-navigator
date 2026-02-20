@@ -7,36 +7,43 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // JWT verification using getClaims
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get the authorization header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'No authorization header' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    // Use anon key client for JWT verification
+    const anonClient = createClient(
+      supabaseUrl,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
 
-    // Verify the user's JWT
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), {
+    const { data: claimsData, error: authError } = await anonClient.auth.getClaims(token);
+    if (authError || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    const userId = claimsData.claims.sub;
+
+    // Use service role client for DB operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { feature_code, increment_usage } = await req.json();
 
@@ -47,12 +54,11 @@ serve(async (req) => {
       });
     }
 
-    console.log(`Checking feature access for user ${user.id}, feature: ${feature_code}`);
+    console.log(`Checking feature access for user ${userId}, feature: ${feature_code}`);
 
-    // Check feature access using the database function
     const { data: accessData, error: accessError } = await supabase
       .rpc('check_feature_access', {
-        _user_id: user.id,
+        _user_id: userId,
         _feature_code: feature_code,
       });
 
@@ -65,16 +71,13 @@ serve(async (req) => {
     }
 
     const access = accessData?.[0] || { has_access: false, usage_limit: null, current_usage: 0, is_override: false };
-
-    // Check if usage limit is exceeded
     const withinLimit = access.usage_limit === null || access.current_usage < access.usage_limit;
     const canUse = access.has_access && withinLimit;
 
-    // If requested and allowed, increment usage
     if (increment_usage && canUse) {
       const { data: newCount, error: usageError } = await supabase
         .rpc('increment_feature_usage', {
-          _user_id: user.id,
+          _user_id: userId,
           _feature_code: feature_code,
         });
 
