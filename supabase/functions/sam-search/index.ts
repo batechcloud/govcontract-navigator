@@ -69,14 +69,15 @@ serve(async (req) => {
       params.append("setaside", codes);
     }
     
-    // Add location/state
+    // Add location/state (place of performance state)
     if (filters.location) {
-      params.append("postedFrom", filters.location);
+      params.append("state", filters.location);
     }
 
-    // Only search for active opportunities
+    // Only search for active opportunities (posted in last 6 months)
     params.append("postedFrom", getDateMonthsAgo(6));
     params.append("postedTo", new Date().toISOString().split('T')[0]);
+    params.append("active", "true");
 
     const response = await fetch(`${SAM_API_BASE}?${params.toString()}`, {
       method: 'GET',
