@@ -1,20 +1,22 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { motion } from "framer-motion";
-import { FileText, Download, Sparkles, Check } from "lucide-react";
+import { FileText, Download, Sparkles, Check, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { useCompanyProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 
 export default function CapabilityStatement() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { data: companyProfile } = useCompanyProfile();
   const [formData, setFormData] = useState({
     companyName: "",
     tagline: "",
@@ -29,6 +31,30 @@ export default function CapabilityStatement() {
     website: ""
   });
   const [isGenerating, setIsGenerating] = useState(false);
+  const [autoFilled, setAutoFilled] = useState(false);
+
+  useEffect(() => {
+    if (companyProfile && !autoFilled) {
+      const pastPerf = Array.isArray(companyProfile.past_performance)
+        ? companyProfile.past_performance
+            .map((p: Record<string, unknown>) => `${p.project_name || p.title || ""} - ${p.description || ""}`.trim())
+            .filter(Boolean)
+            .join("\n")
+        : "";
+
+      setFormData(prev => ({
+        ...prev,
+        companyName: companyProfile.company_name || prev.companyName,
+        naicsCodes: companyProfile.naics_codes?.join(", ") || prev.naicsCodes,
+        coreCompetencies: companyProfile.capabilities?.join("\n") || prev.coreCompetencies,
+        certifications: companyProfile.certifications?.join(", ") || prev.certifications,
+        pastPerformance: pastPerf || prev.pastPerformance,
+        contactEmail: user?.email || prev.contactEmail,
+      }));
+      setAutoFilled(true);
+      toast.success("Auto-filled from your company profile!", { icon: <UserCheck className="w-4 h-4" /> });
+    }
+  }, [companyProfile, autoFilled, user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({
