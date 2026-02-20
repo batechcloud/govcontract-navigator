@@ -16,6 +16,18 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   Search,
   FileText,
   Building2,
@@ -30,6 +42,9 @@ import {
   Heart,
   ChevronLeft,
   ChevronRight,
+  SlidersHorizontal,
+  ChevronDown,
+  RotateCcw,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useTrackContract, useTrackedContracts } from "@/hooks/useTrackedContracts";
@@ -54,6 +69,93 @@ const SearchHub = () => {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [searchName, setSearchName] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
+  // Advanced filters
+  const [advNaics, setAdvNaics] = useState("");
+  const [advMinValue, setAdvMinValue] = useState("");
+  const [advMaxValue, setAdvMaxValue] = useState("");
+  const [advAgency, setAdvAgency] = useState("");
+  const [advDeadline, setAdvDeadline] = useState("");
+
+  const hasAdvancedFilters = !!(advNaics || advMinValue || advMaxValue || advAgency || advDeadline);
+
+  const naicsOptions = [
+    { value: "541511", label: "541511 — Custom Computer Programming" },
+    { value: "541512", label: "541512 — Computer Systems Design" },
+    { value: "541519", label: "541519 — Other Computer Services" },
+    { value: "541330", label: "541330 — Engineering Services" },
+    { value: "541620", label: "541620 — Environmental Consulting" },
+    { value: "561210", label: "561210 — Facilities Support" },
+    { value: "236220", label: "236220 — Commercial Construction" },
+    { value: "334111", label: "334111 — Electronic Computers" },
+    { value: "611430", label: "611430 — Professional Training" },
+    { value: "621999", label: "621999 — Health Services" },
+  ];
+
+  const agencyOptions = [
+    "Department of Defense",
+    "Department of Homeland Security",
+    "Department of Veterans Affairs",
+    "General Services Administration",
+    "Department of Health and Human Services",
+    "Department of Transportation",
+    "Department of Energy",
+    "Department of Justice",
+    "NASA",
+    "Department of State",
+  ];
+
+  const valueRanges = [
+    { min: "", max: "25000", label: "Under $25K" },
+    { min: "25000", max: "100000", label: "$25K – $100K" },
+    { min: "100000", max: "500000", label: "$100K – $500K" },
+    { min: "500000", max: "1000000", label: "$500K – $1M" },
+    { min: "1000000", max: "5000000", label: "$1M – $5M" },
+    { min: "5000000", max: "25000000", label: "$5M – $25M" },
+    { min: "25000000", max: "", label: "Over $25M" },
+  ];
+
+  const deadlineOptions = [
+    { value: "7", label: "Due within 7 days" },
+    { value: "14", label: "Due within 14 days" },
+    { value: "30", label: "Due within 30 days" },
+    { value: "60", label: "Due within 60 days" },
+    { value: "90", label: "Due within 90 days" },
+  ];
+
+  const clearAdvancedFilters = () => {
+    setAdvNaics("");
+    setAdvMinValue("");
+    setAdvMaxValue("");
+    setAdvAgency("");
+    setAdvDeadline("");
+  };
+
+  const handleApplyAdvancedFilters = async () => {
+    setCurrentPage(0);
+    const deadlineDays = advDeadline ? parseInt(advDeadline) : null;
+    const deadlineDate = deadlineDays
+      ? new Date(Date.now() + deadlineDays * 24 * 60 * 60 * 1000).toISOString()
+      : null;
+
+    const combinedFilters = {
+      keywords: searchQuery ? searchQuery.split(' ').filter(w => w.length > 2) : [],
+      naics_codes: advNaics ? [advNaics] : [],
+      set_aside: activeFilters.flatMap(key => {
+        const qf = quickFilters.find(f => f.label === key);
+        return qf?.filter.set_aside || [];
+      }),
+      agencies: advAgency ? [advAgency] : [],
+      min_value: advMinValue ? parseInt(advMinValue) : null,
+      max_value: advMaxValue ? parseInt(advMaxValue) : null,
+      location: null,
+      opportunity_type: null,
+      ...(deadlineDate ? { deadline_before: deadlineDate } : {}),
+    };
+
+    await searchWithFilters(combinedFilters as any, 0);
+  };
 
   const {
     search,
@@ -288,8 +390,8 @@ const SearchHub = () => {
           </CardContent>
         </Card>
 
-        {/* Quick Filters */}
-        <div className="flex flex-wrap gap-2">
+        {/* Quick Filters + Advanced toggle row */}
+        <div className="flex flex-wrap items-center gap-2">
           {quickFilters.map((filter) => (
             <Badge
               key={filter.label}
@@ -301,7 +403,131 @@ const SearchHub = () => {
               {filter.label}
             </Badge>
           ))}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setAdvancedOpen(o => !o)}
+            className={`ml-auto gap-2 ${hasAdvancedFilters ? "border-accent text-accent" : ""}`}
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            Advanced Filters
+            {hasAdvancedFilters && (
+              <Badge className="bg-accent text-card text-[10px] px-1.5 py-0 h-4">ON</Badge>
+            )}
+            <ChevronDown className={`w-3 h-3 transition-transform ${advancedOpen ? "rotate-180" : ""}`} />
+          </Button>
         </div>
+
+        {/* Advanced Filter Panel */}
+        <AnimatePresence>
+          {advancedOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.25 }}
+              className="overflow-hidden"
+            >
+              <Card variant="glass" className="border-border/70">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-heading font-semibold text-sm text-foreground flex items-center gap-2">
+                      <SlidersHorizontal className="w-4 h-4 text-accent" />
+                      Advanced Filters
+                    </h3>
+                    {hasAdvancedFilters && (
+                      <Button variant="ghost" size="sm" onClick={clearAdvancedFilters} className="text-muted-foreground hover:text-foreground gap-1 text-xs h-7">
+                        <RotateCcw className="w-3 h-3" />
+                        Clear all
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* NAICS Code */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">NAICS Code</Label>
+                      <Select value={advNaics} onValueChange={setAdvNaics}>
+                        <SelectTrigger className="h-9 text-sm bg-card border-border">
+                          <SelectValue placeholder="Any industry" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border z-50">
+                          <SelectItem value="">Any industry</SelectItem>
+                          {naicsOptions.map(n => (
+                            <SelectItem key={n.value} value={n.value}>{n.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Contract Value Range */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Contract Value</Label>
+                      <Select
+                        value={advMinValue && advMaxValue ? `${advMinValue}|${advMaxValue}` : advMinValue ? `${advMinValue}|` : advMaxValue ? `|${advMaxValue}` : ""}
+                        onValueChange={(val) => {
+                          if (!val) { setAdvMinValue(""); setAdvMaxValue(""); return; }
+                          const [mn, mx] = val.split("|");
+                          setAdvMinValue(mn || "");
+                          setAdvMaxValue(mx || "");
+                        }}
+                      >
+                        <SelectTrigger className="h-9 text-sm bg-card border-border">
+                          <SelectValue placeholder="Any value" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border z-50">
+                          <SelectItem value="">Any value</SelectItem>
+                          {valueRanges.map(r => (
+                            <SelectItem key={r.label} value={`${r.min}|${r.max}`}>{r.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Agency */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Agency</Label>
+                      <Select value={advAgency} onValueChange={setAdvAgency}>
+                        <SelectTrigger className="h-9 text-sm bg-card border-border">
+                          <SelectValue placeholder="Any agency" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border z-50">
+                          <SelectItem value="">Any agency</SelectItem>
+                          {agencyOptions.map(a => (
+                            <SelectItem key={a} value={a}>{a}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Response Deadline */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Deadline</Label>
+                      <Select value={advDeadline} onValueChange={setAdvDeadline}>
+                        <SelectTrigger className="h-9 text-sm bg-card border-border">
+                          <SelectValue placeholder="Any deadline" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border z-50">
+                          <SelectItem value="">Any deadline</SelectItem>
+                          {deadlineOptions.map(d => (
+                            <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end mt-4 pt-4 border-t border-border/50">
+                    <Button variant="hero" size="sm" onClick={handleApplyAdvancedFilters} disabled={isSearching} className="gap-2">
+                      <Search className="w-4 h-4" />
+                      Apply Filters
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Results */}
         <div>
