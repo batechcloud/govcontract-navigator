@@ -14,8 +14,8 @@ const Index = () => {
   return (
     <>
       <Helmet>
-        <title>GovAI Search - AI-Powered Government Contract Discovery</title>
-        <meta name="description" content="Win government contracts with AI. Search, understand, and bid on federal, state, and grant opportunities. GovAI finds perfect contracts and generates winning proposals." />
+        <title>GovAI Search - Find Government Contracts the Easy Way</title>
+        <meta name="description" content="Find government contracts for your small business. Search federal and state opportunities in plain English. No experience needed — AI helps you search, bid, and win." />
       </Helmet>
       
       {/* Skip to content link for accessibility */}
