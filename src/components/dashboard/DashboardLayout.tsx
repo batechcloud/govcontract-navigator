@@ -107,11 +107,11 @@ export const DashboardLayout = ({ children, title }: DashboardLayoutProps) => {
                     <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                   </div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate("/company-profile")}>
+                  <DropdownMenuItem onClick={() => navigate("/dashboard/company")}>
                     <User className="w-4 h-4 mr-2" />
                     Profile
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/settings")}>
+                  <DropdownMenuItem onClick={() => navigate("/dashboard/settings")}>
                     <Settings className="w-4 h-4 mr-2" />
                     Settings
                   </DropdownMenuItem>
