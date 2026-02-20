@@ -27,6 +27,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTrackedContracts } from "@/hooks/useTrackedContracts";
 
+const GENERATION_STEPS = [
+  { label: "Analyzing your business profile", icon: Building2, duration: 5000 },
+  { label: "Researching the opportunity", icon: Search, duration: 10000 },
+  { label: "Writing proposal sections", icon: FileText, duration: 25000 },
+  { label: "Finalizing and saving", icon: Sparkles, duration: 8000 },
+];
+
 export default function ProposalGenerator() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -35,6 +42,7 @@ export default function ProposalGenerator() {
   const { data: companyProfile, isLoading: profileLoading } = useCompanyProfile();
   const { data: trackedContracts = [] } = useTrackedContracts();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationStep, setGenerationStep] = useState(0);
   const [generatedProposalId, setGeneratedProposalId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     opportunityId: "",
@@ -87,6 +95,21 @@ export default function ProposalGenerator() {
     toast.success(`Loaded: ${contract.contract_title}`);
   };
 
+  // Step progression during generation
+  useEffect(() => {
+    if (!isGenerating) {
+      setGenerationStep(0);
+      return;
+    }
+    if (generationStep >= GENERATION_STEPS.length - 1) return;
+
+    const timer = setTimeout(() => {
+      setGenerationStep((s) => Math.min(s + 1, GENERATION_STEPS.length - 1));
+    }, GENERATION_STEPS[generationStep].duration);
+
+    return () => clearTimeout(timer);
+  }, [isGenerating, generationStep]);
+
   const handleGenerate = async () => {
     if (!formData.opportunityTitle) {
       toast.error("Please enter the opportunity title");
@@ -94,6 +117,7 @@ export default function ProposalGenerator() {
     }
 
     setIsGenerating(true);
+    setGenerationStep(0);
 
     try {
       const { data, error } = await supabase.functions.invoke("ai-generate-proposal", {
@@ -312,18 +336,87 @@ export default function ProposalGenerator() {
                 className="w-full h-12 bg-accent hover:bg-accent/90 text-accent-foreground font-semibold"
                 disabled={isGenerating || !formData.opportunityTitle.trim()}
               >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Generating — this may take 30–60 seconds…
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Generate Proposal
-                  </>
-                )}
+                <Sparkles className="w-4 h-4 mr-2" />
+                Generate Proposal
               </Button>
+
+              {/* Multi-step progress indicator */}
+              {isGenerating && (
+                <motion.div
+                  className="mt-6 bg-secondary/30 border border-border/50 rounded-xl p-6 space-y-4"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    <span className="text-sm font-medium text-foreground">Generating your proposal…</span>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                    <motion.div
+                      className="h-2 rounded-full bg-primary"
+                      initial={{ width: "0%" }}
+                      animate={{ width: `${((generationStep + 1) / GENERATION_STEPS.length) * 100}%` }}
+                      transition={{ duration: 0.6, ease: "easeInOut" }}
+                    />
+                  </div>
+
+                  {/* Steps */}
+                  <div className="space-y-2.5">
+                    {GENERATION_STEPS.map((step, i) => {
+                      const StepIcon = step.icon;
+                      const isActive = i === generationStep;
+                      const isDone = i < generationStep;
+
+                      return (
+                        <motion.div
+                          key={step.label}
+                          className={`flex items-center gap-3 py-1.5 px-3 rounded-lg transition-colors ${
+                            isActive ? "bg-primary/10 border border-primary/20" : ""
+                          }`}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.1 }}
+                        >
+                          {isDone ? (
+                            <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                          ) : isActive ? (
+                            <Loader2 className="w-5 h-5 text-primary animate-spin shrink-0" />
+                          ) : (
+                            <StepIcon className="w-5 h-5 text-muted-foreground/40 shrink-0" />
+                          )}
+                          <span
+                            className={`text-sm ${
+                              isDone
+                                ? "text-muted-foreground line-through"
+                                : isActive
+                                ? "text-foreground font-medium"
+                                : "text-muted-foreground/50"
+                            }`}
+                          >
+                            {step.label}
+                          </span>
+                          {isActive && (
+                            <motion.span
+                              className="ml-auto text-xs text-primary/70"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: [0.4, 1, 0.4] }}
+                              transition={{ repeat: Infinity, duration: 1.5 }}
+                            >
+                              In progress…
+                            </motion.span>
+                          )}
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+
+                  <p className="text-xs text-muted-foreground text-center pt-2">
+                    This usually takes 30–60 seconds. Please don't close this page.
+                  </p>
+                </motion.div>
+              )}
             </div>
           </motion.div>
         ) : (
