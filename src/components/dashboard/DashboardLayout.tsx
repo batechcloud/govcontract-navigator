@@ -34,6 +34,7 @@ interface DashboardLayoutProps {
 
 export const DashboardLayout = ({ children, title }: DashboardLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [headerSearch, setHeaderSearch] = useState("");
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -81,6 +82,14 @@ export const DashboardLayout = ({ children, title }: DashboardLayoutProps) => {
                   type="search"
                   placeholder="Search contracts..."
                   className="pl-9 w-64"
+                  value={headerSearch}
+                  onChange={(e) => setHeaderSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && headerSearch.trim()) {
+                      navigate(`/dashboard/search?q=${encodeURIComponent(headerSearch.trim())}`);
+                      setHeaderSearch("");
+                    }
+                  }}
                 />
               </div>
               <Tooltip>

@@ -178,6 +178,13 @@ const SearchHub = () => {
         transition={{ duration: 0.5 }}
         className="space-y-6"
       >
+        {/* Demo Mode Banner */}
+        {results.length > 0 && (
+          <div className="bg-accent/10 border border-accent/30 rounded-lg px-4 py-2 flex items-center gap-2 text-sm text-accent">
+            <span className="font-semibold">Demo Mode:</span>
+            <span className="text-muted-foreground">Showing sample contracts. Connect a SAM.gov API key to search live opportunities.</span>
+          </div>
+        )}
         {/* Search Bar */}
         <Card variant="glass" className="overflow-hidden relative">
           <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-accent/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />

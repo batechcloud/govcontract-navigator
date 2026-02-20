@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute, PublicOnlyRoute } from "@/components/auth/ProtectedRoute";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // Public pages
 import Index from "./pages/Index";
@@ -36,7 +37,14 @@ import ProposalEditor from "./pages/ProposalEditor";
 import AIAssistant from "./pages/AIAssistant";
 import Settings from "./pages/Settings";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 30_000,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -68,15 +76,15 @@ const App = () => (
             
             {/* Protected dashboard routes */}
             <Route path="/onboarding" element={<ProtectedRoute requireOnboarding={false}><Onboarding /></ProtectedRoute>} />
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/dashboard/search" element={<ProtectedRoute><SearchHub /></ProtectedRoute>} />
-            <Route path="/dashboard/tracked" element={<ProtectedRoute><TrackedContracts /></ProtectedRoute>} />
-            <Route path="/dashboard/company" element={<ProtectedRoute><CompanyProfile /></ProtectedRoute>} />
-            <Route path="/dashboard/proposals" element={<ProtectedRoute><Proposals /></ProtectedRoute>} />
-            <Route path="/dashboard/proposals/generator" element={<ProtectedRoute><ProposalGenerator /></ProtectedRoute>} />
-            <Route path="/dashboard/proposals/:id" element={<ProtectedRoute><ProposalEditor /></ProtectedRoute>} />
-            <Route path="/dashboard/ai" element={<ProtectedRoute><AIAssistant /></ProtectedRoute>} />
-            <Route path="/dashboard/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute><ErrorBoundary><Dashboard /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/dashboard/search" element={<ProtectedRoute><ErrorBoundary><SearchHub /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/dashboard/tracked" element={<ProtectedRoute><ErrorBoundary><TrackedContracts /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/dashboard/company" element={<ProtectedRoute><ErrorBoundary><CompanyProfile /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/dashboard/proposals" element={<ProtectedRoute><ErrorBoundary><Proposals /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/dashboard/proposals/generator" element={<ProtectedRoute><ErrorBoundary><ProposalGenerator /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/dashboard/proposals/:id" element={<ProtectedRoute><ErrorBoundary><ProposalEditor /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/dashboard/ai" element={<ProtectedRoute><ErrorBoundary><AIAssistant /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/dashboard/settings" element={<ProtectedRoute><ErrorBoundary><Settings /></ErrorBoundary></ProtectedRoute>} />
             
             {/* Redirects from old routes */}
             <Route path="/dashboard/journey" element={<Navigate to="/dashboard/tracked" replace />} />
