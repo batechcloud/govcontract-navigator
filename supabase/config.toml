@@ -6,6 +6,9 @@ verify_jwt = false
 [functions.usaspending-search]
 verify_jwt = false
 
+[functions.sam-search]
+verify_jwt = false
+
 [functions.parse-search-query]
 verify_jwt = false
 
