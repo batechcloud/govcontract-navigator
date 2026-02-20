@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,13 +27,17 @@ import {
   ChevronDown,
   Loader2,
   Shield,
+  Upload,
+  FileText,
+  Trash2,
+  Download,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useCompanyProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 
 const CERTIFICATION_OPTIONS = [
   { value: "Small Business", description: "Registered small business" },
@@ -47,12 +51,23 @@ const CERTIFICATION_OPTIONS = [
 const EMPLOYEE_COUNT_OPTIONS = ["1-10", "11-50", "51-100", "101-250", "251-500", "500+"];
 const REVENUE_OPTIONS = ["Under $500K", "$500K - $1M", "$1M - $5M", "$5M - $10M", "$10M - $25M", "$25M+"];
 
+const DOCUMENT_CATEGORIES = [
+  { value: "capability_statement", label: "Capability Statement" },
+  { value: "past_performance", label: "Past Performance" },
+  { value: "certification", label: "Certifications" },
+  { value: "resume", label: "Team Resumes" },
+  { value: "general", label: "Other Documents" },
+];
+
 const CompanyProfile = () => {
   const { user } = useAuth();
   const { data: companyProfile, isLoading } = useCompanyProfile();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState("general");
   
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
@@ -69,6 +84,88 @@ const CompanyProfile = () => {
   });
   
   const [newCapability, setNewCapability] = useState("");
+
+  // Fetch user documents
+  const { data: documents = [], isLoading: docsLoading } = useQuery({
+    queryKey: ["user-documents"],
+    queryFn: async () => {
+      const { data: { user: u } } = await supabase.auth.getUser();
+      if (!u) throw new Error("Not authenticated");
+      const { data, error } = await supabase
+        .from("user_documents")
+        .select("*")
+        .eq("user_id", u.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Maximum file size is 10MB.", variant: "destructive" });
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `${user.id}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("documents").upload(path, file);
+      if (uploadError) throw uploadError;
+
+      const { error: dbError } = await supabase.from("user_documents").insert({
+        user_id: user.id,
+        file_name: file.name,
+        file_type: file.type,
+        file_size: file.size,
+        storage_path: path,
+        category: selectedCategory,
+      });
+      if (dbError) throw dbError;
+
+      queryClient.invalidateQueries({ queryKey: ["user-documents"] });
+      toast({ title: "Uploaded!", description: `${file.name} has been saved.` });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDeleteDoc = async (doc: any) => {
+    try {
+      await supabase.storage.from("documents").remove([doc.storage_path]);
+      await supabase.from("user_documents").delete().eq("id", doc.id);
+      queryClient.invalidateQueries({ queryKey: ["user-documents"] });
+      toast({ title: "Deleted", description: `${doc.file_name} removed.` });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleDownloadDoc = async (doc: any) => {
+    const { data, error } = await supabase.storage.from("documents").download(doc.storage_path);
+    if (error || !data) {
+      toast({ title: "Error", description: "Could not download file.", variant: "destructive" });
+      return;
+    }
+    const url = URL.createObjectURL(data);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = doc.file_name;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
   useEffect(() => {
     if (companyProfile) {
@@ -335,7 +432,89 @@ const CompanyProfile = () => {
           </Card>
         </Collapsible>
 
-        {/* Save */}
+        {/* Documents */}
+        <Card variant="glass">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              Business Documents
+            </CardTitle>
+            <CardDescription>
+              Upload your Capability Statement, past performance docs, certifications, and more.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="sm:w-48">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DOCUMENT_CATEGORIES.map(c => (
+                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.png,.jpg,.jpeg"
+                onChange={handleFileUpload}
+              />
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="flex-1 sm:flex-none"
+              >
+                {isUploading ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Uploading...</>
+                ) : (
+                  <><Upload className="w-4 h-4 mr-2" /> Upload File</>
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">Max 10MB. Supports PDF, Word, Excel, PowerPoint, images.</p>
+
+            {docsLoading ? (
+              <Skeleton className="h-20 w-full" />
+            ) : documents.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">No documents uploaded yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {documents.map((doc: any) => (
+                  <div
+                    key={doc.id}
+                    className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border/50"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <FileText className="w-4 h-4 text-primary shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{doc.file_name}</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                            {DOCUMENT_CATEGORIES.find(c => c.value === doc.category)?.label || "Other"}
+                          </Badge>
+                          <span>{formatFileSize(doc.file_size || 0)}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button variant="ghost" size="sm" onClick={() => handleDownloadDoc(doc)}>
+                        <Download className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDeleteDoc(doc)} className="text-destructive hover:text-destructive">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         <div className="flex justify-end">
           <Button variant="hero" size="lg" onClick={handleSave} disabled={isSaving}>
             {isSaving ? (
