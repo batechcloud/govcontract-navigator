@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.sam-search]
 verify_jwt = false
+
+[functions.ai-generate-proposal]
+verify_jwt = true
