@@ -1,7 +1,7 @@
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { motion } from "framer-motion";
-import { Book, Rocket, Settings, Search, FileText, Users, Shield, Zap } from "lucide-react";
+import { Book, Rocket, FileText, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const docCategories = [
@@ -14,17 +14,6 @@ const docCategories = [
       { title: "Account Setup", href: "#" },
       { title: "Your First Search", href: "#" },
       { title: "Understanding Results", href: "#" }
-    ]
-  },
-  {
-    icon: Search,
-    title: "Search & Discovery",
-    description: "Master the art of finding the perfect opportunities.",
-    links: [
-      { title: "Natural Language Search", href: "#" },
-      { title: "Advanced Filters", href: "#" },
-      { title: "Saved Searches", href: "#" },
-      { title: "Search Best Practices", href: "#" }
     ]
   },
   {
@@ -47,28 +36,6 @@ const docCategories = [
       { title: "Document Summary", href: "#" },
       { title: "Match Analysis", href: "#" },
       { title: "AI Chat", href: "#" }
-    ]
-  },
-  {
-    icon: Users,
-    title: "Team & Collaboration",
-    description: "Work together effectively with your team.",
-    links: [
-      { title: "Inviting Team Members", href: "#" },
-      { title: "Roles & Permissions", href: "#" },
-      { title: "Shared Documents", href: "#" },
-      { title: "Activity Tracking", href: "#" }
-    ]
-  },
-  {
-    icon: Settings,
-    title: "Account & Billing",
-    description: "Manage your account settings and subscription.",
-    links: [
-      { title: "Profile Settings", href: "#" },
-      { title: "Subscription Plans", href: "#" },
-      { title: "Usage & Limits", href: "#" },
-      { title: "Billing History", href: "#" }
     ]
   }
 ];
