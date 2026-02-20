@@ -20,22 +20,23 @@ import {
   FileText,
   Building2,
   Sparkles,
-  SlidersHorizontal,
   Clock,
   DollarSign,
   MapPin,
-  Star,
-  Target,
   Save,
   X,
   Bookmark,
   ExternalLink,
   Heart,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useTrackContract, useTrackedContracts } from "@/hooks/useTrackedContracts";
 import { useSmartSearch, useSaveSearch, SearchFilters, SearchResult } from "@/hooks/useSearch";
 import { toast } from "sonner";
+
+const RESULTS_PER_PAGE = 10;
 
 const quickFilters = [
   { label: "Small Business", filter: { set_aside: ["Small Business"] } },
@@ -52,45 +53,49 @@ const SearchHub = () => {
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [searchName, setSearchName] = useState("");
-  
-  const { 
-    search, 
+  const [currentPage, setCurrentPage] = useState(0);
+
+  const {
+    search,
     searchWithFilters,
-    isSearching, 
-    results, 
-    parsedFilters, 
+    isSearching,
+    results,
+    parsedFilters,
     total,
-    isParsing 
+    isParsing,
   } = useSmartSearch();
-  
+
   const trackContract = useTrackContract();
   const { data: trackedContracts } = useTrackedContracts();
   const saveSearch = useSaveSearch();
 
   const trackedIds = new Set(trackedContracts?.map(c => c.contract_id) || []);
+  const totalPages = Math.ceil(total / RESULTS_PER_PAGE);
 
-  const handleSearch = async () => {
+  const handleSearch = async (page = 0) => {
     if (!searchQuery.trim()) {
       toast.error("Please enter a search query");
       return;
     }
     try {
-      await search(searchQuery);
+      setCurrentPage(page);
+      await search(searchQuery, page);
     } catch (error) {}
   };
 
   const handleQuickFilter = async (filter: typeof quickFilters[0]) => {
     const filterKey = filter.label;
     let newActiveFilters: string[];
-    
+
     if (activeFilters.includes(filterKey)) {
       newActiveFilters = activeFilters.filter(f => f !== filterKey);
     } else {
       newActiveFilters = [...activeFilters, filterKey];
     }
-    
+
     setActiveFilters(newActiveFilters);
-    
+    setCurrentPage(0);
+
     const combinedFilters: SearchFilters = {
       keywords: searchQuery ? searchQuery.split(' ').filter(w => w.length > 2) : [],
       naics_codes: [],
@@ -99,21 +104,27 @@ const SearchHub = () => {
       min_value: null,
       max_value: null,
       location: null,
-      opportunity_type: null
+      opportunity_type: null,
     };
-    
+
     newActiveFilters.forEach(key => {
       const qf = quickFilters.find(f => f.label === key);
-      if (qf?.filter.set_aside) {
-        combinedFilters.set_aside.push(...qf.filter.set_aside);
-      }
-      if (qf?.filter.opportunity_type) {
-        combinedFilters.opportunity_type = qf.filter.opportunity_type;
-      }
+      if (qf?.filter.set_aside) combinedFilters.set_aside.push(...qf.filter.set_aside);
+      if (qf?.filter.opportunity_type) combinedFilters.opportunity_type = qf.filter.opportunity_type;
     });
-    
+
     if (newActiveFilters.length > 0 || searchQuery) {
-      await searchWithFilters(combinedFilters);
+      await searchWithFilters(combinedFilters, 0);
+    }
+  };
+
+  const handlePageChange = async (newPage: number) => {
+    setCurrentPage(newPage);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (parsedFilters) {
+      await searchWithFilters(parsedFilters, newPage);
+    } else {
+      await search(searchQuery, newPage);
     }
   };
 
@@ -147,11 +158,7 @@ const SearchHub = () => {
       toast.error("Please perform a search first");
       return;
     }
-    saveSearch.mutate({
-      name: searchName,
-      query: searchQuery,
-      filters: parsedFilters
-    });
+    saveSearch.mutate({ name: searchName, query: searchQuery, filters: parsedFilters });
     setSaveDialogOpen(false);
     setSearchName("");
   };
@@ -170,6 +177,23 @@ const SearchHub = () => {
     return `${days} days left`;
   };
 
+  // Page number array for pagination display
+  const getPageNumbers = () => {
+    const pages: (number | "…")[] = [];
+    if (totalPages <= 7) {
+      for (let i = 0; i < totalPages; i++) pages.push(i);
+    } else {
+      pages.push(0);
+      if (currentPage > 3) pages.push("…");
+      for (let i = Math.max(1, currentPage - 1); i <= Math.min(totalPages - 2, currentPage + 1); i++) {
+        pages.push(i);
+      }
+      if (currentPage < totalPages - 4) pages.push("…");
+      pages.push(totalPages - 1);
+    }
+    return pages;
+  };
+
   return (
     <DashboardLayout title="Find Contracts">
       <motion.div
@@ -178,13 +202,14 @@ const SearchHub = () => {
         transition={{ duration: 0.5 }}
         className="space-y-6"
       >
-        {/* Demo Mode Banner */}
-        {results.length > 0 && (
+        {/* Demo Mode Banner — only shown when no SAM API key (mock data) */}
+        {results.length > 0 && results[0]?.id?.startsWith("SAM-2024") && (
           <div className="bg-accent/10 border border-accent/30 rounded-lg px-4 py-2 flex items-center gap-2 text-sm text-accent">
             <span className="font-semibold">Demo Mode:</span>
             <span className="text-muted-foreground">Showing sample contracts. Connect a SAM.gov API key to search live opportunities.</span>
           </div>
         )}
+
         {/* Search Bar */}
         <Card variant="glass" className="overflow-hidden relative">
           <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-accent/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
@@ -210,13 +235,13 @@ const SearchHub = () => {
                   className="pl-12 h-12 text-base"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch(0)}
                 />
               </div>
-              <Button 
-                variant="hero" 
-                className="h-12" 
-                onClick={handleSearch}
+              <Button
+                variant="hero"
+                className="h-12"
+                onClick={() => handleSearch(0)}
                 disabled={isSearching}
               >
                 {isParsing ? (
@@ -232,7 +257,7 @@ const SearchHub = () => {
             <p className="text-xs text-muted-foreground mt-3">
               Just type what you're looking for — our AI will find the best matches for you.
             </p>
-            
+
             {/* Parsed filters display */}
             <AnimatePresence>
               {parsedFilters && (
@@ -245,24 +270,16 @@ const SearchHub = () => {
                   <p className="text-xs text-muted-foreground mb-2">We're searching for:</p>
                   <div className="flex flex-wrap gap-2">
                     {parsedFilters.keywords.length > 0 && (
-                      <Badge variant="glass">
-                        {parsedFilters.keywords.join(", ")}
-                      </Badge>
+                      <Badge variant="glass">{parsedFilters.keywords.join(", ")}</Badge>
                     )}
                     {parsedFilters.set_aside.length > 0 && (
-                      <Badge variant="gold">
-                        {parsedFilters.set_aside.join(", ")}
-                      </Badge>
+                      <Badge variant="gold">{parsedFilters.set_aside.join(", ")}</Badge>
                     )}
                     {parsedFilters.agencies.length > 0 && (
-                      <Badge variant="outline">
-                        {parsedFilters.agencies.join(", ")}
-                      </Badge>
+                      <Badge variant="outline">{parsedFilters.agencies.join(", ")}</Badge>
                     )}
                     {parsedFilters.min_value && (
-                      <Badge variant="outline">
-                        From ${(parsedFilters.min_value / 1000000).toFixed(1)}M
-                      </Badge>
+                      <Badge variant="outline">From ${(parsedFilters.min_value / 1000000).toFixed(1)}M</Badge>
                     )}
                   </div>
                 </motion.div>
@@ -271,7 +288,7 @@ const SearchHub = () => {
           </CardContent>
         </Card>
 
-        {/* Quick Filters - plain language */}
+        {/* Quick Filters */}
         <div className="flex flex-wrap gap-2">
           {quickFilters.map((filter) => (
             <Badge
@@ -291,7 +308,12 @@ const SearchHub = () => {
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm text-muted-foreground">
               {results.length > 0 ? (
-                <>Found <span className="text-foreground font-semibold">{total}</span> contracts</>
+                <>
+                  Found <span className="text-foreground font-semibold">{total.toLocaleString()}</span> contracts
+                  {totalPages > 1 && (
+                    <span> — page <span className="text-foreground font-semibold">{currentPage + 1}</span> of <span className="text-foreground font-semibold">{totalPages}</span></span>
+                  )}
+                </>
               ) : (
                 "Search above to find government contracts"
               )}
@@ -328,7 +350,7 @@ const SearchHub = () => {
                     <Card variant="glass-hover">
                       <CardContent className="p-4 sm:p-6">
                         <div className="flex flex-col gap-3">
-                          {/* Top row: badges */}
+                          {/* Badges */}
                           <div className="flex flex-wrap items-center gap-2">
                             <Badge className={match.className}>{match.text}</Badge>
                             <Badge variant="outline">{result.type}</Badge>
@@ -338,15 +360,13 @@ const SearchHub = () => {
                           </div>
 
                           {/* Title & Agency */}
-                          <h3 className="font-heading font-semibold text-lg text-foreground">
-                            {result.title}
-                          </h3>
+                          <h3 className="font-heading font-semibold text-lg text-foreground">{result.title}</h3>
                           <p className="text-sm text-muted-foreground flex items-center gap-2">
                             <Building2 className="w-4 h-4" />
                             {result.agency}
                           </p>
 
-                          {/* Details row */}
+                          {/* Details */}
                           <div className="flex flex-wrap gap-4 text-sm">
                             <span className="flex items-center gap-1 text-accent">
                               <DollarSign className="w-4 h-4" />
@@ -409,6 +429,56 @@ const SearchHub = () => {
               </Card>
             )}
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && !isSearching && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex items-center justify-center gap-2 mt-8"
+            >
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 0 || isSearching}
+                className="gap-1"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Previous
+              </Button>
+
+              <div className="flex items-center gap-1">
+                {getPageNumbers().map((page, idx) =>
+                  page === "…" ? (
+                    <span key={`ellipsis-${idx}`} className="px-2 text-muted-foreground text-sm select-none">…</span>
+                  ) : (
+                    <Button
+                      key={page}
+                      variant={page === currentPage ? "default" : "ghost"}
+                      size="sm"
+                      className={`w-9 h-9 p-0 ${page === currentPage ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                      onClick={() => handlePageChange(page as number)}
+                      disabled={isSearching}
+                    >
+                      {(page as number) + 1}
+                    </Button>
+                  )
+                )}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage >= totalPages - 1 || isSearching}
+                className="gap-1"
+              >
+                Next
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </motion.div>
+          )}
         </div>
       </motion.div>
 
@@ -433,9 +503,7 @@ const SearchHub = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>
-              Cancel
-            </Button>
+            <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleSaveSearch} disabled={saveSearch.isPending}>
               <Save className="w-4 h-4 mr-2" />
               Save
