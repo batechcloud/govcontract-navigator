@@ -21,35 +21,25 @@ export function TrustedBySection() {
           viewport={{ once: true }}
           className="text-center text-xs text-muted-foreground uppercase tracking-widest mb-8"
         >
-          Trusted by leading government contractors
+          Trusted by small businesses across the country
         </motion.p>
         
-        {/* Marquee container */}
         <div className="relative">
-          {/* Gradient fade edges */}
           <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
           <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
           
-          {/* Scrolling logos */}
           <div className="flex overflow-hidden">
             <motion.div 
               className="flex items-center gap-12 whitespace-nowrap"
               animate={{ x: ["0%", "-50%"] }}
-              transition={{ 
-                duration: 30, 
-                repeat: Infinity, 
-                ease: "linear",
-              }}
+              transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
             >
-              {/* Duplicate logos for seamless loop */}
               {[...logos, ...logos].map((logo, index) => (
                 <div 
                   key={`${logo.name}-${index}`}
                   className={`${logo.width} flex-shrink-0 text-muted-foreground/50 hover:text-muted-foreground transition-colors`}
                 >
-                  <span className="font-heading font-bold text-lg tracking-tight">
-                    {logo.name}
-                  </span>
+                  <span className="font-heading font-bold text-lg tracking-tight">{logo.name}</span>
                 </div>
               ))}
             </motion.div>

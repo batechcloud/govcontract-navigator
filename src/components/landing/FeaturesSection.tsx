@@ -4,55 +4,55 @@ import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { 
   Search, 
-  Brain, 
+  Sparkles, 
   FileText, 
-  BarChart3, 
-  Users, 
+  Heart, 
+  Clock,
   Bell,
   Shield,
-  Zap
+  HelpCircle
 } from "lucide-react";
 
 const features = [
   {
     icon: Search,
-    title: "Smart Contract Search",
-    description: "Search federal, state, and grant opportunities using natural language. Our AI understands your business and finds matching contracts instantly.",
+    title: "Search in Plain English",
+    description: "Just type what your business does — like 'IT support' or 'construction in Texas'. No codes or jargon needed.",
   },
   {
-    icon: Brain,
-    title: "AI Match Analysis",
-    description: "Get detailed match scores showing exactly how well your company fits each opportunity. No more guessing.",
+    icon: Sparkles,
+    title: "AI Finds Your Matches",
+    description: "Our AI understands your business and shows you the best-fitting contracts. You'll see 'Good Match' or 'Great Match' badges.",
   },
   {
     icon: FileText,
-    title: "Proposal Generator",
-    description: "Generate complete, professional proposals with one click. Our AI uses your company profile and past wins to create winning bids.",
+    title: "One-Click Proposals",
+    description: "Found a contract you like? Click 'Start Bid' and let AI write your proposal draft. Edit it, then submit.",
   },
   {
-    icon: BarChart3,
-    title: "Pipeline Tracking",
-    description: "Track all your opportunities in a visual Kanban board. From discovery to award, never miss a deadline.",
+    icon: Heart,
+    title: "Save & Track Favorites",
+    description: "Save contracts you're interested in. See them organized in simple tabs: Saved, In Progress, and Completed.",
   },
   {
-    icon: Users,
-    title: "Competitor Intelligence",
-    description: "Analyze competitor wins using USAspending data. Understand the market and position yourself to win.",
+    icon: Clock,
+    title: "Never Miss a Deadline",
+    description: "Color-coded deadline alerts tell you exactly how many days are left. Green means plenty of time, red means hurry.",
   },
   {
     icon: Bell,
-    title: "Smart Alerts",
-    description: "Get notified about new opportunities, upcoming deadlines, and contract amendments. Stay ahead of the competition.",
+    title: "Get Notified",
+    description: "We'll let you know when new contracts match your business or when deadlines are approaching.",
   },
   {
     icon: Shield,
-    title: "Compliance Tracking",
-    description: "Automated submission checklists ensure you never miss required documents or compliance requirements.",
+    title: "Small Business Friendly",
+    description: "Easily filter for contracts set aside for small businesses, veteran-owned, woman-owned, and minority-owned companies.",
   },
   {
-    icon: Zap,
-    title: "Beginner Friendly",
-    description: "Step-by-step guidance through the entire process. Perfect for businesses new to government contracting.",
+    icon: HelpCircle,
+    title: "AI Helper Always Available",
+    description: "Not sure about something? Ask our AI Helper in plain English. It explains contracts, terms, and the bidding process.",
   },
 ];
 
@@ -60,19 +60,13 @@ const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
+    transition: { staggerChildren: 0.1 },
   },
 };
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
-    y: 0,
-    transition: { duration: 0.5 }
-  },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
 };
 
 export function FeaturesSection() {
@@ -89,11 +83,11 @@ export function FeaturesSection() {
           className="text-center mb-16"
         >
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold text-foreground mb-4 text-balance">
-            Everything You Need to{" "}
-            <span className="gradient-text-primary">Win Contracts</span>
+            Everything Made{" "}
+            <span className="gradient-text-primary">Simple</span>
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            From discovery to award, GovAI Search streamlines every step of the government contracting process.
+            No government contracting experience? No problem. We guide you every step of the way.
           </p>
         </motion.div>
 
@@ -105,10 +99,7 @@ export function FeaturesSection() {
           viewport={{ once: true }}
         >
           {features.map((feature) => (
-            <motion.div
-              key={feature.title}
-              variants={itemVariants}
-            >
+            <motion.div key={feature.title} variants={itemVariants}>
               <Card variant="glass-hover" className="h-full group">
                 <CardContent className="p-6">
                   <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center mb-4 group-hover:bg-primary/30 transition-colors">
@@ -134,10 +125,10 @@ export function FeaturesSection() {
           className="text-center mt-12"
         >
           <Link 
-            to="/solutions" 
+            to="/dashboard" 
             className="inline-flex items-center gap-2 text-primary hover:text-primary/80 font-medium transition-colors group"
           >
-            Explore all features
+            Try it yourself — it's free
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Link>
         </motion.div>

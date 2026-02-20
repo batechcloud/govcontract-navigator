@@ -23,17 +23,17 @@ const plans = [
     name: "Starter",
     monthlyPrice: 49,
     yearlyPrice: 39,
-    description: "For small businesses getting started with government contracts",
+    description: "Perfect for getting started with government contracts",
     badge: null,
     features: [
-      { text: "50 contract searches/month", tooltip: "Search across federal databases" },
-      { text: "10 AI calls/month", tooltip: "AI-powered recommendations and chat" },
-      { text: "Core dashboard & tracking", tooltip: "Track opportunities through your pipeline" },
-      { text: "Basic proposal templates", tooltip: "Access to standard proposal formats" },
-      { text: "Email support", tooltip: "Response within 24 hours" },
+      { text: "50 contract searches/month", tooltip: "Search across federal and state databases" },
+      { text: "AI contract matching", tooltip: "See which contracts fit your business" },
+      { text: "Save & track contracts", tooltip: "Keep your favorites organized" },
+      { text: "Deadline reminders", tooltip: "Never miss a due date" },
+      { text: "Email support", tooltip: "We're here to help" },
       { text: "1 user", tooltip: null },
     ],
-    cta: "Start Free Trial",
+    cta: "Start Free",
     variant: "outline" as const,
     popular: false,
   },
@@ -41,19 +41,18 @@ const plans = [
     name: "Professional",
     monthlyPrice: 149,
     yearlyPrice: 119,
-    description: "For growing businesses serious about winning contracts",
+    description: "For businesses ready to win more contracts",
     badge: "Most Popular",
     features: [
-      { text: "500 searches/month", tooltip: "Search federal, state, and local databases" },
-      { text: "100 AI calls/month", tooltip: "AI chat, summaries, and recommendations" },
-      { text: "5 AI proposal generations", tooltip: "Full AI-generated proposal drafts" },
-      { text: "Competitor intelligence", tooltip: "Track and analyze competitor wins" },
-      { text: "Pipeline tracking (Kanban)", tooltip: "Visual board for opportunities" },
-      { text: "Document management", tooltip: "Store and organize proposal documents" },
-      { text: "Priority support", tooltip: "Response within 4 hours" },
+      { text: "500 searches/month", tooltip: "Search all federal and state databases" },
+      { text: "AI proposal writing", tooltip: "Let AI draft your proposals" },
+      { text: "5 AI proposals/month", tooltip: "Full AI-generated proposal drafts" },
+      { text: "Unlimited saves & tracking", tooltip: "Save as many contracts as you want" },
+      { text: "AI Helper chat", tooltip: "Ask questions about any contract" },
+      { text: "Priority support", tooltip: "Fast responses when you need help" },
       { text: "5 users", tooltip: null },
     ],
-    cta: "Start Free Trial",
+    cta: "Start Free",
     variant: "hero" as const,
     popular: true,
   },
@@ -61,19 +60,17 @@ const plans = [
     name: "Enterprise",
     monthlyPrice: 399,
     yearlyPrice: 319,
-    description: "For established contractors needing the full suite",
+    description: "For teams that need everything unlimited",
     badge: null,
     features: [
-      { text: "Unlimited searches", tooltip: "No limits on contract searches" },
-      { text: "Unlimited AI calls", tooltip: "Full access to all AI features" },
-      { text: "Unlimited proposals", tooltip: "Generate as many proposals as needed" },
-      { text: "Team collaboration", tooltip: "Advanced team workflows and permissions" },
-      { text: "Teaming partner discovery", tooltip: "Find subcontractors and partners" },
-      { text: "White-glove onboarding", tooltip: "Dedicated setup and training" },
-      { text: "Dedicated success manager", tooltip: "Your personal GovAI expert" },
+      { text: "Unlimited searches", tooltip: "No limits" },
+      { text: "Unlimited AI proposals", tooltip: "Write as many bids as you need" },
+      { text: "Team collaboration", tooltip: "Work together on proposals" },
+      { text: "Dedicated support", tooltip: "Your own account manager" },
+      { text: "Custom onboarding", tooltip: "We set everything up for you" },
       { text: "Unlimited users", tooltip: null },
     ],
-    cta: "Contact Sales",
+    cta: "Contact Us",
     variant: "outline" as const,
     popular: false,
   },
@@ -81,20 +78,20 @@ const plans = [
 
 const faqs = [
   {
-    question: "Can I cancel my subscription anytime?",
-    answer: "Yes, you can cancel your subscription at any time. You'll continue to have access until the end of your billing period."
+    question: "Do I need government contracting experience?",
+    answer: "Not at all! GovAI is designed specifically for beginners. Our AI guides you through every step, from finding contracts to writing proposals."
   },
   {
-    question: "What happens after the free trial?",
-    answer: "After your 14-day free trial, you'll be automatically subscribed to your chosen plan. You can cancel before the trial ends to avoid charges."
+    question: "Can I try it for free?",
+    answer: "Yes! You can start searching for contracts immediately. No credit card required for the free trial."
   },
   {
-    question: "Do you offer refunds?",
-    answer: "We offer a 30-day money-back guarantee. If you're not satisfied, contact us for a full refund."
+    question: "Can I cancel anytime?",
+    answer: "Absolutely. Cancel with one click, no questions asked. You'll keep access until the end of your billing period."
   },
   {
-    question: "Can I switch plans later?",
-    answer: "Yes, you can upgrade or downgrade your plan at any time. Changes take effect on your next billing cycle."
+    question: "How does AI proposal writing work?",
+    answer: "When you find a contract you want to bid on, click 'Start Bid'. Our AI reads the contract requirements and writes a professional proposal draft. You review it, make edits, and submit."
   },
 ];
 
@@ -112,11 +109,11 @@ export function PricingSection() {
           className="text-center mb-12"
         >
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold text-foreground mb-4 text-balance">
-            Simple, Transparent{" "}
+            Simple{" "}
             <span className="gradient-text-gold">Pricing</span>
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
-            Start free and scale as you grow. No hidden fees, cancel anytime.
+            Start free. Upgrade when you're ready. No hidden fees.
           </p>
 
           {/* Billing Toggle */}
@@ -126,9 +123,7 @@ export function PricingSection() {
             </span>
             <button
               onClick={() => setIsYearly(!isYearly)}
-              className={`relative w-14 h-7 rounded-full transition-colors ${
-                isYearly ? 'bg-primary' : 'bg-secondary'
-              }`}
+              className={`relative w-14 h-7 rounded-full transition-colors ${isYearly ? 'bg-primary' : 'bg-secondary'}`}
               aria-label="Toggle yearly billing"
             >
               <motion.div 
@@ -141,9 +136,7 @@ export function PricingSection() {
               Yearly
             </span>
             {isYearly && (
-              <Badge variant="success" className="ml-2">
-                Save 20%
-              </Badge>
+              <Badge variant="success" className="ml-2">Save 20%</Badge>
             )}
           </div>
         </motion.div>
@@ -185,14 +178,14 @@ export function PricingSection() {
                   </CardHeader>
                   <CardContent className="pt-4">
                     <ul className="space-y-3 mb-6">
-                      {plan.features.map((feature, featureIndex) => (
+                      {plan.features.map((feature, fi) => (
                         <motion.li 
                           key={feature.text} 
                           className="flex items-start gap-3"
                           initial={{ opacity: 0, x: -10 }}
                           whileInView={{ opacity: 1, x: 0 }}
                           viewport={{ once: true }}
-                          transition={{ delay: index * 0.1 + featureIndex * 0.05 }}
+                          transition={{ delay: index * 0.1 + fi * 0.05 }}
                         >
                           <Check className="w-5 h-5 text-success shrink-0 mt-0.5" />
                           <span className="text-sm text-muted-foreground flex items-center gap-1">
@@ -212,7 +205,7 @@ export function PricingSection() {
                       ))}
                     </ul>
                     <Button variant={plan.variant} className="w-full" asChild>
-                      <Link to={plan.name === "Enterprise" ? "/demo" : "/auth?mode=signup"}>
+                      <Link to={plan.name === "Enterprise" ? "/contact" : "/dashboard/search"}>
                         {plan.cta}
                         <ArrowRight className="w-4 h-4 ml-2" />
                       </Link>
@@ -224,7 +217,7 @@ export function PricingSection() {
           </div>
         </TooltipProvider>
 
-        {/* FAQ Section */}
+        {/* FAQ */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -233,7 +226,7 @@ export function PricingSection() {
           className="max-w-2xl mx-auto mt-20"
         >
           <h3 className="text-2xl font-heading font-bold text-foreground text-center mb-8">
-            Frequently Asked Questions
+            Common Questions
           </h3>
           <Accordion type="single" collapsible className="w-full">
             {faqs.map((faq, index) => (
