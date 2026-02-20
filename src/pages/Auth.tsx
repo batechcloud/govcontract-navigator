@@ -87,7 +87,7 @@ const Auth = () => {
         if (data.user) {
           toast({
             title: "Account created!",
-            description: "Welcome to GovAI Search. Let's set up your profile.",
+            description: "Welcome to GC Navigator. Let's set up your profile.",
           });
           navigate("/onboarding");
         }
@@ -156,10 +156,10 @@ const Auth = () => {
         {/* Logo */}
         <Link to="/" className="flex items-center justify-center gap-2 mb-8">
           <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-            <span className="text-primary-foreground font-heading font-bold text-xl">G</span>
+            <span className="text-primary-foreground font-heading font-bold text-sm">GC</span>
           </div>
           <span className="font-heading font-bold text-2xl text-foreground">
-            Gov<span className="gradient-text-gold">AI</span>
+            GC <span className="gradient-text-gold">Navigator</span>
           </span>
         </Link>
 

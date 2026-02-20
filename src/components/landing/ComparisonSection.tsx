@@ -43,7 +43,7 @@ export const ComparisonSection = () => {
           className="text-center mb-16"
         >
           <span className="inline-block px-4 py-1.5 rounded-full bg-accent/10 text-accent text-sm font-medium mb-4">
-            Why GovAI?
+            Why GC Navigator?
           </span>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-heading font-bold mb-4">
             The Old Way vs{" "}
@@ -68,11 +68,11 @@ export const ComparisonSection = () => {
             <div className="hidden md:block" />
             <div className="col-span-3 md:col-span-1 grid grid-cols-2 gap-4 md:contents">
               <div className="glass rounded-xl p-4 text-center border border-destructive/30 bg-destructive/5">
-                <span className="text-lg font-heading font-semibold text-destructive">Without GovAI</span>
+                <span className="text-lg font-heading font-semibold text-destructive">Without GC Navigator</span>
               </div>
               <div className="glass rounded-xl p-4 text-center border border-success/30 bg-success/5 relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-accent/10" />
-                <span className="text-lg font-heading font-semibold text-success relative z-10">With GovAI</span>
+                <span className="text-lg font-heading font-semibold text-success relative z-10">With GC Navigator</span>
               </div>
             </div>
           </div>

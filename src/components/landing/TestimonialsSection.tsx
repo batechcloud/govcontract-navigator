@@ -11,7 +11,7 @@ const testimonials = [
     company: "TechBridge Solutions",
     avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face",
     initials: "SC",
-    content: "I had no idea how to find government contracts. GovAI made it as easy as Googling. I found my first opportunity in 10 minutes and won the contract 3 months later!",
+    content: "I had no idea how to find government contracts. GC Navigator made it as easy as Googling. I found my first opportunity in 10 minutes and won the contract 3 months later!",
     rating: 5,
     metric: "First win in 90 days",
     accentColor: "from-blue-500/20 to-cyan-500/20",
@@ -22,7 +22,7 @@ const testimonials = [
     company: "SecureNet Services",
     avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face",
     initials: "MJ",
-    content: "As a veteran, I knew there were contracts for me but SAM.gov was so confusing. GovAI's filters for veteran-owned businesses showed me exactly what I qualified for.",
+    content: "As a veteran, I knew there were contracts for me but SAM.gov was so confusing. GC Navigator's filters for veteran-owned businesses showed me exactly what I qualified for.",
     rating: 5,
     metric: "Found 20+ matches",
     accentColor: "from-emerald-500/20 to-green-500/20",
@@ -55,7 +55,7 @@ const testimonials = [
     company: "DataFlow Analytics",
     avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&h=100&fit=crop&crop=face",
     initials: "LT",
-    content: "Being able to filter for woman-owned business contracts was huge. GovAI helped me find set-asides I didn't even know existed. Now I have a full pipeline!",
+    content: "Being able to filter for woman-owned business contracts was huge. GC Navigator helped me find set-asides I didn't even know existed. Now I have a full pipeline!",
     rating: 5,
     metric: "3x more opportunities",
     accentColor: "from-indigo-500/20 to-blue-500/20",
@@ -66,7 +66,7 @@ const testimonials = [
     company: "Precision Builders",
     avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=100&h=100&fit=crop&crop=face",
     initials: "RK",
-    content: "I'm not tech-savvy at all, but GovAI is incredibly easy to use. The AI Helper answers my questions about contracts in plain English. It's like having a consultant on call.",
+    content: "I'm not tech-savvy at all, but GC Navigator is incredibly easy to use. The AI Helper answers my questions about contracts in plain English. It's like having a consultant on call.",
     rating: 5,
     metric: "No learning curve",
     accentColor: "from-rose-500/20 to-red-500/20",
@@ -116,7 +116,7 @@ export function TestimonialsSection() {
             <span className="gradient-text-gold">Real Results</span>
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            See how small businesses like yours are finding and winning government contracts with GovAI.
+            See how small businesses like yours are finding and winning government contracts with GC Navigator.
           </p>
         </motion.div>
 

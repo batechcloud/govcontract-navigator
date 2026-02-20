@@ -218,9 +218,9 @@ const Onboarding = () => {
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-              <span className="text-lg font-bold text-primary-foreground">G</span>
+              <span className="text-sm font-bold text-primary-foreground">GC</span>
             </div>
-            <span className="font-heading font-bold text-xl">GovAI Search</span>
+            <span className="font-heading font-bold text-xl">GC Navigator</span>
           </div>
           <Button variant="ghost" size="sm" onClick={handleSkip}>
             Skip for now

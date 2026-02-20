@@ -84,17 +84,17 @@ export function Navbar() {
           <Link 
             to="/" 
             className="flex items-center gap-2 group"
-            aria-label="GovAI Search - Home"
+            aria-label="GC Navigator - Home"
           >
             <motion.div 
               className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center"
               whileHover={{ scale: 1.05, rotate: 5 }}
               transition={{ type: "spring", stiffness: 400 }}
             >
-              <span className="text-primary-foreground font-heading font-bold text-lg">G</span>
+              <span className="text-primary-foreground font-heading font-bold text-lg">GC</span>
             </motion.div>
             <span className="font-heading font-bold text-xl text-foreground">
-              Gov<span className="gradient-text-gold">AI</span>
+              GC <span className="gradient-text-gold">Navigator</span>
             </span>
           </Link>
 

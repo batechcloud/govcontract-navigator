@@ -8,7 +8,7 @@ const docCategories = [
   {
     icon: Rocket,
     title: "Getting Started",
-    description: "New to GovAI? Start here to learn the basics.",
+    description: "New to GC Navigator? Start here to learn the basics.",
     links: [
       { title: "Quick Start Guide", href: "#" },
       { title: "Account Setup", href: "#" },
@@ -59,10 +59,10 @@ export default function Docs() {
               <span className="text-sm font-medium">Documentation</span>
             </div>
             <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
-              Learn How to Use <span className="text-primary">GovAI</span>
+              Learn How to Use <span className="text-primary">GC Navigator</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Comprehensive guides and documentation to help you get the most out of GovAI.
+              Comprehensive guides and documentation to help you get the most out of GC Navigator.
             </p>
           </motion.div>
 

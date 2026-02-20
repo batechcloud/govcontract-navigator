@@ -14,7 +14,7 @@ export default function AIAssistant() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Hi! I'm your GovAI Helper. I can help you find the right contracts, explain confusing terms, and guide you through the bidding process. What can I help with?"
+      content: "Hi! I'm your GC Navigator Helper. I can help you find the right contracts, explain confusing terms, and guide you through the bidding process. What can I help with?"
     }
   ]);
   const [input, setInput] = useState("");
@@ -58,7 +58,7 @@ export default function AIAssistant() {
   ];
 
   return (
-    <DashboardLayout title="Ask GovAI">
+    <DashboardLayout title="Ask GC Navigator">
       <div className="flex flex-col h-[calc(100vh-200px)] max-w-4xl mx-auto">
         {/* Chat Header */}
         <motion.div 
@@ -70,7 +70,7 @@ export default function AIAssistant() {
             <Bot className="w-6 h-6 text-primary" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-foreground">GovAI Helper</h2>
+            <h2 className="text-xl font-bold text-foreground">GC Navigator Helper</h2>
             <p className="text-sm text-muted-foreground">Your friendly guide to government contracts</p>
           </div>
         </motion.div>

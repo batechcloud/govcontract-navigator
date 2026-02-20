@@ -21,7 +21,7 @@ export default function Privacy() {
               <section>
                 <h2 className="text-2xl font-semibold text-foreground mb-4">1. Introduction</h2>
                 <p className="text-muted-foreground">
-                  GovAI ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy 
+                  GC Navigator ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy 
                   explains how we collect, use, disclose, and safeguard your information when you use our 
                   platform and services.
                 </p>
@@ -89,7 +89,7 @@ export default function Privacy() {
                   If you have questions about this Privacy Policy, please contact us at:
                 </p>
                 <p className="text-muted-foreground mt-4">
-                  Email: privacy@govai.com<br />
+                  Email: privacy@gcnavigator.com<br />
                   Address: 123 Government Way, Washington, DC 20001
                 </p>
               </section>
