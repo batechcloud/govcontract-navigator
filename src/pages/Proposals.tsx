@@ -119,11 +119,17 @@ export default function Proposals() {
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-foreground truncate">{proposal.opportunity_title}</h3>
+                        {proposal.agency && (
+                          <p className="text-sm text-muted-foreground truncate">{proposal.agency}</p>
+                        )}
                         <div className="flex flex-wrap items-center gap-3 mt-1">
                           <Badge className={status.className}>{status.label}</Badge>
+                          {proposal.match_score && (
+                            <Badge className="bg-success/20 text-success">{proposal.match_score}% match</Badge>
+                          )}
                           <span className="text-sm text-muted-foreground flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            Updated {new Date(proposal.updated_at).toLocaleDateString()}
+                            Created {new Date(proposal.created_at).toLocaleDateString()}
                           </span>
                         </div>
                       </div>
