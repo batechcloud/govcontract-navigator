@@ -71,7 +71,7 @@ const App = () => (
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/capability-statement" element={<CapabilityStatement />} />
-            <Route path="/sectors" element={<SectorBrowse />} />
+            <Route path="/sectors" element={<ProtectedRoute><ErrorBoundary><SectorBrowse /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/auth" element={<PublicOnlyRoute><Auth /></PublicOnlyRoute>} />
             
             {/* /demo redirect */}
