@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { motion } from "framer-motion";
-import { FileText, Download, Sparkles, Check, UserCheck, FileDown } from "lucide-react";
+import { FileText, Download, Sparkles, Check, UserCheck, FileDown, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -151,6 +151,48 @@ export default function CapabilityStatement() {
     return Packer.toBlob(doc);
   };
 
+  const handlePrintPdf = () => {
+    if (!formData.companyName || !formData.coreCompetencies) {
+      toast.error("Please fill in at least your company name and core competencies");
+      return;
+    }
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      toast.error("Pop-up blocked. Please allow pop-ups and try again.");
+      return;
+    }
+
+    const contactLines = [
+      formData.contactName && `<p>Name: ${formData.contactName}</p>`,
+      formData.contactEmail && `<p>Email: ${formData.contactEmail}</p>`,
+      formData.contactPhone && `<p>Phone: ${formData.contactPhone}</p>`,
+      formData.website && `<p>Website: ${formData.website}</p>`,
+    ].filter(Boolean).join("");
+
+    const html = `<!DOCTYPE html><html><head><title>Capability Statement - ${formData.companyName}</title>
+      <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 750px; margin: 40px auto; color: #1a1a1a; line-height: 1.6; }
+        h1 { text-align: center; font-size: 28px; margin-bottom: 4px; color: #4A5BA8; }
+        .tagline { text-align: center; font-style: italic; color: #666; margin-bottom: 24px; }
+        .naics { text-align: center; margin-bottom: 24px; font-size: 14px; }
+        h2 { font-size: 18px; color: #4A5BA8; border-bottom: 2px solid #4A5BA8; padding-bottom: 4px; margin-top: 28px; }
+        .section p { margin: 4px 0; }
+        @media print { body { margin: 20px; } }
+      </style></head><body>
+      <h1>${formData.companyName}</h1>
+      ${formData.tagline ? `<p class="tagline">${formData.tagline}</p>` : ""}
+      ${formData.naicsCodes ? `<p class="naics"><strong>NAICS Codes:</strong> ${formData.naicsCodes}</p>` : ""}
+      <h2>Core Competencies</h2><div class="section">${formData.coreCompetencies.split("\n").map(l => `<p>${l}</p>`).join("")}</div>
+      ${formData.differentiators ? `<h2>Differentiators</h2><div class="section">${formData.differentiators.split("\n").map(l => `<p>${l}</p>`).join("")}</div>` : ""}
+      ${formData.pastPerformance ? `<h2>Past Performance</h2><div class="section">${formData.pastPerformance.split("\n").map(l => `<p>${l}</p>`).join("")}</div>` : ""}
+      ${formData.certifications ? `<h2>Certifications</h2><div class="section"><p>${formData.certifications}</p></div>` : ""}
+      ${contactLines ? `<h2>Contact Information</h2><div class="section">${contactLines}</div>` : ""}
+      <script>window.onload=function(){window.print();}</script>
+    </body></html>`;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
   const handleExport = async (format: "txt" | "docx") => {
     if (!formData.companyName || !formData.coreCompetencies) {
       toast.error("Please fill in at least your company name and core competencies");
@@ -386,14 +428,23 @@ export default function CapabilityStatement() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <Button 
                     onClick={() => handleExport("docx")}
                     className="bg-accent hover:bg-accent/90 text-accent-foreground h-12"
                     disabled={isGenerating}
                   >
                     <FileDown className="w-4 h-4 mr-2" />
-                    {isGenerating ? "Generating..." : "Export as Word (.docx)"}
+                    {isGenerating ? "..." : "Word (.docx)"}
+                  </Button>
+                  <Button 
+                    onClick={handlePrintPdf}
+                    variant="outline"
+                    className="h-12"
+                    disabled={isGenerating || !formData.companyName || !formData.coreCompetencies}
+                  >
+                    <Printer className="w-4 h-4 mr-2" />
+                    PDF (Print)
                   </Button>
                   <Button 
                     onClick={() => handleExport("txt")}
@@ -402,7 +453,7 @@ export default function CapabilityStatement() {
                     disabled={isGenerating}
                   >
                     <Download className="w-4 h-4 mr-2" />
-                    Export as Text (.txt)
+                    Text (.txt)
                   </Button>
                 </div>
 
