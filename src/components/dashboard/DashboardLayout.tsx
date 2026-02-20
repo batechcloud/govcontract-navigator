@@ -6,8 +6,8 @@ import {
   Search,
   LayoutDashboard,
   FileText,
-  Kanban,
-  Settings,
+  Heart,
+  Sparkles,
   Bell,
   Menu,
 } from "lucide-react";
@@ -75,10 +75,10 @@ export const DashboardLayout = ({ children, title }: DashboardLayoutProps) => {
           <div className="flex items-center justify-around py-2">
             {[
               { icon: LayoutDashboard, label: "Home", href: "/dashboard" },
-              { icon: Search, label: "Search", href: "/dashboard/search" },
-              { icon: Kanban, label: "Pipeline", href: "/dashboard/journey" },
+              { icon: Search, label: "Find", href: "/dashboard/search" },
+              { icon: Heart, label: "Saved", href: "/dashboard/tracked" },
               { icon: FileText, label: "Proposals", href: "/dashboard/proposals" },
-              { icon: Settings, label: "Settings", href: "/dashboard/settings" },
+              { icon: Sparkles, label: "AI Help", href: "/dashboard/ai" },
             ].map((item) => {
               const isActive = location.pathname === item.href;
               return (

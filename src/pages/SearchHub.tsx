@@ -26,11 +26,11 @@ import {
   MapPin,
   Star,
   Target,
-  ArrowUpRight,
   Save,
   X,
   Bookmark,
   ExternalLink,
+  Heart,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useTrackContract, useTrackedContracts } from "@/hooks/useTrackedContracts";
@@ -38,12 +38,12 @@ import { useSmartSearch, useSaveSearch, SearchFilters, SearchResult } from "@/ho
 import { toast } from "sonner";
 
 const quickFilters = [
-  { label: "Federal", filter: { opportunity_type: "Federal" } },
-  { label: "SDVOSB", filter: { set_aside: ["SDVOSB"] } },
-  { label: "8(a)", filter: { set_aside: ["8(a)"] } },
-  { label: "HUBZone", filter: { set_aside: ["HUBZone"] } },
-  { label: "WOSB", filter: { set_aside: ["WOSB"] } },
   { label: "Small Business", filter: { set_aside: ["Small Business"] } },
+  { label: "Veteran-Owned", filter: { set_aside: ["SDVOSB", "VOSB"] } },
+  { label: "Woman-Owned", filter: { set_aside: ["WOSB", "EDWOSB"] } },
+  { label: "Minority-Owned", filter: { set_aside: ["8(a)", "SDB"] } },
+  { label: "HUBZone", filter: { set_aside: ["HUBZone"] } },
+  { label: "Federal", filter: { opportunity_type: "Federal" } },
 ];
 
 const SearchHub = () => {
@@ -74,12 +74,9 @@ const SearchHub = () => {
       toast.error("Please enter a search query");
       return;
     }
-    
     try {
       await search(searchQuery);
-    } catch (error) {
-      // Error already handled in hook
-    }
+    } catch (error) {}
   };
 
   const handleQuickFilter = async (filter: typeof quickFilters[0]) => {
@@ -94,7 +91,6 @@ const SearchHub = () => {
     
     setActiveFilters(newActiveFilters);
     
-    // Build combined filters
     const combinedFilters: SearchFilters = {
       keywords: searchQuery ? searchQuery.split(' ').filter(w => w.length > 2) : [],
       naics_codes: [],
@@ -138,7 +134,7 @@ const SearchHub = () => {
     });
   };
 
-  const handleGenerateProposal = (result: SearchResult) => {
+  const handleStartBid = (result: SearchResult) => {
     navigate(`/dashboard/proposals/generator?opportunityId=${result.id}&title=${encodeURIComponent(result.title)}&agency=${encodeURIComponent(result.agency)}`);
   };
 
@@ -147,45 +143,52 @@ const SearchHub = () => {
       toast.error("Please enter a name for your search");
       return;
     }
-    
     if (!parsedFilters) {
       toast.error("Please perform a search first");
       return;
     }
-    
     saveSearch.mutate({
       name: searchName,
       query: searchQuery,
       filters: parsedFilters
     });
-    
     setSaveDialogOpen(false);
     setSearchName("");
   };
 
+  const getMatchLabel = (score: number) => {
+    if (score >= 90) return { text: "Great Match", className: "bg-success/20 text-success" };
+    if (score >= 75) return { text: "Good Match", className: "bg-primary/20 text-primary" };
+    return { text: "Possible Match", className: "bg-accent/20 text-accent" };
+  };
+
+  const getDaysLeft = (deadline: string) => {
+    const days = Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    if (days < 0) return "Expired";
+    if (days === 0) return "Due today";
+    if (days === 1) return "1 day left";
+    return `${days} days left`;
+  };
+
   return (
-    <DashboardLayout title="Search Hub">
+    <DashboardLayout title="Find Contracts">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="space-y-6"
       >
-        {/* AI Search Bar */}
+        {/* Search Bar */}
         <Card variant="glass" className="overflow-hidden relative">
           <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-accent/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
           <CardContent className="p-6 relative">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-accent" />
-                <span className="font-heading font-semibold text-foreground">AI-Powered Search</span>
+                <span className="font-heading font-semibold text-foreground">Search in Plain English</span>
               </div>
               {parsedFilters && (
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => setSaveDialogOpen(true)}
-                >
+                <Button variant="ghost" size="sm" onClick={() => setSaveDialogOpen(true)}>
                   <Bookmark className="w-4 h-4 mr-2" />
                   Save Search
                 </Button>
@@ -196,40 +199,34 @@ const SearchHub = () => {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
                   type="text"
-                  placeholder="Try: 'IT contracts over $1M for small businesses in cybersecurity'"
+                  placeholder="Try: 'IT support contracts for small businesses' or 'construction projects in Texas'"
                   className="pl-12 h-12 text-base"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                 />
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" className="h-12">
-                  <SlidersHorizontal className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Filters</span>
-                </Button>
-                <Button 
-                  variant="hero" 
-                  className="h-12" 
-                  onClick={handleSearch}
-                  disabled={isSearching}
-                >
-                  {isParsing ? (
-                    <Sparkles className="w-4 h-4 sm:mr-2 animate-spin" />
-                  ) : (
-                    <Search className="w-4 h-4 sm:mr-2" />
-                  )}
-                  <span className="hidden sm:inline">
-                    {isParsing ? "Parsing..." : isSearching ? "Searching..." : "Search"}
-                  </span>
-                </Button>
-              </div>
+              <Button 
+                variant="hero" 
+                className="h-12" 
+                onClick={handleSearch}
+                disabled={isSearching}
+              >
+                {isParsing ? (
+                  <Sparkles className="w-4 h-4 sm:mr-2 animate-spin" />
+                ) : (
+                  <Search className="w-4 h-4 sm:mr-2" />
+                )}
+                <span className="hidden sm:inline">
+                  {isParsing ? "Understanding..." : isSearching ? "Searching..." : "Search"}
+                </span>
+              </Button>
             </div>
             <p className="text-xs text-muted-foreground mt-3">
-              Ask in natural language. Our AI understands set-asides, NAICS codes, agencies, and more.
+              Just type what you're looking for — our AI will find the best matches for you.
             </p>
             
-            {/* Show parsed filters */}
+            {/* Parsed filters display */}
             <AnimatePresence>
               {parsedFilters && (
                 <motion.div
@@ -238,36 +235,26 @@ const SearchHub = () => {
                   exit={{ opacity: 0, height: 0 }}
                   className="mt-4 pt-4 border-t border-border/50"
                 >
-                  <p className="text-xs text-muted-foreground mb-2">AI extracted these filters:</p>
+                  <p className="text-xs text-muted-foreground mb-2">We're searching for:</p>
                   <div className="flex flex-wrap gap-2">
                     {parsedFilters.keywords.length > 0 && (
                       <Badge variant="glass">
-                        Keywords: {parsedFilters.keywords.join(", ")}
+                        {parsedFilters.keywords.join(", ")}
                       </Badge>
                     )}
                     {parsedFilters.set_aside.length > 0 && (
                       <Badge variant="gold">
-                        Set-aside: {parsedFilters.set_aside.join(", ")}
-                      </Badge>
-                    )}
-                    {parsedFilters.naics_codes.length > 0 && (
-                      <Badge variant="outline">
-                        NAICS: {parsedFilters.naics_codes.join(", ")}
+                        {parsedFilters.set_aside.join(", ")}
                       </Badge>
                     )}
                     {parsedFilters.agencies.length > 0 && (
                       <Badge variant="outline">
-                        Agencies: {parsedFilters.agencies.join(", ")}
+                        {parsedFilters.agencies.join(", ")}
                       </Badge>
                     )}
                     {parsedFilters.min_value && (
                       <Badge variant="outline">
-                        Min: ${(parsedFilters.min_value / 1000000).toFixed(1)}M
-                      </Badge>
-                    )}
-                    {parsedFilters.max_value && (
-                      <Badge variant="outline">
-                        Max: ${(parsedFilters.max_value / 1000000).toFixed(1)}M
+                        From ${(parsedFilters.min_value / 1000000).toFixed(1)}M
                       </Badge>
                     )}
                   </div>
@@ -277,18 +264,16 @@ const SearchHub = () => {
           </CardContent>
         </Card>
 
-        {/* Quick Filters */}
+        {/* Quick Filters - plain language */}
         <div className="flex flex-wrap gap-2">
           {quickFilters.map((filter) => (
             <Badge
               key={filter.label}
               variant={activeFilters.includes(filter.label) ? "gold" : "glass"}
-              className="cursor-pointer hover:bg-primary/20 transition-colors"
+              className="cursor-pointer hover:bg-primary/20 transition-colors px-3 py-1.5"
               onClick={() => handleQuickFilter(filter)}
             >
-              {activeFilters.includes(filter.label) && (
-                <X className="w-3 h-3 mr-1" />
-              )}
+              {activeFilters.includes(filter.label) && <X className="w-3 h-3 mr-1" />}
               {filter.label}
             </Badge>
           ))}
@@ -299,12 +284,9 @@ const SearchHub = () => {
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm text-muted-foreground">
               {results.length > 0 ? (
-                <>
-                  Showing <span className="text-foreground font-semibold">{results.length}</span> of{" "}
-                  <span className="text-foreground font-semibold">{total}</span> opportunities sorted by match score
-                </>
+                <>Found <span className="text-foreground font-semibold">{total}</span> contracts</>
               ) : (
-                "Enter a search query to find government contracts"
+                "Search above to find government contracts"
               )}
             </p>
           </div>
@@ -315,7 +297,7 @@ const SearchHub = () => {
                 <Card key={i} variant="glass">
                   <CardContent className="p-6">
                     <div className="flex gap-4">
-                      <Skeleton className="w-14 h-14 rounded-xl shrink-0" />
+                      <Skeleton className="w-20 h-8 rounded-lg shrink-0" />
                       <div className="flex-1">
                         <Skeleton className="h-6 w-3/4 mb-2" />
                         <Skeleton className="h-4 w-1/2 mb-3" />
@@ -328,6 +310,7 @@ const SearchHub = () => {
             ) : results.length > 0 ? (
               results.map((result, index) => {
                 const isTracked = trackedIds.has(result.id);
+                const match = getMatchLabel(result.matchScore);
                 return (
                   <motion.div
                     key={result.id}
@@ -335,95 +318,69 @@ const SearchHub = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: index * 0.05 }}
                   >
-                    <Card variant="glass-hover" className="cursor-pointer">
+                    <Card variant="glass-hover">
                       <CardContent className="p-4 sm:p-6">
-                        <div className="flex flex-col lg:flex-row lg:items-start gap-4">
-                          {/* Match Score */}
-                          <div className="flex lg:flex-col items-center gap-3 lg:gap-1">
-                            <div
-                              className={`w-14 h-14 rounded-xl flex items-center justify-center text-lg font-heading font-bold ${
-                                result.matchScore >= 90
-                                  ? "bg-success/20 text-success"
-                                  : result.matchScore >= 80
-                                  ? "bg-primary/20 text-primary"
-                                  : "bg-accent/20 text-accent"
-                              }`}
-                            >
-                              {result.matchScore}%
-                            </div>
-                            <span className="text-xs text-muted-foreground">Match</span>
+                        <div className="flex flex-col gap-3">
+                          {/* Top row: badges */}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge className={match.className}>{match.text}</Badge>
+                            <Badge variant="outline">{result.type}</Badge>
+                            {result.setAside && result.setAside !== "None" && (
+                              <Badge variant="glass">{result.setAside}</Badge>
+                            )}
                           </div>
 
-                          {/* Content */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-wrap items-center gap-2 mb-2">
-                              <Badge variant="outline">{result.type}</Badge>
-                              <Badge variant="gold">{result.setAside}</Badge>
-                              {result.naicsCode && (
-                                <Badge variant="glass">{result.naicsCode}</Badge>
-                              )}
-                            </div>
-                            <h3 className="font-heading font-semibold text-lg text-foreground mb-2">
-                              {result.title}
-                            </h3>
-                            <p className="text-sm text-muted-foreground mb-3 flex items-center gap-2">
-                              <Building2 className="w-4 h-4" />
-                              {result.agency}
-                            </p>
-                            <div className="flex flex-wrap gap-4 text-sm">
-                              <span className="flex items-center gap-1 text-accent">
-                                <DollarSign className="w-4 h-4" />
-                                {result.value}
+                          {/* Title & Agency */}
+                          <h3 className="font-heading font-semibold text-lg text-foreground">
+                            {result.title}
+                          </h3>
+                          <p className="text-sm text-muted-foreground flex items-center gap-2">
+                            <Building2 className="w-4 h-4" />
+                            {result.agency}
+                          </p>
+
+                          {/* Details row */}
+                          <div className="flex flex-wrap gap-4 text-sm">
+                            <span className="flex items-center gap-1 text-accent">
+                              <DollarSign className="w-4 h-4" />
+                              {result.value}
+                            </span>
+                            {result.deadline && (
+                              <span className="flex items-center gap-1 text-muted-foreground">
+                                <Clock className="w-4 h-4" />
+                                {getDaysLeft(result.deadline)}
                               </span>
-                              {result.deadline && (
-                                <span className="flex items-center gap-1 text-muted-foreground">
-                                  <Clock className="w-4 h-4" />
-                                  Due: {new Date(result.deadline).toLocaleDateString()}
-                                </span>
-                              )}
+                            )}
+                            {result.location && (
                               <span className="flex items-center gap-1 text-muted-foreground">
                                 <MapPin className="w-4 h-4" />
                                 {result.location}
                               </span>
-                            </div>
+                            )}
                           </div>
 
                           {/* Actions */}
-                          <div className="flex lg:flex-col gap-2">
-                            <Button 
-                              variant="hero" 
-                              size="sm"
-                              onClick={() => handleGenerateProposal(result)}
-                            >
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            <Button variant="hero" size="sm" onClick={() => handleStartBid(result)}>
                               <FileText className="w-4 h-4 mr-2" />
-                              Generate Proposal
+                              Start Bid
                             </Button>
                             <Button
-                              variant={isTracked ? "outline" : "outline"}
+                              variant="outline"
                               size="sm"
                               onClick={() => handleTrack(result)}
                               disabled={isTracked || trackContract.isPending}
                             >
                               {isTracked ? (
-                                <>
-                                  <Target className="w-4 h-4 mr-2" />
-                                  Tracked
-                                </>
+                                <><Heart className="w-4 h-4 mr-2 fill-current" /> Saved</>
                               ) : (
-                                <>
-                                  <Star className="w-4 h-4 mr-2" />
-                                  Track
-                                </>
+                                <><Heart className="w-4 h-4 mr-2" /> Save</>
                               )}
                             </Button>
                             {result.link && (
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => window.open(result.link, '_blank')}
-                              >
+                              <Button variant="ghost" size="sm" onClick={() => window.open(result.link, '_blank')}>
                                 <ExternalLink className="w-4 h-4 mr-2" />
-                                SAM.gov
+                                View on SAM.gov
                               </Button>
                             )}
                           </div>
@@ -437,9 +394,9 @@ const SearchHub = () => {
               <Card variant="glass" className="text-center py-12">
                 <CardContent>
                   <Search className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="font-heading font-semibold text-lg mb-2">No results yet</h3>
+                  <h3 className="font-heading font-semibold text-lg mb-2">Ready to find contracts</h3>
                   <p className="text-muted-foreground">
-                    Enter a search query above to find government contracts that match your capabilities.
+                    Type what your business does and we'll find matching government opportunities.
                   </p>
                 </CardContent>
               </Card>
@@ -452,24 +409,20 @@ const SearchHub = () => {
       <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Save Search</DialogTitle>
+            <DialogTitle>Save This Search</DialogTitle>
             <DialogDescription>
-              Save this search to quickly run it again later.
+              Give it a name so you can quickly run it again later.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="searchName">Search Name</Label>
+              <Label htmlFor="searchName">Name</Label>
               <Input
                 id="searchName"
-                placeholder="e.g., IT Cybersecurity SDVOSB"
+                placeholder="e.g., IT contracts for my business"
                 value={searchName}
                 onChange={(e) => setSearchName(e.target.value)}
               />
-            </div>
-            <div className="text-sm text-muted-foreground">
-              <p className="font-medium mb-1">Query:</p>
-              <p className="bg-muted/50 p-2 rounded">{searchQuery}</p>
             </div>
           </div>
           <DialogFooter>
@@ -478,7 +431,7 @@ const SearchHub = () => {
             </Button>
             <Button onClick={handleSaveSearch} disabled={saveSearch.isPending}>
               <Save className="w-4 h-4 mr-2" />
-              Save Search
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>
