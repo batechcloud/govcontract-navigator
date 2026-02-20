@@ -10,6 +10,7 @@ import {
   Settings,
   X,
   LogOut,
+  MessageSquare,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
@@ -21,6 +22,7 @@ const sidebarItems = [
   { icon: Heart, label: "My Opportunities", href: "/dashboard/tracked" },
   { icon: FileText, label: "My Proposals", href: "/dashboard/proposals" },
   { icon: Sparkles, label: "AI Helper", href: "/dashboard/ai" },
+  { icon: MessageSquare, label: "AI Chat", href: "/dashboard/ai/chat" },
   { icon: Building2, label: "My Business", href: "/dashboard/company" },
 ];
 
