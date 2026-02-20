@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ import {
   FileText,
   Trash2,
   Download,
+  Eye,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useCompanyProfile } from "@/hooks/useProfile";
@@ -68,6 +70,7 @@ const CompanyProfile = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("general");
+  const [previewDoc, setPreviewDoc] = useState<{ url: string; name: string; type: string } | null>(null);
   
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
@@ -159,6 +162,26 @@ const CompanyProfile = () => {
     a.download = doc.file_name;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handlePreviewDoc = async (doc: any) => {
+    const isPreviewable = /\.(pdf|png|jpg|jpeg|gif|webp|txt|svg)$/i.test(doc.file_name);
+    if (!isPreviewable) {
+      toast({ title: "Preview not available", description: "This file type can't be previewed. Try downloading instead." });
+      return;
+    }
+    const { data, error } = await supabase.storage.from("documents").download(doc.storage_path);
+    if (error || !data) {
+      toast({ title: "Error", description: "Could not load preview.", variant: "destructive" });
+      return;
+    }
+    const url = URL.createObjectURL(data);
+    setPreviewDoc({ url, name: doc.file_name, type: doc.file_type || "" });
+  };
+
+  const closePreview = () => {
+    if (previewDoc) URL.revokeObjectURL(previewDoc.url);
+    setPreviewDoc(null);
   };
 
   const formatFileSize = (bytes: number) => {
@@ -501,10 +524,13 @@ const CompanyProfile = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <Button variant="ghost" size="sm" onClick={() => handleDownloadDoc(doc)}>
+                      <Button variant="ghost" size="sm" onClick={() => handlePreviewDoc(doc)} title="Preview">
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDownloadDoc(doc)} title="Download">
                         <Download className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteDoc(doc)} className="text-destructive hover:text-destructive">
+                      <Button variant="ghost" size="sm" onClick={() => handleDeleteDoc(doc)} className="text-destructive hover:text-destructive" title="Delete">
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
@@ -525,6 +551,30 @@ const CompanyProfile = () => {
           </Button>
         </div>
       </motion.div>
+
+      {/* Document Preview Dialog */}
+      <Dialog open={!!previewDoc} onOpenChange={(open) => !open && closePreview()}>
+        <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="truncate">{previewDoc?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 rounded-lg overflow-hidden bg-secondary/20">
+            {previewDoc && (
+              previewDoc.type.startsWith("image/") ? (
+                <img src={previewDoc.url} alt={previewDoc.name} className="w-full h-full object-contain" />
+              ) : previewDoc.name.endsWith(".pdf") ? (
+                <iframe src={previewDoc.url} className="w-full h-full border-0" title={previewDoc.name} />
+              ) : previewDoc.type.startsWith("text/") ? (
+                <iframe src={previewDoc.url} className="w-full h-full border-0 bg-background p-4" title={previewDoc.name} />
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  Preview not available for this file type.
+                </div>
+              )
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };
