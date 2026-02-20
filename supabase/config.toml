@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.ai-generate-proposal]
 verify_jwt = true
+
+[functions.ai-opportunity-chat]
+verify_jwt = false

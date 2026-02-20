@@ -2,12 +2,18 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Heart, Clock, Building2, Trash2, Search } from "lucide-react";
+import { Heart, Clock, Building2, Trash2, Search, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
-import { useTrackedContracts, useUntrackContract } from "@/hooks/useTrackedContracts";
+import { useTrackedContracts, useUntrackContract, useUpdateContractStatus } from "@/hooks/useTrackedContracts";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 
 type TabKey = "saved" | "in_progress" | "completed";
 
@@ -17,9 +23,28 @@ const tabs: { key: TabKey; label: string }[] = [
   { key: "completed", label: "Completed" },
 ];
 
+const STATUS_OPTIONS = [
+  { value: "watching", label: "Saved", tab: "saved" as TabKey },
+  { value: "qualifying", label: "Qualifying", tab: "in_progress" as TabKey },
+  { value: "proposal", label: "Writing Proposal", tab: "in_progress" as TabKey },
+  { value: "submitted", label: "Submitted", tab: "in_progress" as TabKey },
+  { value: "won", label: "Won", tab: "completed" as TabKey },
+  { value: "lost", label: "Lost", tab: "completed" as TabKey },
+];
+
+const getStatusBadgeVariant = (status: string) => {
+  switch (status) {
+    case "won": return "default";
+    case "lost": return "destructive";
+    case "submitted": return "secondary";
+    default: return "outline";
+  }
+};
+
 const TrackedContracts = () => {
   const { data: contracts, isLoading } = useTrackedContracts();
   const untrackContract = useUntrackContract();
+  const updateStatus = useUpdateContractStatus();
   const [activeTab, setActiveTab] = useState<TabKey>("saved");
 
   const grouped = {
@@ -38,6 +63,8 @@ const TrackedContracts = () => {
     if (days <= 7) return { text: `${days}d left`, className: "text-accent" };
     return { text: `${days}d left`, className: "text-success" };
   };
+
+  const getStatusLabel = (status: string) => STATUS_OPTIONS.find(s => s.value === status)?.label || status;
 
   return (
     <DashboardLayout title="My Opportunities">
@@ -130,14 +157,38 @@ const TrackedContracts = () => {
                           )}
                         </div>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-muted-foreground hover:text-destructive shrink-0"
-                        onClick={() => untrackContract.mutate(contract.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" className="text-xs gap-1">
+                              <Badge variant={getStatusBadgeVariant(contract.status)} className="text-[10px] px-1.5">
+                                {getStatusLabel(contract.status)}
+                              </Badge>
+                              <ChevronDown className="w-3 h-3" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {STATUS_OPTIONS.map(opt => (
+                              <DropdownMenuItem
+                                key={opt.value}
+                                onClick={() => updateStatus.mutate({ id: contract.id, status: opt.value })}
+                                disabled={contract.status === opt.value}
+                                className={contract.status === opt.value ? "font-semibold" : ""}
+                              >
+                                {opt.label}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:text-destructive"
+                          onClick={() => untrackContract.mutate(contract.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
