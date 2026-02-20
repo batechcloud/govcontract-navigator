@@ -75,37 +75,55 @@ serve(async (req) => {
     }
 
     // Only search for active opportunities (posted in last 6 months)
+    // SAM.gov requires MM/dd/yyyy date format
     params.append("postedFrom", getDateMonthsAgo(6));
-    params.append("postedTo", new Date().toISOString().split('T')[0]);
+    params.append("postedTo", getTodayFormatted());
     params.append("active", "true");
 
-    const response = await fetch(`${SAM_API_BASE}?${params.toString()}`, {
+    const fullUrl = `${SAM_API_BASE}?${params.toString()}`;
+    console.log("Calling SAM.gov URL:", fullUrl.replace(SAM_API_KEY, "REDACTED"));
+
+    const response = await fetch(fullUrl, {
       method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      }
+      headers: { 'Accept': 'application/json' }
     });
 
+    const responseText = await response.text();
+    console.log("SAM.gov HTTP status:", response.status);
+    console.log("SAM.gov response preview:", responseText.substring(0, 500));
+
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("SAM.gov API error:", response.status, errorText);
-      // Return mock data on API error
+      console.error("SAM.gov API error:", response.status, responseText);
       return new Response(
         JSON.stringify(getMockResults(filters, page, limit)),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const data = await response.json();
-    console.log("SAM.gov response count:", data.opportunitiesData?.length || 0);
+    let data: any;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error("Failed to parse SAM.gov response as JSON:", responseText.substring(0, 300));
+      return new Response(
+        JSON.stringify(getMockResults(filters, page, limit)),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    // Transform SAM.gov response to our format
-    const results = transformSamResults(data.opportunitiesData || [], filters);
+    // SAM.gov v2 API returns opportunitiesData array
+    // Log keys to understand the actual response structure
+    console.log("SAM.gov response top-level keys:", Object.keys(data).join(", "));
+    const opportunities = data.opportunitiesData || data.data || data.results || data.items || [];
+    console.log("SAM.gov opportunities found:", opportunities.length);
+    console.log("SAM.gov totalRecords:", data.totalRecords);
+
+    const results = transformSamResults(opportunities, filters);
 
     return new Response(
       JSON.stringify({
         results,
-        total: data.totalRecords || results.length,
+        total: data.totalRecords || opportunities.length,
         page,
         limit
       }),
@@ -120,29 +138,62 @@ serve(async (req) => {
   }
 });
 
+function formatSamDate(date: Date): string {
+  // SAM.gov expects MM/dd/yyyy format
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  return `${mm}/${dd}/${yyyy}`;
+}
+
 function getDateMonthsAgo(months: number): string {
   const date = new Date();
   date.setMonth(date.getMonth() - months);
-  return date.toISOString().split('T')[0];
+  return formatSamDate(date);
+}
+
+function getTodayFormatted(): string {
+  return formatSamDate(new Date());
+}
+
+function extractAgency(opp: any): string {
+  // SAM.gov v2 API stores agency in various fields
+  if (opp.fullParentPathName) return opp.fullParentPathName.split(".").pop()?.trim() || opp.fullParentPathName;
+  if (opp.organizationHierarchy && opp.organizationHierarchy.length > 0) {
+    return opp.organizationHierarchy[opp.organizationHierarchy.length - 1]?.name || opp.organizationHierarchy[0]?.name;
+  }
+  if (opp.department) return opp.department;
+  if (opp.subtierName) return opp.subtierName;
+  if (opp.officeName) return opp.officeName;
+  return "Federal Agency";
 }
 
 function transformSamResults(opportunities: any[], filters: SearchFilters) {
-  return opportunities.map((opp: any) => ({
-    id: opp.noticeId || opp.opportunityId || `SAM-${Date.now()}-${Math.random()}`,
-    title: opp.title || "Untitled Opportunity",
-    agency: opp.department || opp.agency || "Unknown Agency",
-    type: opp.type || "Federal",
-    setAside: opp.typeOfSetAside || "Full & Open",
-    value: formatValue(opp.award?.amount),
-    deadline: opp.responseDeadLine || opp.archiveDate,
-    postedDate: opp.postedDate,
-    location: opp.placeOfPerformance?.city?.name || opp.placeOfPerformance?.state?.name || "Various",
-    naicsCode: opp.naics?.[0]?.code || "",
-    matchScore: calculateMatchScore(opp, filters),
-    description: opp.description || opp.synopsis || "",
-    solicitationNumber: opp.solicitationNumber || "",
-    link: opp.uiLink || `https://sam.gov/opp/${opp.noticeId}`
-  }));
+  return opportunities.map((opp: any) => {
+    // Description may be a URL to fetch separately — use synopsis or type-based fallback
+    const rawDesc = opp.description || opp.synopsis || "";
+    const isUrl = rawDesc.startsWith("http");
+    const description = isUrl ? `${opp.type || "Federal"} opportunity — ${opp.solicitationNumber || "view on SAM.gov for details"}` : rawDesc;
+
+    return {
+      id: opp.noticeId || opp.opportunityId || `SAM-${Date.now()}-${Math.random()}`,
+      title: opp.title || "Untitled Opportunity",
+      agency: extractAgency(opp),
+      type: opp.type || "Solicitation",
+      setAside: opp.typeOfSetAside && opp.typeOfSetAside !== "NONE" ? opp.typeOfSetAside : "Full & Open",
+      value: formatValue(opp.award?.amount || opp.baseAndAllOptionsValue),
+      deadline: opp.responseDeadLine || opp.archiveDate || opp.date,
+      postedDate: opp.postedDate,
+      location: opp.placeOfPerformance?.city?.name
+        ? `${opp.placeOfPerformance.city.name}, ${opp.placeOfPerformance?.state?.code || ""}`
+        : opp.placeOfPerformance?.state?.name || "Various",
+      naicsCode: opp.naics?.[0]?.code || opp.naicsCode || "",
+      matchScore: calculateMatchScore(opp, filters),
+      description,
+      solicitationNumber: opp.solicitationNumber || "",
+      link: opp.uiLink || (opp.noticeId ? `https://sam.gov/opp/${opp.noticeId}/view` : "https://sam.gov")
+    };
+  });
 }
 
 function formatValue(amount: number | null | undefined): string {

@@ -202,11 +202,11 @@ const SearchHub = () => {
         transition={{ duration: 0.5 }}
         className="space-y-6"
       >
-        {/* Demo Mode Banner — only shown when no SAM API key (mock data) */}
-        {results.length > 0 && results[0]?.id?.startsWith("SAM-2024") && (
-          <div className="bg-accent/10 border border-accent/30 rounded-lg px-4 py-2 flex items-center gap-2 text-sm text-accent">
-            <span className="font-semibold">Demo Mode:</span>
-            <span className="text-muted-foreground">Showing sample contracts. Connect a SAM.gov API key to search live opportunities.</span>
+        {/* Demo Mode Banner — only shown when no SAM API key (mock data has SAM-20XX- prefix) */}
+        {results.length > 0 && /^SAM-20\d\d-/.test(results[0]?.id) && (
+          <div className="bg-accent/10 border border-accent/30 rounded-lg px-4 py-2 flex items-center gap-2 text-sm">
+            <span className="font-semibold text-accent">Demo Mode:</span>
+            <span className="text-muted-foreground">Showing sample contracts. Add a SAM.gov API key to search live opportunities.</span>
           </div>
         )}
 
