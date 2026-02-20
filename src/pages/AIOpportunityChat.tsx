@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -39,16 +40,31 @@ const SUGGESTED_QUESTIONS = [
 export default function AIOpportunityChat() {
   const { user } = useAuth();
   const { data: companyProfile } = useCompanyProfile();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const didAutoSend = useRef(false);
 
   // Auto-scroll to latest message
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Auto-send pre-loaded question from ?q= param (e.g. from "Ask AI" on contract cards)
+  useEffect(() => {
+    const preload = searchParams.get("q");
+    if (preload && !didAutoSend.current) {
+      didAutoSend.current = true;
+      // Clear the param from the URL so refresh doesn't re-trigger
+      setSearchParams({}, { replace: true });
+      // Slight delay so company profile has time to load
+      setTimeout(() => sendMessage(preload), 400);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const sendMessage = async (text: string) => {
     const userText = text.trim();

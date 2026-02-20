@@ -45,6 +45,7 @@ import {
   SlidersHorizontal,
   ChevronDown,
   RotateCcw,
+  MessageSquare,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useTrackContract, useTrackedContracts } from "@/hooks/useTrackedContracts";
@@ -249,6 +250,12 @@ const SearchHub = () => {
 
   const handleStartBid = (result: SearchResult) => {
     navigate(`/dashboard/proposals/generator?opportunityId=${result.id}&title=${encodeURIComponent(result.title)}&agency=${encodeURIComponent(result.agency)}`);
+  };
+
+  const handleAskAI = (result: SearchResult) => {
+    const solicitation = result.solicitationNumber ? ` (Solicitation: ${result.solicitationNumber})` : "";
+    const preload = encodeURIComponent(`I need help understanding this contract: "${result.title}"${solicitation} from ${result.agency}. Can you explain what they're looking for and whether it might be a good fit for a small business?`);
+    navigate(`/dashboard/ai/chat?q=${preload}`);
   };
 
   const handleSaveSearch = () => {
@@ -629,6 +636,15 @@ const SearchHub = () => {
                               ) : (
                                 <><Heart className="w-4 h-4 mr-2" /> Save</>
                               )}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAskAI(result)}
+                              className="gap-2 border-accent/40 text-accent hover:bg-accent/10 hover:border-accent hover:text-accent"
+                            >
+                              <MessageSquare className="w-4 h-4" />
+                              Ask AI
                             </Button>
                             {result.link && (
                               <Button variant="ghost" size="sm" onClick={() => window.open(result.link, '_blank')}>
