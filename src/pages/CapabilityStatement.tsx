@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { motion } from "framer-motion";
-import { FileText, Download, Sparkles, Check, UserCheck } from "lucide-react";
+import { FileText, Download, Sparkles, Check, UserCheck, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,6 +12,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCompanyProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, BorderStyle } from "docx";
+import { saveAs } from "file-saver";
 
 export default function CapabilityStatement() {
   const { user } = useAuth();
@@ -97,47 +99,98 @@ export default function CapabilityStatement() {
     return lines;
   };
 
-  const handleGenerate = async () => {
+  const buildDocx = async () => {
+    const sections: Paragraph[] = [];
+
+    sections.push(
+      new Paragraph({ text: "CAPABILITY STATEMENT", heading: HeadingLevel.TITLE, alignment: AlignmentType.CENTER }),
+      new Paragraph({ text: formData.companyName, heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER }),
+    );
+    if (formData.tagline) {
+      sections.push(new Paragraph({ children: [new TextRun({ text: formData.tagline, italics: true, size: 24 })], alignment: AlignmentType.CENTER, spacing: { after: 300 } }));
+    }
+    if (formData.naicsCodes) {
+      sections.push(
+        new Paragraph({ spacing: { before: 200 }, children: [new TextRun({ text: "NAICS Codes: ", bold: true }), new TextRun(formData.naicsCodes)] })
+      );
+    }
+
+    const addSection = (title: string, content: string) => {
+      if (!content) return;
+      sections.push(
+        new Paragraph({ text: title, heading: HeadingLevel.HEADING_2, spacing: { before: 400 }, border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: "4A5BA8" } } }),
+        ...content.split("\n").map(line => new Paragraph({ text: line, spacing: { after: 120 } }))
+      );
+    };
+
+    addSection("Core Competencies", formData.coreCompetencies);
+    addSection("Differentiators", formData.differentiators);
+    addSection("Past Performance", formData.pastPerformance);
+    if (formData.certifications) {
+      sections.push(
+        new Paragraph({ text: "Certifications", heading: HeadingLevel.HEADING_2, spacing: { before: 400 }, border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: "4A5BA8" } } }),
+        new Paragraph({ text: formData.certifications, spacing: { after: 120 } })
+      );
+    }
+
+    const contactLines = [
+      formData.contactName && `Name: ${formData.contactName}`,
+      formData.contactEmail && `Email: ${formData.contactEmail}`,
+      formData.contactPhone && `Phone: ${formData.contactPhone}`,
+      formData.website && `Website: ${formData.website}`,
+    ].filter(Boolean) as string[];
+
+    if (contactLines.length) {
+      sections.push(
+        new Paragraph({ text: "Contact Information", heading: HeadingLevel.HEADING_2, spacing: { before: 400 }, border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: "4A5BA8" } } }),
+        ...contactLines.map(line => new Paragraph({ text: line, spacing: { after: 80 } }))
+      );
+    }
+
+    const doc = new Document({ sections: [{ children: sections }] });
+    return Packer.toBlob(doc);
+  };
+
+  const handleExport = async (format: "txt" | "docx") => {
     if (!formData.companyName || !formData.coreCompetencies) {
       toast.error("Please fill in at least your company name and core competencies");
       return;
     }
 
     setIsGenerating(true);
-
     try {
-      const content = buildCapabilityStatementText();
-      const blob = new Blob([content], { type: "text/plain" });
-      const fileName = `Capability_Statement_${formData.companyName.replace(/\s+/g, "_")}.txt`;
+      const safeName = formData.companyName.replace(/\s+/g, "_");
+      let blob: Blob;
+      let fileName: string;
+      let fileType: string;
 
-      // Download locally
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName;
-      a.click();
-      URL.revokeObjectURL(url);
+      if (format === "docx") {
+        blob = await buildDocx();
+        fileName = `Capability_Statement_${safeName}.docx`;
+        fileType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+      } else {
+        const content = buildCapabilityStatementText();
+        blob = new Blob([content], { type: "text/plain" });
+        fileName = `Capability_Statement_${safeName}.txt`;
+        fileType = "text/plain";
+      }
 
-      // Auto-save to user's documents if logged in
+      saveAs(blob, fileName);
+
       if (user) {
         const path = `${user.id}/${Date.now()}_${fileName}`;
-        const { error: uploadError } = await supabase.storage
-          .from("documents")
-          .upload(path, blob);
-
+        const { error: uploadError } = await supabase.storage.from("documents").upload(path, blob);
         if (!uploadError) {
           await supabase.from("user_documents").insert({
             user_id: user.id,
             file_name: fileName,
-            file_type: "text/plain",
+            file_type: fileType,
             file_size: blob.size,
             storage_path: path,
             category: "capability_statement",
           });
           queryClient.invalidateQueries({ queryKey: ["user-documents"] });
-          toast.success("Generated & saved to your Business Documents!", {
-            icon: <Check className="w-4 h-4" />,
-          });
+          toast.success("Generated & saved to your Business Documents!", { icon: <Check className="w-4 h-4" /> });
         } else {
           toast.success("Downloaded! (Could not auto-save to your account)");
         }
@@ -333,20 +386,25 @@ export default function CapabilityStatement() {
                   </div>
                 </div>
 
-                <Button 
-                  onClick={handleGenerate}
-                  className="w-full bg-accent hover:bg-accent/90 text-accent-foreground h-12"
-                  disabled={isGenerating}
-                >
-                  {isGenerating ? (
-                    "Generating..."
-                  ) : (
-                    <>
-                      <Download className="w-4 h-4 mr-2" />
-                      Generate Capability Statement
-                    </>
-                  )}
-                </Button>
+                <div className="grid grid-cols-2 gap-3">
+                  <Button 
+                    onClick={() => handleExport("docx")}
+                    className="bg-accent hover:bg-accent/90 text-accent-foreground h-12"
+                    disabled={isGenerating}
+                  >
+                    <FileDown className="w-4 h-4 mr-2" />
+                    {isGenerating ? "Generating..." : "Export as Word (.docx)"}
+                  </Button>
+                  <Button 
+                    onClick={() => handleExport("txt")}
+                    variant="outline"
+                    className="h-12"
+                    disabled={isGenerating}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Export as Text (.txt)
+                  </Button>
+                </div>
 
                 {!user && (
                   <p className="text-center text-sm text-muted-foreground">
