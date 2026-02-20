@@ -14,7 +14,7 @@ export default function AIAssistant() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Hello! I'm your GovAI Assistant. I can help you understand government contracts, answer questions about the bidding process, and provide guidance on proposals. What would you like to know?"
+      content: "Hi! I'm your GovAI Helper. I can help you find the right contracts, explain confusing terms, and guide you through the bidding process. What can I help with?"
     }
   ]);
   const [input, setInput] = useState("");
@@ -28,13 +28,12 @@ export default function AIAssistant() {
     setMessages(prev => [...prev, { role: "user", content: userMessage }]);
     setIsLoading(true);
 
-    // Simulate AI response
     await new Promise(resolve => setTimeout(resolve, 1500));
 
     const responses = [
-      "That's a great question! In government contracting, it's important to understand the evaluation criteria specified in the RFP. Focus on addressing each requirement clearly and provide specific examples of past performance that demonstrate your capability.",
-      "I can help you with that! The key to success in federal contracting is understanding your target market and building relationships with contracting officers. Consider attending industry days and reviewing past contract awards to understand pricing strategies.",
-      "Based on my analysis, this opportunity aligns well with your company profile. I'd recommend emphasizing your team's expertise and including metrics that demonstrate the value you've delivered on similar projects."
+      "Great question! Government contracts might seem complicated, but the key is to focus on contracts that match what your business already does well. Start by searching for keywords related to your services.",
+      "I can help with that! When you find a contract you like, save it first. Then I can help you write a proposal that highlights your strengths and addresses exactly what the agency is looking for.",
+      "That's a common concern for first-time bidders. The good news is that many contracts are specifically set aside for small businesses like yours. Use the 'Small Business' filter when searching to find these opportunities."
     ];
 
     setMessages(prev => [...prev, { 
@@ -52,14 +51,14 @@ export default function AIAssistant() {
   };
 
   const suggestions = [
-    "What are set-asides?",
-    "How do I write a technical approach?",
-    "Explain past performance requirements",
-    "What is the FAR?"
+    "What contracts fit my business?",
+    "How do I get started bidding?",
+    "Help me understand a contract",
+    "Tips for writing a winning proposal",
   ];
 
   return (
-    <DashboardLayout title="AI Assistant">
+    <DashboardLayout title="Ask GovAI">
       <div className="flex flex-col h-[calc(100vh-200px)] max-w-4xl mx-auto">
         {/* Chat Header */}
         <motion.div 
@@ -71,8 +70,8 @@ export default function AIAssistant() {
             <Bot className="w-6 h-6 text-primary" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-foreground">GovAI Assistant</h2>
-            <p className="text-sm text-muted-foreground">Your AI-powered contracting expert</p>
+            <h2 className="text-xl font-bold text-foreground">GovAI Helper</h2>
+            <p className="text-sm text-muted-foreground">Your friendly guide to government contracts</p>
           </div>
         </motion.div>
 
@@ -107,11 +106,7 @@ export default function AIAssistant() {
             </motion.div>
           ))}
           {isLoading && (
-            <motion.div 
-              className="flex gap-3"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            >
+            <motion.div className="flex gap-3" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
                 <Bot className="w-4 h-4 text-primary" />
               </div>
@@ -139,9 +134,7 @@ export default function AIAssistant() {
                 key={suggestion}
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  setInput(suggestion);
-                }}
+                onClick={() => setInput(suggestion)}
                 className="text-xs"
               >
                 <Sparkles className="w-3 h-3 mr-1" />
@@ -157,7 +150,7 @@ export default function AIAssistant() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Ask about government contracting..."
+            placeholder="Ask me anything about government contracts..."
             className="flex-1"
             disabled={isLoading}
           />

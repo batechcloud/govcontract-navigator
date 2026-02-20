@@ -6,14 +6,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search,
   FileText,
-  Building2,
-  MessageSquare,
+  Heart,
   Sparkles,
-  ArrowUpRight,
+  Clock,
+  ArrowRight,
+  Lightbulb,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
-import { StatsCard } from "@/components/dashboard/StatsCard";
-import { OpportunityCard } from "@/components/dashboard/OpportunityCard";
 import { useProfile } from "@/hooks/useProfile";
 import { useTrackedContracts } from "@/hooks/useTrackedContracts";
 
@@ -22,36 +21,25 @@ const Dashboard = () => {
   const { data: trackedContracts, isLoading: contractsLoading } = useTrackedContracts();
 
   const userName = profile?.first_name || "there";
-  
-  // Calculate stats from tracked contracts
-  const activeContracts = trackedContracts?.filter(c => c.status !== "won" && c.status !== "lost") || [];
-  const proposalsInProgress = trackedContracts?.filter(c => c.status === "proposal" || c.status === "submitted") || [];
-  const totalValue = trackedContracts?.reduce((sum, c) => {
-    const value = c.contract_value?.replace(/[^0-9.]/g, "") || "0";
-    return sum + parseFloat(value);
-  }, 0) || 0;
 
-  const stats = [
-    { label: "Active Opportunities", value: activeContracts.length.toString() },
-    { label: "Proposals in Progress", value: proposalsInProgress.length.toString() },
-    { label: "Tracked Contracts", value: (trackedContracts?.length || 0).toString() },
-    { label: "Pipeline Value", value: `$${(totalValue / 1000000).toFixed(1)}M` },
+  const savedCount = trackedContracts?.filter(c => c.status === "watching").length || 0;
+  const inProgressCount = trackedContracts?.filter(c => ["qualifying", "proposal", "submitted"].includes(c.status || "")).length || 0;
+
+  // Find contracts with upcoming deadlines
+  const upcomingDeadlines = trackedContracts
+    ?.filter(c => c.response_deadline && new Date(c.response_deadline) > new Date())
+    .sort((a, b) => new Date(a.response_deadline!).getTime() - new Date(b.response_deadline!).getTime())
+    .slice(0, 3) || [];
+
+  const quickActions = [
+    { icon: Search, label: "Find Contracts", description: "Search federal & state opportunities", href: "/dashboard/search", color: "text-primary" },
+    { icon: Heart, label: "My Opportunities", description: `${savedCount} saved, ${inProgressCount} in progress`, href: "/dashboard/tracked", color: "text-rose-400" },
+    { icon: FileText, label: "My Proposals", description: "Create & manage your bids", href: "/dashboard/proposals", color: "text-accent" },
+    { icon: Sparkles, label: "Ask AI Helper", description: "Get help with contracts", href: "/dashboard/ai", color: "text-purple-400" },
   ];
-
-  const pipelineStages = [
-    { stage: "Watching", count: trackedContracts?.filter(c => c.status === "watching").length || 0, color: "bg-blue-500" },
-    { stage: "Qualifying", count: trackedContracts?.filter(c => c.status === "qualifying").length || 0, color: "bg-yellow-500" },
-    { stage: "Proposal", count: trackedContracts?.filter(c => c.status === "proposal").length || 0, color: "bg-purple-500" },
-    { stage: "Submitted", count: trackedContracts?.filter(c => c.status === "submitted").length || 0, color: "bg-green-500" },
-  ];
-
-  // Get top 3 contracts by match score
-  const topMatches = [...(trackedContracts || [])]
-    .sort((a, b) => (b.match_score || 0) - (a.match_score || 0))
-    .slice(0, 3);
 
   return (
-    <DashboardLayout title="Dashboard">
+    <DashboardLayout title="Home">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -62,150 +50,119 @@ const Dashboard = () => {
         <Card variant="glass" className="overflow-hidden relative">
           <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-primary/20 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
           <CardContent className="p-6 relative">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                {profileLoading ? (
-                  <>
-                    <Skeleton className="h-8 w-64 mb-2" />
-                    <Skeleton className="h-5 w-48" />
-                  </>
-                ) : (
-                  <>
-                    <h2 className="text-2xl font-heading font-bold text-foreground mb-1">
-                      Welcome back, {userName}! 👋
-                    </h2>
-                    <p className="text-muted-foreground">
-                      {trackedContracts?.length ? (
-                        <>You have <span className="text-accent font-semibold">{activeContracts.length} active opportunities</span> in your pipeline.</>
-                      ) : (
-                        <>Start tracking contracts to build your pipeline.</>
-                      )}
-                    </p>
-                  </>
-                )}
-              </div>
-              <Button variant="hero" asChild>
-                <Link to="/dashboard/search">
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  Find Contracts
-                </Link>
-              </Button>
-            </div>
+            {profileLoading ? (
+              <Skeleton className="h-8 w-64 mb-2" />
+            ) : (
+              <>
+                <h2 className="text-2xl font-heading font-bold text-foreground mb-2">
+                  Welcome, {userName}! 👋
+                </h2>
+                <p className="text-muted-foreground mb-4">
+                  Find government contracts that fit your business — it's easier than you think.
+                </p>
+                <Button variant="hero" size="lg" asChild>
+                  <Link to="/dashboard/search">
+                    <Search className="w-4 h-4 mr-2" />
+                    Find Contracts
+                  </Link>
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {stats.map((stat) => (
-            <StatsCard
-              key={stat.label}
-              label={stat.label}
-              value={stat.value}
-              loading={contractsLoading}
-            />
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {quickActions.map((action, i) => (
+            <motion.div
+              key={action.label}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: i * 0.05 }}
+            >
+              <Link to={action.href}>
+                <Card variant="glass-hover" className="cursor-pointer h-full">
+                  <CardContent className="p-5">
+                    <action.icon className={`w-8 h-8 ${action.color} mb-3`} />
+                    <h3 className="font-heading font-semibold text-foreground mb-1">{action.label}</h3>
+                    <p className="text-sm text-muted-foreground">{action.description}</p>
+                  </CardContent>
+                </Card>
+              </Link>
+            </motion.div>
           ))}
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Recent Opportunities */}
-          <div className="lg:col-span-2">
-            <Card variant="glass">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-lg">Top Matched Opportunities</CardTitle>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link to="/dashboard/tracked">
-                    View All
-                    <ArrowUpRight className="w-4 h-4 ml-1" />
-                  </Link>
-                </Button>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {contractsLoading ? (
-                  Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="flex items-start gap-4 p-4 rounded-lg bg-secondary/30">
-                      <Skeleton className="w-12 h-12 rounded-lg" />
-                      <div className="flex-1">
-                        <Skeleton className="h-5 w-48 mb-2" />
-                        <Skeleton className="h-4 w-32 mb-2" />
-                        <Skeleton className="h-3 w-24" />
+        {/* Upcoming Deadlines */}
+        <Card variant="glass">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Clock className="w-5 h-5 text-accent" />
+              Upcoming Deadlines
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {contractsLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => <Skeleton key={i} className="h-14 w-full" />)}
+              </div>
+            ) : upcomingDeadlines.length > 0 ? (
+              <div className="space-y-3">
+                {upcomingDeadlines.map(contract => {
+                  const deadline = new Date(contract.response_deadline!);
+                  const daysLeft = Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                  const urgency = daysLeft <= 3 ? "text-destructive" : daysLeft <= 7 ? "text-accent" : "text-success";
+                  return (
+                    <div key={contract.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border/50">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground truncate">{contract.contract_title}</p>
+                        <p className="text-xs text-muted-foreground">{contract.contract_agency}</p>
                       </div>
+                      <span className={`text-sm font-semibold whitespace-nowrap ml-3 ${urgency}`}>
+                        {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
+                      </span>
                     </div>
-                  ))
-                ) : topMatches.length > 0 ? (
-                  topMatches.map((contract) => (
-                    <OpportunityCard key={contract.id} contract={contract} />
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                    <p>No tracked contracts yet.</p>
-                    <p className="text-sm">Search for contracts to start tracking opportunities.</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-muted-foreground">
+                <Clock className="w-10 h-10 mx-auto mb-2 opacity-40" />
+                <p className="text-sm">No upcoming deadlines yet.</p>
+                <p className="text-xs">Save contracts to track their deadlines here.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-          {/* Quick Actions */}
-          <div className="space-y-6">
-            <Card variant="glass">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Button variant="outline" className="w-full justify-start" asChild>
-                  <Link to="/dashboard/search">
-                    <Search className="w-4 h-4 mr-3" />
-                    Search Contracts
-                  </Link>
-                </Button>
-                <Button variant="outline" className="w-full justify-start" asChild>
-                  <Link to="/dashboard/proposals/new">
-                    <FileText className="w-4 h-4 mr-3" />
-                    Generate Proposal
-                  </Link>
-                </Button>
-                <Button variant="outline" className="w-full justify-start" asChild>
-                  <Link to="/dashboard/ai">
-                    <MessageSquare className="w-4 h-4 mr-3" />
-                    Ask AI Assistant
-                  </Link>
-                </Button>
-                <Button variant="outline" className="w-full justify-start" asChild>
-                  <Link to="/dashboard/company">
-                    <Building2 className="w-4 h-4 mr-3" />
-                    Update Profile
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Pipeline Summary */}
-            <Card variant="glass">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Pipeline Status</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {pipelineStages.map((item) => (
-                    <div key={item.stage} className="flex items-center gap-3">
-                      <div className={`w-3 h-3 rounded-full ${item.color}`} />
-                      <span className="flex-1 text-sm text-muted-foreground">{item.stage}</span>
-                      <span className="font-heading font-semibold text-foreground">{item.count}</span>
+        {/* Getting Started Tips */}
+        {(!trackedContracts || trackedContracts.length === 0) && (
+          <Card variant="glass">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Lightbulb className="w-5 h-5 text-accent" />
+                Getting Started
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {[
+                  { step: "1", text: "Search for contracts in your industry", link: "/dashboard/search" },
+                  { step: "2", text: "Save the ones that interest you", link: "/dashboard/tracked" },
+                  { step: "3", text: "Use AI to help write your proposal", link: "/dashboard/ai" },
+                ].map(tip => (
+                  <Link key={tip.step} to={tip.link} className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 border border-border/50 hover:border-primary/30 transition-colors group">
+                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                      {tip.step}
                     </div>
-                  ))}
-                </div>
-                <Button variant="glass" size="sm" className="w-full mt-4" asChild>
-                  <Link to="/dashboard/journey">
-                    View Pipeline
-                    <ArrowUpRight className="w-4 h-4 ml-1" />
+                    <span className="text-sm text-foreground flex-1">{tip.text}</span>
+                    <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
                   </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </motion.div>
     </DashboardLayout>
   );
