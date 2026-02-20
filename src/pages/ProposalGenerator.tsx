@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { motion } from "framer-motion";
 import { Sparkles, Search, FileText, ArrowRight, Loader2, Building2, CheckCircle2, AlertCircle } from "lucide-react";
@@ -281,8 +281,8 @@ function DataSourceItem({
   link: string;
 }) {
   return (
-    <a
-      href={link}
+    <Link
+      to={link}
       className="flex items-start gap-3 p-3 rounded-lg bg-secondary/20 border border-border/30 hover:border-primary/30 transition-colors"
     >
       {ready ? (
@@ -294,6 +294,6 @@ function DataSourceItem({
         <p className="text-sm font-medium text-foreground">{label}</p>
         <p className="text-xs text-muted-foreground truncate">{detail}</p>
       </div>
-    </a>
+    </Link>
   );
 }

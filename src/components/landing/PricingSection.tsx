@@ -205,7 +205,7 @@ export function PricingSection() {
                       ))}
                     </ul>
                     <Button variant={plan.variant} className="w-full" asChild>
-                      <Link to={plan.name === "Enterprise" ? "/contact" : "/dashboard/search"}>
+                      <Link to={plan.name === "Enterprise" ? "/contact" : "/auth?mode=signup"}>
                         {plan.cta}
                         <ArrowRight className="w-4 h-4 ml-2" />
                       </Link>

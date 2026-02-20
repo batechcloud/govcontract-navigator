@@ -1,4 +1,5 @@
 import { useState, ReactNode } from "react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,10 +83,16 @@ export const DashboardLayout = ({ children, title }: DashboardLayoutProps) => {
                   className="pl-9 w-64"
                 />
               </div>
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-accent rounded-full" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="relative">
+                    <Bell className="w-5 h-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Notifications coming soon</p>
+                </TooltipContent>
+              </Tooltip>
 
               {/* User Profile Dropdown */}
               <DropdownMenu>

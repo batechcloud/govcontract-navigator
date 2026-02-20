@@ -47,7 +47,7 @@ export function CTASection() {
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
               <Button variant="gold" size="xl" asChild className="w-full sm:w-auto group">
-                <Link to="/dashboard/search">
+                <Link to="/auth?mode=signup">
                   Start Searching Free
                   <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
                 </Link>
