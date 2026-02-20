@@ -1,10 +1,17 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { motion } from "framer-motion";
-import { FileText, Plus, Clock, Edit, Trash2, Loader2 } from "lucide-react";
+import { FileText, Plus, Clock, Edit, Trash2, Loader2, Filter, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   AlertDialog,
@@ -25,6 +32,8 @@ export default function Proposals() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("date_desc");
 
   const { data: proposals, isLoading } = useQuery({
     queryKey: ["proposals"],
@@ -60,9 +69,35 @@ export default function Proposals() {
       case "in_progress": return { label: "Writing", className: "bg-amber-500/20 text-amber-400" };
       case "review": return { label: "Reviewing", className: "bg-primary/20 text-primary" };
       case "submitted": return { label: "Submitted", className: "bg-success/20 text-success" };
-      default: return { label: status, className: "bg-muted text-muted-foreground" };
+    default: return { label: status, className: "bg-muted text-muted-foreground" };
     }
   };
+
+  const filteredAndSorted = useMemo(() => {
+    if (!proposals) return [];
+    let list = [...proposals];
+
+    if (statusFilter !== "all") {
+      list = list.filter((p) => p.status === statusFilter);
+    }
+
+    switch (sortBy) {
+      case "date_asc":
+        list.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        break;
+      case "date_desc":
+        list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        break;
+      case "score_desc":
+        list.sort((a, b) => (b.match_score ?? 0) - (a.match_score ?? 0));
+        break;
+      case "title_asc":
+        list.sort((a, b) => a.opportunity_title.localeCompare(b.opportunity_title));
+        break;
+    }
+
+    return list;
+  }, [proposals, statusFilter, sortBy]);
 
   return (
     <DashboardLayout title="My Proposals">
@@ -82,6 +117,49 @@ export default function Proposals() {
               Start New Bid
             </Link>
           </Button>
+        </motion.div>
+
+        {/* Filter & Sort Controls */}
+        <motion.div
+          className="flex flex-wrap items-center gap-3"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+        >
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-muted-foreground" />
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[140px] h-9 text-sm bg-card/50 border-border/50">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="in_progress">Writing</SelectItem>
+                <SelectItem value="review">Review</SelectItem>
+                <SelectItem value="submitted">Submitted</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <ArrowUpDown className="w-4 h-4 text-muted-foreground" />
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-[160px] h-9 text-sm bg-card/50 border-border/50">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date_desc">Newest First</SelectItem>
+                <SelectItem value="date_asc">Oldest First</SelectItem>
+                <SelectItem value="score_desc">Highest Match</SelectItem>
+                <SelectItem value="title_asc">Title A–Z</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {proposals && (
+            <span className="text-sm text-muted-foreground ml-auto">
+              {filteredAndSorted.length} of {proposals.length} proposals
+            </span>
+          )}
         </motion.div>
 
         <motion.div
@@ -110,8 +188,8 @@ export default function Proposals() {
                 </CardContent>
               </Card>
             ))
-          ) : proposals && proposals.length > 0 ? (
-            proposals.map((proposal) => {
+          ) : filteredAndSorted.length > 0 ? (
+            filteredAndSorted.map((proposal) => {
               const status = getStatusLabel(proposal.status);
               return (
                 <Card key={proposal.id} variant="glass-hover">
