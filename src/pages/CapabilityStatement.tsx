@@ -2,14 +2,19 @@ import { useState } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { motion } from "framer-motion";
-import { FileText, Download, Sparkles } from "lucide-react";
+import { FileText, Download, Sparkles, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function CapabilityStatement() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     companyName: "",
     tagline: "",
@@ -32,6 +37,33 @@ export default function CapabilityStatement() {
     }));
   };
 
+  const buildCapabilityStatementText = () => {
+    const lines = [
+      `CAPABILITY STATEMENT`,
+      `====================`,
+      ``,
+      `Company: ${formData.companyName}`,
+      formData.tagline ? `Tagline: ${formData.tagline}` : "",
+      ``,
+      formData.naicsCodes ? `NAICS Codes: ${formData.naicsCodes}` : "",
+      ``,
+      `CORE COMPETENCIES`,
+      `------------------`,
+      formData.coreCompetencies,
+      ``,
+      formData.differentiators ? `DIFFERENTIATORS\n----------------\n${formData.differentiators}\n` : "",
+      formData.pastPerformance ? `PAST PERFORMANCE\n-----------------\n${formData.pastPerformance}\n` : "",
+      formData.certifications ? `CERTIFICATIONS: ${formData.certifications}\n` : "",
+      `CONTACT INFORMATION`,
+      `--------------------`,
+      formData.contactName ? `Name: ${formData.contactName}` : "",
+      formData.contactEmail ? `Email: ${formData.contactEmail}` : "",
+      formData.contactPhone ? `Phone: ${formData.contactPhone}` : "",
+      formData.website ? `Website: ${formData.website}` : "",
+    ].filter(Boolean).join("\n");
+    return lines;
+  };
+
   const handleGenerate = async () => {
     if (!formData.companyName || !formData.coreCompetencies) {
       toast.error("Please fill in at least your company name and core competencies");
@@ -39,12 +71,51 @@ export default function CapabilityStatement() {
     }
 
     setIsGenerating(true);
-    
-    // Simulate generation
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    toast.success("Capability statement generated! Download will start automatically.");
-    setIsGenerating(false);
+
+    try {
+      const content = buildCapabilityStatementText();
+      const blob = new Blob([content], { type: "text/plain" });
+      const fileName = `Capability_Statement_${formData.companyName.replace(/\s+/g, "_")}.txt`;
+
+      // Download locally
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      // Auto-save to user's documents if logged in
+      if (user) {
+        const path = `${user.id}/${Date.now()}_${fileName}`;
+        const { error: uploadError } = await supabase.storage
+          .from("documents")
+          .upload(path, blob);
+
+        if (!uploadError) {
+          await supabase.from("user_documents").insert({
+            user_id: user.id,
+            file_name: fileName,
+            file_type: "text/plain",
+            file_size: blob.size,
+            storage_path: path,
+            category: "capability_statement",
+          });
+          queryClient.invalidateQueries({ queryKey: ["user-documents"] });
+          toast.success("Generated & saved to your Business Documents!", {
+            icon: <Check className="w-4 h-4" />,
+          });
+        } else {
+          toast.success("Downloaded! (Could not auto-save to your account)");
+        }
+      } else {
+        toast.success("Capability statement generated! Sign in to auto-save future statements.");
+      }
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -70,6 +141,11 @@ export default function CapabilityStatement() {
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Create a professional capability statement in minutes. No account required.
             </p>
+            {user && (
+              <p className="text-sm text-primary mt-3">
+                ✓ Signed in — your statement will be auto-saved to My Business documents.
+              </p>
+            )}
           </motion.div>
 
           <div className="max-w-3xl mx-auto">
@@ -226,14 +302,16 @@ export default function CapabilityStatement() {
                   ) : (
                     <>
                       <Download className="w-4 h-4 mr-2" />
-                      Generate Capability Statement (PDF)
+                      Generate Capability Statement
                     </>
                   )}
                 </Button>
 
-                <p className="text-center text-sm text-muted-foreground">
-                  Want more features? <a href="/auth" className="text-primary hover:underline">Sign up for free</a> to save and edit your statements.
-                </p>
+                {!user && (
+                  <p className="text-center text-sm text-muted-foreground">
+                    Want more features? <a href="/auth" className="text-primary hover:underline">Sign up for free</a> to auto-save your statements.
+                  </p>
+                )}
               </div>
             </motion.div>
           </div>
