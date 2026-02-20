@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
 const SECTOR_NAICS = {
@@ -81,15 +81,17 @@ function getSectorCounts(contracts) {
   return counts;
 }
 
-export default function SectorBrowse({ contracts = [] }) {
+const EMPTY_CONTRACTS = [];
+
+export default function SectorBrowse({ contracts = EMPTY_CONTRACTS }) {
   const navigate = useNavigate();
-  const [counts, setCounts]   = useState({});
   const [hovered, setHovered] = useState(null);
   const [search, setSearch]   = useState("");
 
-  useEffect(() => {
-    setCounts(getSectorCounts(contracts.length ? contracts : MOCK_CONTRACTS_LOCAL));
-  }, [contracts]);
+  const counts = useMemo(
+    () => getSectorCounts(contracts.length ? contracts : MOCK_CONTRACTS_LOCAL),
+    [contracts]
+  );
 
   const sectors  = Object.entries(SECTOR_CONFIG).filter(([key]) => key !== "all");
   const filtered = sectors.filter(([, cfg]) =>
