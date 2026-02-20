@@ -85,7 +85,7 @@ export const useUntrackContract = () => {
       const { error } = await supabase
         .from("tracked_contracts")
         .delete()
-        .eq("contract_id", contractId);
+        .eq("id", contractId);
 
       if (error) throw error;
     },
@@ -114,7 +114,7 @@ export const useUpdateContractStatus = () => {
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       const { data, error } = await supabase
         .from("tracked_contracts")
-        .update({ status })
+        .update({ status, updated_at: new Date().toISOString() })
         .eq("id", id)
         .select()
         .single();

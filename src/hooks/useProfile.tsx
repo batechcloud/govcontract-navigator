@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 export interface Profile {
   id: string;
@@ -37,16 +38,16 @@ export interface CompanyProfile {
 }
 
 export const useProfile = () => {
-  return useQuery({
-    queryKey: ["profile"],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+  const { user } = useAuth();
 
+  return useQuery({
+    queryKey: ["profile", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
-        .eq("id", user.id)
+        .eq("id", user!.id)
         .maybeSingle();
 
       if (error) throw error;
@@ -56,16 +57,16 @@ export const useProfile = () => {
 };
 
 export const useCompanyProfile = () => {
-  return useQuery({
-    queryKey: ["company-profile"],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+  const { user } = useAuth();
 
+  return useQuery({
+    queryKey: ["company-profile", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
       const { data, error } = await supabase
         .from("company_profiles")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", user!.id)
         .maybeSingle();
 
       if (error) throw error;

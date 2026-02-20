@@ -106,7 +106,7 @@ export function HeroSection() {
               </Link>
             </Button>
             <Button variant="glass" size="xl" asChild className="w-full sm:w-auto text-base px-8">
-              <Link to="/auth?mode=signup">
+              <Link to="/solutions">
                 See How It Works
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Link>

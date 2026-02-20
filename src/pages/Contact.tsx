@@ -1,7 +1,7 @@
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { motion } from "framer-motion";
-import { Mail, Phone, MapPin, Send } from "lucide-react";
+import { Mail, Clock, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -59,7 +59,7 @@ export default function Contact() {
                     <Mail className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground mb-1">Email</h3>
+                    <h3 className="font-semibold text-foreground mb-1">Email Us</h3>
                     <p className="text-muted-foreground">support@gcnavigator.com</p>
                     <p className="text-muted-foreground">sales@gcnavigator.com</p>
                   </div>
@@ -67,23 +67,12 @@ export default function Contact() {
 
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Phone className="w-5 h-5 text-primary" />
+                    <Clock className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground mb-1">Phone</h3>
-                    <p className="text-muted-foreground">+1 (800) 555-1234</p>
-                    <p className="text-sm text-muted-foreground">Mon-Fri 9am-6pm EST</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <MapPin className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-1">Office</h3>
-                    <p className="text-muted-foreground">123 Government Way</p>
-                    <p className="text-muted-foreground">Washington, DC 20001</p>
+                    <h3 className="font-semibold text-foreground mb-1">Response Time</h3>
+                    <p className="text-muted-foreground">We reply within 24 hours</p>
+                    <p className="text-sm text-muted-foreground">Mon–Fri, 9am–6pm EST</p>
                   </div>
                 </div>
               </div>

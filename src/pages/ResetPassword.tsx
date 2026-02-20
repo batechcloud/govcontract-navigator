@@ -8,6 +8,13 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+async function getRedirectPath(): Promise<string> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return "/dashboard";
+  const { data: profile } = await supabase.from("profiles").select("onboarding_completed").eq("id", user.id).maybeSingle();
+  return profile?.onboarding_completed ? "/dashboard" : "/onboarding";
+}
+
 export default function ResetPassword() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -48,10 +55,11 @@ export default function ResetPassword() {
 
       setIsSuccess(true);
       toast.success("Password updated successfully!");
-      
-      // Redirect to dashboard after 2 seconds
-      setTimeout(() => {
-        navigate("/dashboard");
+
+      // Redirect after 2 seconds, checking onboarding status
+      setTimeout(async () => {
+        const path = await getRedirectPath();
+        navigate(path);
       }, 2000);
     } catch (error: any) {
       toast.error(error.message || "Failed to update password");
