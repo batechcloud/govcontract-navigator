@@ -3,8 +3,6 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/hooks/useAuth";
-import { ProtectedRoute, PublicOnlyRoute } from "@/components/auth/ProtectedRoute";
 
 // Public pages
 import Index from "./pages/Index";
@@ -24,7 +22,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import CapabilityStatement from "./pages/CapabilityStatement";
 
-// Protected pages
+// Dashboard pages (no auth required for now)
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import SearchHub from "./pages/SearchHub";
@@ -48,71 +46,53 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<Index />} />
-            <Route path="/solutions" element={<Solutions />} />
-            <Route path="/docs" element={<Docs />} />
-            <Route path="/tutorials" element={<Tutorials />} />
-            <Route path="/blog" element={<Blog />} />
-            <Route path="/help" element={<Help />} />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/terms" element={<Terms />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/capability-statement" element={<CapabilityStatement />} />
-            <Route 
-              path="/auth" 
-              element={
-                <PublicOnlyRoute>
-                  <Auth />
-                </PublicOnlyRoute>
-              } 
-            />
-            
-            {/* Onboarding */}
-            <Route 
-              path="/onboarding" 
-              element={
-                <ProtectedRoute requireOnboarding={false}>
-                  <Onboarding />
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Protected dashboard routes */}
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/dashboard/search" element={<ProtectedRoute><SearchHub /></ProtectedRoute>} />
-            <Route path="/dashboard/tracked" element={<ProtectedRoute><TrackedContracts /></ProtectedRoute>} />
-            <Route path="/dashboard/journey" element={<ProtectedRoute><JourneyHub /></ProtectedRoute>} />
-            <Route path="/dashboard/company" element={<ProtectedRoute><CompanyProfile /></ProtectedRoute>} />
-            <Route path="/dashboard/analytics" element={<ProtectedRoute><CompetitorAnalysis /></ProtectedRoute>} />
-            <Route path="/dashboard/competitors" element={<ProtectedRoute><TrackedCompetitors /></ProtectedRoute>} />
-            <Route path="/dashboard/win-loss" element={<ProtectedRoute><WinLossAnalysis /></ProtectedRoute>} />
-            <Route path="/dashboard/saved-searches" element={<ProtectedRoute><SavedSearches /></ProtectedRoute>} />
-            <Route path="/dashboard/proposals" element={<ProtectedRoute><Proposals /></ProtectedRoute>} />
-            <Route path="/dashboard/proposals/generator" element={<ProtectedRoute><ProposalGenerator /></ProtectedRoute>} />
-            <Route path="/dashboard/ai" element={<ProtectedRoute><AIAssistant /></ProtectedRoute>} />
-            <Route path="/dashboard/documents" element={<ProtectedRoute><Documents /></ProtectedRoute>} />
-            <Route path="/dashboard/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
-            <Route path="/dashboard/teaming" element={<ProtectedRoute><TeamingPartners /></ProtectedRoute>} />
-            <Route path="/dashboard/market" element={<ProtectedRoute><MarketWatch /></ProtectedRoute>} />
-            <Route path="/dashboard/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-            
-            {/* Catch-all */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<Index />} />
+          <Route path="/solutions" element={<Solutions />} />
+          <Route path="/docs" element={<Docs />} />
+          <Route path="/tutorials" element={<Tutorials />} />
+          <Route path="/blog" element={<Blog />} />
+          <Route path="/help" element={<Help />} />
+          <Route path="/pricing" element={<Pricing />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/capability-statement" element={<CapabilityStatement />} />
+          <Route path="/auth" element={<Auth />} />
+          
+          {/* Dashboard routes (no auth for now) */}
+          <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard/search" element={<SearchHub />} />
+          <Route path="/dashboard/tracked" element={<TrackedContracts />} />
+          <Route path="/dashboard/journey" element={<JourneyHub />} />
+          <Route path="/dashboard/company" element={<CompanyProfile />} />
+          <Route path="/dashboard/analytics" element={<CompetitorAnalysis />} />
+          <Route path="/dashboard/competitors" element={<TrackedCompetitors />} />
+          <Route path="/dashboard/win-loss" element={<WinLossAnalysis />} />
+          <Route path="/dashboard/saved-searches" element={<SavedSearches />} />
+          <Route path="/dashboard/proposals" element={<Proposals />} />
+          <Route path="/dashboard/proposals/generator" element={<ProposalGenerator />} />
+          <Route path="/dashboard/ai" element={<AIAssistant />} />
+          <Route path="/dashboard/documents" element={<Documents />} />
+          <Route path="/dashboard/calendar" element={<Calendar />} />
+          <Route path="/dashboard/teaming" element={<TeamingPartners />} />
+          <Route path="/dashboard/market" element={<MarketWatch />} />
+          <Route path="/dashboard/settings" element={<Settings />} />
+          
+          {/* Catch-all */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    </TooltipProvider>
   </QueryClientProvider>
 );
 
