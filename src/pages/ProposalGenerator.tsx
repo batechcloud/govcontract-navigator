@@ -1,32 +1,62 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { motion } from "framer-motion";
-import { Sparkles, Search, FileText, ArrowRight, Loader2, Building2, CheckCircle2, AlertCircle } from "lucide-react";
+import {
+  Sparkles, Search, FileText, ArrowRight, Loader2, Building2,
+  CheckCircle2, AlertCircle, ChevronDown, Bookmark,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { useCompanyProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTrackedContracts } from "@/hooks/useTrackedContracts";
 
 export default function ProposalGenerator() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: companyProfile, isLoading: profileLoading } = useCompanyProfile();
+  const { data: trackedContracts = [] } = useTrackedContracts();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedProposalId, setGeneratedProposalId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     opportunityId: "",
     opportunityTitle: "",
+    agency: "",
     customInstructions: "",
   });
+
+  // Pre-fill from URL params (e.g. from Search Hub "Start Bid" or tracked contracts)
+  useEffect(() => {
+    const title = searchParams.get("title");
+    const oppId = searchParams.get("opportunityId");
+    const agency = searchParams.get("agency");
+    if (title || oppId || agency) {
+      setFormData(prev => ({
+        ...prev,
+        opportunityTitle: title ? decodeURIComponent(title) : prev.opportunityTitle,
+        opportunityId: oppId ? decodeURIComponent(oppId) : prev.opportunityId,
+        agency: agency ? decodeURIComponent(agency) : prev.agency,
+      }));
+    }
+  }, [searchParams]);
 
   // Fetch user documents count
   const { data: docsCount = 0 } = useQuery({
@@ -47,6 +77,16 @@ export default function ProposalGenerator() {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
+  const handleSelectTrackedContract = (contract: typeof trackedContracts[0]) => {
+    setFormData(prev => ({
+      ...prev,
+      opportunityId: contract.contract_id,
+      opportunityTitle: contract.contract_title,
+      agency: contract.contract_agency || "",
+    }));
+    toast.success(`Loaded: ${contract.contract_title}`);
+  };
+
   const handleGenerate = async () => {
     if (!formData.opportunityTitle) {
       toast.error("Please enter the opportunity title");
@@ -60,6 +100,7 @@ export default function ProposalGenerator() {
         body: {
           opportunityId: formData.opportunityId,
           opportunityTitle: formData.opportunityTitle,
+          agency: formData.agency,
           customInstructions: formData.customInstructions,
         },
       });
@@ -132,7 +173,7 @@ export default function ProposalGenerator() {
                 label="Business Documents"
                 ready={docsCount > 0}
                 detail={docsCount > 0 ? `${docsCount} document${docsCount > 1 ? "s" : ""} uploaded` : "None uploaded"}
-                link="/dashboard/company"
+                link="/dashboard/documents"
               />
               <DataSourceItem
                 label="Capabilities"
@@ -156,22 +197,60 @@ export default function ProposalGenerator() {
             transition={{ delay: 0.1 }}
           >
             <div className="space-y-6">
+
+              {/* Tracked Contract Picker */}
+              {trackedContracts.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Pick from Saved Contracts</Label>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="w-full justify-between font-normal text-muted-foreground">
+                        <span className="flex items-center gap-2">
+                          <Bookmark className="w-4 h-4" />
+                          {formData.opportunityTitle
+                            ? <span className="text-foreground truncate max-w-xs">{formData.opportunityTitle}</span>
+                            : "Select a tracked opportunity…"}
+                        </span>
+                        <ChevronDown className="w-4 h-4 shrink-0" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-64 overflow-y-auto bg-card border-border">
+                      <DropdownMenuLabel className="text-xs text-muted-foreground">Your tracked opportunities</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {trackedContracts.map((contract) => (
+                        <DropdownMenuItem
+                          key={contract.id}
+                          onClick={() => handleSelectTrackedContract(contract)}
+                          className="flex flex-col items-start gap-0.5 py-2 cursor-pointer"
+                        >
+                          <span className="text-sm font-medium text-foreground leading-snug line-clamp-2">
+                            {contract.contract_title}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {contract.contract_agency || "Unknown agency"}
+                            {contract.match_score ? ` · ${contract.match_score}% match` : ""}
+                          </span>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <p className="text-xs text-muted-foreground">Or fill in the fields below manually</p>
+                </div>
+              )}
+
               <div className="space-y-2">
-                <Label htmlFor="opportunityId">Opportunity ID (Optional)</Label>
+                <Label htmlFor="opportunityId">Opportunity / Solicitation ID (Optional)</Label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     id="opportunityId"
                     name="opportunityId"
-                    placeholder="Enter SAM.gov notice ID or search..."
+                    placeholder="e.g. N0001926R0018"
                     className="pl-10"
                     value={formData.opportunityId}
                     onChange={handleChange}
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Enter the opportunity ID for more targeted proposals
-                </p>
               </div>
 
               <div className="space-y-2">
@@ -179,10 +258,21 @@ export default function ProposalGenerator() {
                 <Input
                   id="opportunityTitle"
                   name="opportunityTitle"
-                  placeholder="e.g., IT Support Services for Department of Defense"
+                  placeholder="e.g. IT Support Services for Department of Defense"
                   value={formData.opportunityTitle}
                   onChange={handleChange}
                   required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="agency">Awarding Agency (Optional)</Label>
+                <Input
+                  id="agency"
+                  name="agency"
+                  placeholder="e.g. Department of Homeland Security"
+                  value={formData.agency}
+                  onChange={handleChange}
                 />
               </div>
 
@@ -191,19 +281,26 @@ export default function ProposalGenerator() {
                 <Textarea
                   id="customInstructions"
                   name="customInstructions"
-                  placeholder="Add any specific requirements, areas to emphasize, or contract details..."
-                  rows={4}
+                  placeholder="Add specific requirements, areas to emphasize, or any extra context about this contract…"
+                  rows={3}
                   value={formData.customInstructions}
                   onChange={handleChange}
                 />
               </div>
 
               <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
-                <h4 className="font-medium text-foreground mb-2">What AI will generate:</h4>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  {["Executive Summary", "Technical Approach", "Management Plan", "Past Performance Summary", "Pricing Strategy Notes", "Match Score"].map((item) => (
-                    <li key={item} className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 bg-primary rounded-full" />
+                <h4 className="font-medium text-foreground mb-2 text-sm">AI will generate all of these:</h4>
+                <ul className="grid sm:grid-cols-2 gap-x-4 gap-y-1">
+                  {[
+                    "Executive Summary",
+                    "Technical Approach",
+                    "Management Plan",
+                    "Past Performance Summary",
+                    "Pricing Strategy Notes",
+                    "Match Score",
+                  ].map((item) => (
+                    <li key={item} className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="w-1.5 h-1.5 bg-primary rounded-full shrink-0" />
                       {item}
                     </li>
                   ))}
@@ -212,13 +309,13 @@ export default function ProposalGenerator() {
 
               <Button
                 onClick={handleGenerate}
-                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground h-12"
-                disabled={isGenerating}
+                className="w-full h-12 bg-accent hover:bg-accent/90 text-accent-foreground font-semibold"
+                disabled={isGenerating || !formData.opportunityTitle.trim()}
               >
                 {isGenerating ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Generating Proposal — this may take 30-60 seconds...
+                    Generating — this may take 30–60 seconds…
                   </>
                 ) : (
                   <>
@@ -255,7 +352,7 @@ export default function ProposalGenerator() {
                   variant="outline"
                   onClick={() => {
                     setGeneratedProposalId(null);
-                    setFormData({ opportunityId: "", opportunityTitle: "", customInstructions: "" });
+                    setFormData({ opportunityId: "", opportunityTitle: "", agency: "", customInstructions: "" });
                   }}
                 >
                   Generate Another
