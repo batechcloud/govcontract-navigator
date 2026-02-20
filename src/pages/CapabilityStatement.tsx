@@ -33,28 +33,35 @@ export default function CapabilityStatement() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [autoFilled, setAutoFilled] = useState(false);
 
+  const fillFromProfile = () => {
+    if (!companyProfile) {
+      toast.error("No company profile found. Please complete your Company Profile first.");
+      return;
+    }
+    const pastPerf = Array.isArray(companyProfile.past_performance)
+      ? companyProfile.past_performance
+          .map((p: Record<string, unknown>) => `${p.project_name || p.title || ""} - ${p.description || ""}`.trim())
+          .filter(Boolean)
+          .join("\n")
+      : "";
+    setFormData(prev => ({
+      ...prev,
+      companyName: companyProfile.company_name || prev.companyName,
+      naicsCodes: companyProfile.naics_codes?.join(", ") || prev.naicsCodes,
+      coreCompetencies: companyProfile.capabilities?.join("\n") || prev.coreCompetencies,
+      certifications: companyProfile.certifications?.join(", ") || prev.certifications,
+      pastPerformance: pastPerf || prev.pastPerformance,
+      contactEmail: user?.email || prev.contactEmail,
+    }));
+    toast.success("Refreshed from your company profile!", { icon: <UserCheck className="w-4 h-4" /> });
+  };
+
   useEffect(() => {
     if (companyProfile && !autoFilled) {
-      const pastPerf = Array.isArray(companyProfile.past_performance)
-        ? companyProfile.past_performance
-            .map((p: Record<string, unknown>) => `${p.project_name || p.title || ""} - ${p.description || ""}`.trim())
-            .filter(Boolean)
-            .join("\n")
-        : "";
-
-      setFormData(prev => ({
-        ...prev,
-        companyName: companyProfile.company_name || prev.companyName,
-        naicsCodes: companyProfile.naics_codes?.join(", ") || prev.naicsCodes,
-        coreCompetencies: companyProfile.capabilities?.join("\n") || prev.coreCompetencies,
-        certifications: companyProfile.certifications?.join(", ") || prev.certifications,
-        pastPerformance: pastPerf || prev.pastPerformance,
-        contactEmail: user?.email || prev.contactEmail,
-      }));
+      fillFromProfile();
       setAutoFilled(true);
-      toast.success("Auto-filled from your company profile!", { icon: <UserCheck className="w-4 h-4" /> });
     }
-  }, [companyProfile, autoFilled, user]);
+  }, [companyProfile, autoFilled]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({
@@ -181,9 +188,17 @@ export default function CapabilityStatement() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
             >
-              <div className="flex items-center gap-3 mb-8">
-                <FileText className="w-6 h-6 text-primary" />
-                <h2 className="text-xl font-semibold text-foreground">Enter Your Company Information</h2>
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                  <FileText className="w-6 h-6 text-primary" />
+                  <h2 className="text-xl font-semibold text-foreground">Enter Your Company Information</h2>
+                </div>
+                {user && (
+                  <Button variant="outline" size="sm" onClick={fillFromProfile}>
+                    <UserCheck className="w-4 h-4 mr-2" />
+                    Refresh from Profile
+                  </Button>
+                )}
               </div>
 
               <div className="space-y-6">
