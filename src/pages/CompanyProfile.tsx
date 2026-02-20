@@ -34,6 +34,7 @@ import {
   Download,
   Eye,
 } from "lucide-react";
+import { NaicsCodeSelector } from "@/components/company/NaicsCodeSelector";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useCompanyProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
@@ -449,6 +450,13 @@ const CompanyProfile = () => {
                       placeholder="9-digit number"
                     />
                   </div>
+                </div>
+                <div className="space-y-2 pt-2">
+                  <Label>NAICS Codes</Label>
+                  <NaicsCodeSelector
+                    selected={formData.naics_codes}
+                    onChange={(codes) => setFormData(prev => ({ ...prev, naics_codes: codes }))}
+                  />
                 </div>
               </CardContent>
             </CollapsibleContent>
