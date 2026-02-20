@@ -35,6 +35,7 @@ import Proposals from "./pages/Proposals";
 import ProposalGenerator from "./pages/ProposalGenerator";
 import ProposalEditor from "./pages/ProposalEditor";
 import AIAssistant from "./pages/AIAssistant";
+import AIOpportunityChat from "./pages/AIOpportunityChat";
 import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient({
@@ -83,7 +84,8 @@ const App = () => (
             <Route path="/dashboard/proposals" element={<ProtectedRoute><ErrorBoundary><Proposals /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/dashboard/proposals/generator" element={<ProtectedRoute><ErrorBoundary><ProposalGenerator /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/dashboard/proposals/:id" element={<ProtectedRoute><ErrorBoundary><ProposalEditor /></ErrorBoundary></ProtectedRoute>} />
-            <Route path="/dashboard/ai" element={<ProtectedRoute><ErrorBoundary><AIAssistant /></ErrorBoundary></ProtectedRoute>} />
+             <Route path="/dashboard/ai" element={<ProtectedRoute><ErrorBoundary><AIAssistant /></ErrorBoundary></ProtectedRoute>} />
+             <Route path="/dashboard/ai/chat" element={<ProtectedRoute><ErrorBoundary><AIOpportunityChat /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/dashboard/settings" element={<ProtectedRoute><ErrorBoundary><Settings /></ErrorBoundary></ProtectedRoute>} />
             
             {/* Redirects from old routes */}
