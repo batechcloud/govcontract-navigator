@@ -37,6 +37,33 @@ const STATE_ABBREVIATIONS: Record<string, string> = {
   "Wisconsin": "WI", "Wyoming": "WY", "District of Columbia": "DC",
 };
 
+// Agency name abbreviation mapping for flexible matching
+const AGENCY_ABBREVIATIONS: Record<string, string[]> = {
+  "department of defense": ["dept of defense", "dod"],
+  "department of homeland security": ["dept of homeland security", "dhs"],
+  "department of veterans affairs": ["dept of veterans affairs", "va"],
+  "department of health and human services": ["dept of health and human services", "hhs"],
+  "department of energy": ["dept of energy", "doe"],
+  "department of education": ["dept of education", "ed"],
+  "department of justice": ["dept of justice", "doj"],
+  "department of labor": ["dept of labor", "dol"],
+  "department of state": ["dept of state", "dos"],
+  "department of the interior": ["dept of the interior", "doi"],
+  "department of the treasury": ["dept of the treasury", "treasury"],
+  "department of transportation": ["dept of transportation", "dot"],
+  "department of agriculture": ["dept of agriculture", "usda"],
+  "department of commerce": ["dept of commerce", "doc"],
+  "department of housing and urban development": ["dept of housing and urban development", "hud"],
+  "department of the navy": ["dept of the navy", "navy"],
+  "department of the army": ["dept of the army", "army"],
+  "department of the air force": ["dept of the air force", "air force"],
+  "general services administration": ["gsa"],
+  "national aeronautics and space administration": ["nasa"],
+  "environmental protection agency": ["epa"],
+  "small business administration": ["sba"],
+  "social security administration": ["ssa"],
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -83,9 +110,8 @@ serve(async (req) => {
     console.log("Searching SAM.gov with filters:", JSON.stringify(filters));
 
     // Build SAM.gov API query parameters
-    // When post-filtering is needed, fetch more results from offset 0 to ensure enough matches
-    const needsPostFilter = !!(filters.location || filters.min_value || filters.max_value ||
-      (filters.psc_codes && filters.psc_codes.length > 0) ||
+    // Post-filtering is only needed for agency and value range (not natively supported by SAM.gov)
+    const needsPostFilter = !!(filters.min_value || filters.max_value ||
       (filters.agencies && filters.agencies.length > 0));
     const fetchLimit = needsPostFilter ? Math.max(limit * 10, 200) : limit;
     const params = new URLSearchParams();
@@ -99,19 +125,18 @@ serve(async (req) => {
       params.append("q", filters.keywords.join(" "));
     }
     
-    // Add NAICS codes
+    // Add NAICS codes — SAM.gov v2 uses "ncode" parameter
     if (filters.naics_codes && filters.naics_codes.length > 0) {
-      params.append("naics", filters.naics_codes.join(","));
+      params.append("ncode", filters.naics_codes.join(","));
     }
 
-    // PSC codes — post-filter on results instead of polluting keyword query
-    // (SAM.gov v2 API does not have a native PSC filter parameter)
-    const pscFilter = filters.psc_codes && filters.psc_codes.length > 0 ? filters.psc_codes : null;
-    if (pscFilter) {
-      console.log("Will post-filter by PSC codes:", pscFilter.join(", "));
+    // Add PSC/classification codes — SAM.gov v2 uses "ccode" parameter natively
+    if (filters.psc_codes && filters.psc_codes.length > 0) {
+      params.append("ccode", filters.psc_codes.join(","));
+      console.log("Using native PSC filter (ccode):", filters.psc_codes.join(", "));
     }
     
-    // Add set-aside types
+    // Add set-aside types — SAM.gov v2 uses "typeOfSetAside" parameter
     if (filters.set_aside && filters.set_aside.length > 0) {
       const setAsideMapping: Record<string, string> = {
         "SDVOSB": "SDVOSBC",
@@ -121,7 +146,7 @@ serve(async (req) => {
         "Small Business": "SBP"
       };
       const codes = filters.set_aside.map((s: string) => setAsideMapping[s] || s).join(",");
-      params.append("setaside", codes);
+      params.append("typeOfSetAside", codes);
     }
     
     // Add location/state (place of performance state)
@@ -131,9 +156,9 @@ serve(async (req) => {
       console.log("Filtering by state:", filters.location, "→", stateCode);
     }
 
-    // Add opportunity type (notice type) filter
+    // Add opportunity type (notice type) filter — SAM.gov v2 uses "ptype" parameter
     if (filters.opportunity_type) {
-      const ntypeMapping: Record<string, string> = {
+      const ptypeMapping: Record<string, string> = {
         "Solicitation": "o",
         "Presolicitation": "p",
         "Sources Sought": "s",
@@ -142,10 +167,10 @@ serve(async (req) => {
         "Special Notice": "i",
         "Intent to Bundle": "r",
       };
-      const ntype = ntypeMapping[filters.opportunity_type];
-      if (ntype) {
-        params.append("ntype", ntype);
-        console.log("Filtering by notice type:", filters.opportunity_type, "→", ntype);
+      const ptype = ptypeMapping[filters.opportunity_type];
+      if (ptype) {
+        params.append("ptype", ptype);
+        console.log("Filtering by notice type:", filters.opportunity_type, "→", ptype);
       }
     }
 
@@ -208,24 +233,28 @@ serve(async (req) => {
 
     const results = transformSamResults(opportunities, filters);
 
-    // Post-filter by PSC codes
+    // Post-filter by agency on fullParentPathName (with abbreviation-aware matching)
     let filteredResults = results;
-    if (pscFilter) {
-      filteredResults = filteredResults.filter((r: any) => {
-        // Check if any of the opportunity's classification codes match the PSC filter
-        const oppPsc = r._rawPsc || [];
-        return pscFilter.some((code: string) =>
-          oppPsc.some((p: string) => p.startsWith(code) || code.startsWith(p))
-        );
-      });
-      console.log(`PSC post-filter: ${results.length} → ${filteredResults.length} results`);
-    }
-
-    // Post-filter by agency on fullParentPathName
     if (agencyFilter) {
       filteredResults = filteredResults.filter((r: any) => {
         const agencyPath = (r._rawAgencyPath || "").toLowerCase();
-        return agencyFilter.some((a: string) => agencyPath.includes(a.toLowerCase()));
+        return agencyFilter.some((a: string) => {
+          const searchTerm = a.toLowerCase();
+          // Direct match
+          if (agencyPath.includes(searchTerm)) return true;
+          // Check abbreviation variants
+          const variants = AGENCY_ABBREVIATIONS[searchTerm];
+          if (variants) {
+            return variants.some(v => agencyPath.includes(v));
+          }
+          // Reverse: check if any abbreviation key matches and the path contains a variant
+          for (const [key, vals] of Object.entries(AGENCY_ABBREVIATIONS)) {
+            if (vals.includes(searchTerm) || key === searchTerm) {
+              if (agencyPath.includes(key) || vals.some(v => agencyPath.includes(v))) return true;
+            }
+          }
+          return false;
+        });
       });
       console.log(`Agency post-filter: ${filteredResults.length} results after agency filter`);
     }
@@ -338,7 +367,7 @@ function transformSamResults(opportunities: any[], filters: SearchFilters) {
       solicitationNumber: opp.solicitationNumber || "",
       link: opp.uiLink || (opp.noticeId ? `https://sam.gov/opp/${opp.noticeId}/view` : "https://sam.gov"),
       // Internal fields for post-filtering (stripped before sending to client)
-      _rawPsc: opp.psc?.map((p: any) => p.code) || opp.classificationCode ? [opp.classificationCode] : [],
+      _rawPsc: opp.psc?.map((p: any) => p.code) || (opp.classificationCode ? [opp.classificationCode] : []),
       _rawAgencyPath: opp.fullParentPathName || "",
     };
   });
