@@ -52,6 +52,8 @@ import { useTrackContract, useTrackedContracts } from "@/hooks/useTrackedContrac
 import { useSmartSearch, useSaveSearch, SearchFilters, SearchResult } from "@/hooks/useSearch";
 import { toast } from "sonner";
 import { SECTOR_NAICS, SECTOR_CONFIG } from "@/config/sectors";
+import { useWinProbability, ContractScoreInput, ContractScoreResult } from "@/hooks/useWinProbability";
+import { WinScoreModal } from "@/components/search/WinScoreModal";
 
 const RESULTS_PER_PAGE = 10;
 
@@ -75,6 +77,27 @@ const SearchHub = () => {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [activeSector, setActiveSector] = useState<string | null>(null);
   const sectorSearchDone = useRef(false);
+
+  // Win probability scoring
+  const [scoreModalOpen, setScoreModalOpen] = useState(false);
+  const [scoreTarget, setScoreTarget] = useState<{ title: string; input: ContractScoreInput } | null>(null);
+  const winScore = useWinProbability();
+
+  const handleScoreContract = (result: SearchResult) => {
+    const input: ContractScoreInput = {
+      title: result.title,
+      agency: result.agency,
+      value: result.value,
+      setAside: result.setAside,
+      naicsCode: result.naicsCode,
+      deadline: result.deadline,
+      type: result.type,
+      description: result.description,
+    };
+    setScoreTarget({ title: result.title, input });
+    setScoreModalOpen(true);
+    winScore.mutate(input);
+  };
 
   // Advanced filters
   const [advNaics, setAdvNaics] = useState("");
@@ -754,6 +777,16 @@ const SearchHub = () => {
                               <MessageSquare className="w-4 h-4" />
                               Ask AI
                             </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleScoreContract(result)}
+                              disabled={winScore.isPending}
+                              className="gap-2 border-purple-400/40 text-purple-400 hover:bg-purple-400/10 hover:border-purple-400 hover:text-purple-400"
+                            >
+                              <Sparkles className="w-4 h-4" />
+                              Score This
+                            </Button>
                             {result.link && (
                               <Button variant="ghost" size="sm" onClick={() => window.open(result.link, '_blank')}>
                                 <ExternalLink className="w-4 h-4 mr-2" />
@@ -861,6 +894,15 @@ const SearchHub = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Win Score Modal */}
+      <WinScoreModal
+        open={scoreModalOpen}
+        onOpenChange={setScoreModalOpen}
+        contractTitle={scoreTarget?.title || ""}
+        result={winScore.data as ContractScoreResult || null}
+        isLoading={winScore.isPending}
+      />
     </DashboardLayout>
   );
 };

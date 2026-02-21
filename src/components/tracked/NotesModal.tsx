@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building2, Clock, StickyNote, Flag } from "lucide-react";
+import { Building2, Clock, StickyNote, Flag, Target } from "lucide-react";
 import { TrackedContract } from "@/hooks/useTrackedContracts";
 import { PIPELINE_STATUSES } from "./KanbanBoard";
+import { useWinProbability, ContractScoreResult } from "@/hooks/useWinProbability";
+import { WinScoreModal } from "@/components/search/WinScoreModal";
 
 const PRIORITIES = [
   { value: "high", label: "High", cls: "text-destructive" },
@@ -34,6 +36,8 @@ function getDaysLeft(deadline: string | null) {
 export function NotesModal({ contract, open, onOpenChange, onSave, saving }: Props) {
   const [notes, setNotes] = useState(contract?.notes || "");
   const [priority, setPriority] = useState(contract?.priority || "medium");
+  const [scoreOpen, setScoreOpen] = useState(false);
+  const winScore = useWinProbability();
 
   // Sync when contract changes
   const [prevId, setPrevId] = useState<string | null>(null);
@@ -43,12 +47,26 @@ export function NotesModal({ contract, open, onOpenChange, onSave, saving }: Pro
     setPriority(contract.priority || "medium");
   }
 
+  const handleAnalyzeFit = () => {
+    if (!contract) return;
+    winScore.mutate({
+      title: contract.contract_title,
+      agency: contract.contract_agency || undefined,
+      value: contract.contract_value || undefined,
+      setAside: contract.set_aside || undefined,
+      naicsCode: contract.naics_code || undefined,
+      deadline: contract.response_deadline || undefined,
+    });
+    setScoreOpen(true);
+  };
+
   if (!contract) return null;
 
   const deadline = getDaysLeft(contract.response_deadline);
   const statusLabel = PIPELINE_STATUSES.find(s => s.value === contract.status)?.label || contract.status;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg glass border-border/50">
         <DialogHeader>
@@ -106,7 +124,17 @@ export function NotesModal({ contract, open, onOpenChange, onSave, saving }: Pro
           />
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-col sm:flex-row gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleAnalyzeFit}
+            disabled={winScore.isPending}
+            className="gap-1.5 border-purple-400/40 text-purple-400 hover:bg-purple-400/10 sm:mr-auto"
+          >
+            <Target className="w-3.5 h-3.5" />
+            {winScore.isPending ? "Analyzing..." : "Analyze Fit"}
+          </Button>
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button size="sm" disabled={saving} onClick={() => onSave(contract.id, notes, priority)}>
             {saving ? "Saving..." : "Save"}
@@ -114,5 +142,14 @@ export function NotesModal({ contract, open, onOpenChange, onSave, saving }: Pro
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <WinScoreModal
+      open={scoreOpen}
+      onOpenChange={setScoreOpen}
+      contractTitle={contract.contract_title}
+      result={winScore.data as ContractScoreResult || null}
+      isLoading={winScore.isPending}
+    />
+    </>
   );
 }
