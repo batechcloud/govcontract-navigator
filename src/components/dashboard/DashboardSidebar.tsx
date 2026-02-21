@@ -12,6 +12,7 @@ import {
   LogOut,
   MessageSquare,
   Grid3X3,
+  BarChart3,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
@@ -21,6 +22,7 @@ const sidebarItems = [
   { icon: LayoutDashboard, label: "Home", href: "/dashboard" },
   { icon: Search, label: "Find Contracts", href: "/dashboard/search" },
   { icon: Grid3X3, label: "Browse Sectors", href: "/dashboard/sectors" },
+  { icon: BarChart3, label: "USASpending Intel", href: "/dashboard/usaspending" },
   { icon: Heart, label: "My Opportunities", href: "/dashboard/tracked" },
   { icon: FileText, label: "My Proposals", href: "/dashboard/proposals" },
   { icon: Sparkles, label: "AI Helper", href: "/dashboard/ai" },
