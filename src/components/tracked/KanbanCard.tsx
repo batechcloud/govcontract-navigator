@@ -2,7 +2,7 @@ import { Draggable } from "@hello-pangea/dnd";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, Building2, Trash2 } from "lucide-react";
+import { Clock, Building2, Trash2, StickyNote } from "lucide-react";
 import { TrackedContract } from "@/hooks/useTrackedContracts";
 
 const priorityColors: Record<string, string> = {
@@ -24,9 +24,10 @@ interface Props {
   contract: TrackedContract;
   index: number;
   onDelete: (id: string) => void;
+  onCardClick: (contract: TrackedContract) => void;
 }
 
-export function KanbanCard({ contract, index, onDelete }: Props) {
+export function KanbanCard({ contract, index, onDelete, onCardClick }: Props) {
   const deadline = getDaysLeft(contract.response_deadline);
 
   return (
@@ -38,7 +39,10 @@ export function KanbanCard({ contract, index, onDelete }: Props) {
           {...provided.dragHandleProps}
           className={`mb-2 ${snapshot.isDragging ? "opacity-80" : ""}`}
         >
-          <Card className={`glass border-border/40 transition-shadow ${snapshot.isDragging ? "shadow-lg ring-1 ring-primary/40" : ""}`}>
+          <Card
+            className={`glass border-border/40 transition-shadow cursor-pointer ${snapshot.isDragging ? "shadow-lg ring-1 ring-primary/40" : "hover:border-primary/30"}`}
+            onClick={() => onCardClick(contract)}
+          >
             <CardContent className="p-3 space-y-2">
               <p className="text-sm font-heading font-semibold text-foreground leading-snug line-clamp-2">
                 {contract.contract_title}
@@ -61,11 +65,16 @@ export function KanbanCard({ contract, index, onDelete }: Props) {
                 )}
               </div>
               <div className="flex items-center justify-between">
-                {contract.priority && (
-                  <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${priorityColors[contract.priority] || ""}`}>
-                    {contract.priority}
-                  </Badge>
-                )}
+                <div className="flex items-center gap-1">
+                  {contract.priority && (
+                    <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${priorityColors[contract.priority] || ""}`}>
+                      {contract.priority}
+                    </Badge>
+                  )}
+                  {contract.notes && (
+                    <StickyNote className="w-3 h-3 text-accent/60" />
+                  )}
+                </div>
                 <Button
                   variant="ghost"
                   size="icon"

@@ -16,9 +16,10 @@ interface Props {
   contracts: TrackedContract[];
   onStatusChange: (id: string, status: string) => void;
   onDelete: (id: string) => void;
+  onCardClick: (contract: TrackedContract) => void;
 }
 
-export function KanbanBoard({ contracts, onStatusChange, onDelete }: Props) {
+export function KanbanBoard({ contracts, onStatusChange, onDelete, onCardClick }: Props) {
   const columns: Record<string, TrackedContract[]> = {};
   PIPELINE_STATUSES.forEach(s => (columns[s.value] = []));
   contracts.forEach(c => {
@@ -65,6 +66,7 @@ export function KanbanBoard({ contracts, onStatusChange, onDelete }: Props) {
                         contract={contract}
                         index={index}
                         onDelete={onDelete}
+                        onCardClick={onCardClick}
                       />
                     ))}
                     {provided.placeholder}

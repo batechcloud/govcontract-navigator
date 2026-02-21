@@ -138,3 +138,29 @@ export const useUpdateContractStatus = () => {
     },
   });
 };
+
+export const useUpdateContractNotes = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ id, notes }: { id: string; notes: string }) => {
+      const { data, error } = await supabase
+        .from("tracked_contracts")
+        .update({ notes, updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tracked-contracts"] });
+      toast({ title: "Notes saved", description: "Your notes have been updated." });
+    },
+    onError: (error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+};
