@@ -1,5 +1,5 @@
 export const SECTOR_NAICS: Record<string, string[]> = {
-  technology:    ["5415", "5182", "5191", "5112", "5179"],
+  technology:    ["5415", "5182", "5132", "5192"],
   healthcare:    ["6211", "6212", "6216", "6219", "6221", "6231"],
   construction:  ["2361", "2362", "2371", "2372", "2381", "2382"],
   consulting:    ["5411", "5412", "5413", "5414", "5416", "5417"],
@@ -12,17 +12,17 @@ export const SECTOR_NAICS: Record<string, string[]> = {
   environment:   ["5629", "9241", "9281"],
   finance:       ["5221", "5231", "5241", "5251"],
   legal:         ["5411"],
-  marketing:     ["5418", "5191", "7111", "7113"],
+  marketing:     ["5418", "5192", "7111", "7113"],
   agriculture:   ["1111", "1112", "1113", "1114", "1119"],
   security:      ["5616", "9221", "9281"],
-  telecom:       ["5171", "5172", "5174", "5179"],
+  telecom:       ["5171", "5172", "5174", "5178"],
   admin:         ["5611", "5612", "5613", "5614", "5615"],
   hr_staffing:   ["5613", "6213"],
   research:      ["5417", "6117"],
   facilities:    ["5311", "5617", "8111"],
   social:        ["6241", "6242", "6243", "6244"],
-  data_analytics:["5415", "5182", "5191"],
-  scientific:    ["5417", "7132", "8099"],
+  data_analytics:["5415", "5182", "5192"],
+  scientific:    ["5417", "5414", "5419"],
 };
 
 export const SECTOR_CONFIG: Record<string, { label: string; icon: string }> = {
