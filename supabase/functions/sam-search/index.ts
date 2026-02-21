@@ -12,6 +12,7 @@ const SAM_API_BASE = "https://api.sam.gov/opportunities/v2/search";
 interface SearchFilters {
   keywords: string[];
   naics_codes: string[];
+  psc_codes: string[];
   set_aside: string[];
   agencies: string[];
   min_value: number | null;
@@ -98,6 +99,15 @@ serve(async (req) => {
     // Add NAICS codes
     if (filters.naics_codes && filters.naics_codes.length > 0) {
       params.append("naics", filters.naics_codes.join(","));
+    }
+
+    // Add PSC codes — SAM.gov doesn't have a native PSC filter,
+    // so we append them to the keyword query for relevance matching
+    if (filters.psc_codes && filters.psc_codes.length > 0) {
+      const existingQ = params.get("q") || "";
+      const pscKeywords = filters.psc_codes.join(" ");
+      params.set("q", existingQ ? `${existingQ} ${pscKeywords}` : pscKeywords);
+      console.log("Adding PSC codes to query:", filters.psc_codes.join(", "));
     }
     
     // Add set-aside types

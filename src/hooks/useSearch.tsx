@@ -7,6 +7,7 @@ import { toast } from "sonner";
 export interface SearchFilters {
   keywords: string[];
   naics_codes: string[];
+  psc_codes: string[];
   set_aside: string[];
   agencies: string[];
   min_value: number | null;
