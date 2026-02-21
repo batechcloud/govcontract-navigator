@@ -15,135 +15,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-
-const NAICS_GROUPS = [
-  {
-    label: "Construction",
-    codes: [
-      { code: "236210", desc: "Industrial Building Construction" },
-      { code: "236220", desc: "Commercial and Institutional Building Construction" },
-      { code: "237110", desc: "Water & Sewer Line Construction" },
-      { code: "237310", desc: "Highway, Street & Bridge Construction" },
-      { code: "238110", desc: "Poured Concrete Foundation & Structure" },
-      { code: "238210", desc: "Electrical Contractors" },
-      { code: "238220", desc: "Plumbing, Heating & Air-Conditioning" },
-    ],
-  },
-  {
-    label: "Manufacturing & Defense",
-    codes: [
-      { code: "332993", desc: "Ammunition Manufacturing" },
-      { code: "334111", desc: "Electronic Computer Manufacturing" },
-      { code: "334511", desc: "Search, Detection, Navigation Instruments" },
-      { code: "336411", desc: "Aircraft Manufacturing" },
-      { code: "336413", desc: "Other Aircraft Parts & Equipment" },
-      { code: "336414", desc: "Guided Missile & Space Vehicle Manufacturing" },
-      { code: "336992", desc: "Military Armored Vehicle Manufacturing" },
-    ],
-  },
-  {
-    label: "Wholesale & Logistics",
-    codes: [
-      { code: "423430", desc: "Computer Equipment Merchant Wholesalers" },
-      { code: "484110", desc: "General Freight Trucking, Local" },
-      { code: "484121", desc: "General Freight Trucking, Long-Distance" },
-      { code: "493110", desc: "General Warehousing & Storage" },
-    ],
-  },
-  {
-    label: "IT & Software",
-    codes: [
-      { code: "513210", desc: "Software Publishers" },
-      { code: "517111", desc: "Wired Telecommunications Carriers" },
-      { code: "517312", desc: "Wireless Telecommunications Carriers" },
-      { code: "518210", desc: "Data Processing & Hosting Services" },
-      { code: "519290", desc: "Web Search Portals & Other Information Services" },
-    ],
-  },
-  {
-    label: "Professional & Technical Services",
-    codes: [
-      { code: "541310", desc: "Architectural Services" },
-      { code: "541320", desc: "Landscape Architectural Services" },
-      { code: "541330", desc: "Engineering Services" },
-      { code: "541380", desc: "Testing Laboratories" },
-      { code: "541511", desc: "Custom Computer Programming Services" },
-      { code: "541512", desc: "Computer Systems Design Services" },
-      { code: "541513", desc: "Computer Facilities Management Services" },
-      { code: "541519", desc: "Other Computer Related Services" },
-      { code: "541611", desc: "Administrative Management Consulting" },
-      { code: "541612", desc: "Human Resources Consulting Services" },
-      { code: "541613", desc: "Marketing Consulting Services" },
-      { code: "541614", desc: "Process & Logistics Consulting Services" },
-      { code: "541618", desc: "Other Management Consulting Services" },
-      { code: "541620", desc: "Environmental Consulting Services" },
-      { code: "541690", desc: "Other Scientific & Technical Consulting" },
-      { code: "541715", desc: "R&D in Physical, Engineering & Life Sciences" },
-      { code: "541990", desc: "All Other Professional & Technical Services" },
-    ],
-  },
-  {
-    label: "Admin & Support",
-    codes: [
-      { code: "561210", desc: "Facilities Support Services" },
-      { code: "561320", desc: "Temporary Help Services" },
-      { code: "561612", desc: "Security Guards & Patrol Services" },
-      { code: "561621", desc: "Security Systems Services" },
-      { code: "561720", desc: "Janitorial Services" },
-    ],
-  },
-  {
-    label: "Environmental",
-    codes: [
-      { code: "562111", desc: "Solid Waste Collection" },
-      { code: "562211", desc: "Hazardous Waste Treatment & Disposal" },
-      { code: "562910", desc: "Remediation Services" },
-    ],
-  },
-  {
-    label: "Healthcare",
-    codes: [
-      { code: "611430", desc: "Professional & Management Development Training" },
-      { code: "621111", desc: "Offices of Physicians" },
-      { code: "621511", desc: "Medical Laboratories" },
-      { code: "621610", desc: "Home Health Care Services" },
-      { code: "621999", desc: "All Other Miscellaneous Health Services" },
-      { code: "622110", desc: "General Medical & Surgical Hospitals" },
-    ],
-  },
-  {
-    label: "Energy",
-    codes: [
-      { code: "221111", desc: "Hydroelectric Power Generation" },
-      { code: "221114", desc: "Solar Electric Power Generation" },
-      { code: "221118", desc: "Other Electric Power Generation" },
-    ],
-  },
-  {
-    label: "Agriculture & Food",
-    codes: [
-      { code: "111140", desc: "Wheat Farming" },
-      { code: "311812", desc: "Commercial Bakeries" },
-    ],
-  },
-  {
-    label: "Finance",
-    codes: [
-      { code: "522110", desc: "Commercial Banking" },
-      { code: "524210", desc: "Insurance Agencies & Brokerages" },
-    ],
-  },
-  {
-    label: "Maintenance & Repair",
-    codes: [{ code: "811212", desc: "Computer & Office Machine Repair" }],
-  },
-  {
-    label: "National Security",
-    codes: [{ code: "928110", desc: "National Security" }],
-  },
-];
-
-const ALL_NAICS = NAICS_GROUPS.flatMap((g) => g.codes);
+import { NAICS_GROUPS, ALL_NAICS } from "@/data/naicsCodes";
 
 interface NaicsCodeSelectorProps {
   selected: string[];
@@ -180,7 +52,7 @@ export function NaicsCodeSelector({ selected, onChange }: NaicsCodeSelectorProps
         <PopoverContent className="p-0 w-[360px]" align="start">
           <Command>
             <CommandInput placeholder="Search by code or industry..." />
-            <CommandList className="max-h-[300px]">
+            <CommandList className="max-h-[400px]">
               <CommandEmpty>No matching NAICS code found.</CommandEmpty>
               {NAICS_GROUPS.map((group) => {
                 const available = group.codes.filter((n) => !selected.includes(n.code));
