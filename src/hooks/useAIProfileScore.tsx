@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 export interface ProfileSuggestion {
   title: string;
@@ -22,12 +23,30 @@ export function useAIProfileScore() {
     queryFn: async (): Promise<ProfileScoreResult> => {
       const { data, error } = await supabase.functions.invoke("ai-profile-optimizer");
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (error) {
+        // Check for rate limit in the error response
+        if (error.message?.includes("429")) {
+          toast.error("AI is busy, please try again in a moment.");
+          throw new Error("rate_limited");
+        }
+        throw error;
+      }
+      if (data?.error) {
+        if (data.error.includes("busy")) {
+          toast.error("AI is busy, please try again in a moment.");
+          throw new Error("rate_limited");
+        }
+        throw new Error(data.error);
+      }
       return data as ProfileScoreResult;
     },
     enabled: !!session,
     staleTime: 30 * 60 * 1000,
-    retry: 1,
+    retry: (failureCount, error) => {
+      // Don't retry on rate limits
+      if (error?.message === "rate_limited") return false;
+      return failureCount < 1;
+    },
+    retryDelay: 5000,
   });
 }

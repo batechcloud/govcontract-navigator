@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 export interface AIRecommendation {
   id: string;
@@ -24,13 +25,29 @@ export function useAIRecommendations() {
     queryFn: async (): Promise<{ recommendations: AIRecommendation[]; message?: string; error?: string }> => {
       const { data, error } = await supabase.functions.invoke("ai-recommend-contracts");
 
-      if (error) throw error;
+      if (error) {
+        if (error.message?.includes("429")) {
+          toast.error("AI is busy, please try again in a moment.");
+          throw new Error("rate_limited");
+        }
+        throw error;
+      }
       if (data?.error === "no_profile") return { recommendations: [], message: data.message };
-      if (data?.error) throw new Error(data.error);
+      if (data?.error) {
+        if (data.error.includes("busy")) {
+          toast.error("AI is busy, please try again in a moment.");
+          throw new Error("rate_limited");
+        }
+        throw new Error(data.error);
+      }
       return data;
     },
     enabled: !!session,
-    staleTime: 30 * 60 * 1000, // 30 minutes
-    retry: 1,
+    staleTime: 30 * 60 * 1000,
+    retry: (failureCount, error) => {
+      if (error?.message === "rate_limited") return false;
+      return failureCount < 1;
+    },
+    retryDelay: 5000,
   });
 }
