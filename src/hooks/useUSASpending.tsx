@@ -218,37 +218,40 @@ export function useSpendingTrends(refreshKey: number) {
     queryKey: ["usa-trends", refreshKey],
     queryFn: async () => {
       const years = [2021, 2022, 2023, 2024, 2025];
-      const results = await Promise.all(
-        years.map(async (year) => {
-          const dates = getFiscalYearDates(`FY${year}`);
-          try {
-            const [allCount, sbCount] = await Promise.all([
-              postAPI("search/spending_by_award_count/", {
-                filters: {
-                  award_type_codes: ["A", "B", "C", "D"],
-                  time_period: [{ start_date: dates.start_date, end_date: dates.end_date }],
-                },
-              }).catch(() => null),
-              postAPI("search/spending_by_award_count/", {
-                filters: {
-                  award_type_codes: ["A", "B", "C", "D"],
-                  time_period: [{ start_date: dates.start_date, end_date: dates.end_date }],
-                  set_aside_type_codes: ["SBA", "8A", "WOSB", "HZC", "SDVOSBC", "VSA"],
-                },
-              }).catch(() => null),
-            ]);
-            const totalContracts = allCount?.results
-              ? Object.values(allCount.results as Record<string, number>).reduce((sum: number, v) => sum + (v as number), 0)
-              : 0;
-            const sbContracts = sbCount?.results
-              ? Object.values(sbCount.results as Record<string, number>).reduce((sum: number, v) => sum + (v as number), 0)
-              : 0;
-            return { year: `FY${year}`, totalContracts, sbContracts };
-          } catch {
-            return { year: `FY${year}`, totalContracts: 0, sbContracts: 0 };
-          }
-        })
-      );
+      const results: { year: string; totalContracts: number; sbContracts: number }[] = [];
+
+      // Fetch sequentially with small delays to avoid rate limiting
+      for (const year of years) {
+        const dates = getFiscalYearDates(`FY${year}`);
+        try {
+          const allCount = await postAPI("search/spending_by_award_count/", {
+            filters: {
+              award_type_codes: ["A", "B", "C", "D"],
+              time_period: [{ start_date: dates.start_date, end_date: dates.end_date }],
+            },
+          });
+          // Small delay to avoid rate limiting
+          await new Promise((r) => setTimeout(r, 150));
+          const sbCount = await postAPI("search/spending_by_award_count/", {
+            filters: {
+              award_type_codes: ["A", "B", "C", "D"],
+              time_period: [{ start_date: dates.start_date, end_date: dates.end_date }],
+              set_aside_type_codes: ["SBA", "8A", "WOSB", "HZC", "SDVOSBC", "VSA"],
+            },
+          });
+          await new Promise((r) => setTimeout(r, 150));
+
+          const totalContracts = allCount?.results
+            ? Object.values(allCount.results as Record<string, number>).reduce((sum: number, v) => sum + (v as number), 0)
+            : 0;
+          const sbContracts = sbCount?.results
+            ? Object.values(sbCount.results as Record<string, number>).reduce((sum: number, v) => sum + (v as number), 0)
+            : 0;
+          results.push({ year: `FY${year}`, totalContracts, sbContracts });
+        } catch {
+          results.push({ year: `FY${year}`, totalContracts: 0, sbContracts: 0 });
+        }
+      }
       return results;
     },
     staleTime: 10 * 60 * 1000,
