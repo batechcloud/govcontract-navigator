@@ -64,16 +64,14 @@ export const ComparisonSection = () => {
           className="max-w-5xl mx-auto"
         >
           {/* Table Header */}
-          <div className="grid grid-cols-3 gap-4 mb-4">
-            <div className="hidden md:block" />
-            <div className="col-span-3 md:col-span-1 grid grid-cols-2 gap-4 md:contents">
-              <div className="glass rounded-xl p-4 text-center border border-destructive/30 bg-destructive/5">
-                <span className="text-lg font-heading font-semibold text-destructive">Without GC Navigator</span>
-              </div>
-              <div className="glass rounded-xl p-4 text-center border border-success/30 bg-success/5 relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-accent/10" />
-                <span className="text-lg font-heading font-semibold text-success relative z-10">With GC Navigator</span>
-              </div>
+          <div className="hidden md:grid grid-cols-3 gap-4 mb-4">
+            <div />
+            <div className="glass rounded-xl p-4 text-center border border-destructive/30 bg-destructive/5">
+              <span className="text-lg font-heading font-semibold text-destructive">Without GC Navigator</span>
+            </div>
+            <div className="glass rounded-xl p-4 text-center border border-success/30 bg-success/5 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-accent/10" />
+              <span className="text-lg font-heading font-semibold text-success relative z-10">With GC Navigator</span>
             </div>
           </div>
 

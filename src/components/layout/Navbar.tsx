@@ -99,7 +99,7 @@ export function Navbar() {
           </Link>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-6 lg:gap-8">
+          <div className="hidden lg:flex items-center gap-6 xl:gap-8">
             {navLinks.map((link) => (
               <Link 
                 key={link.to}
@@ -130,7 +130,7 @@ export function Navbar() {
           </div>
 
           {/* Desktop CTA */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden lg:flex items-center gap-3">
             <Button variant="ghost" size="sm" asChild>
               <Link to="/auth">Sign In</Link>
             </Button>
@@ -141,7 +141,7 @@ export function Navbar() {
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden p-2 text-foreground hover:bg-secondary/50 rounded-lg transition-colors"
+            className="lg:hidden p-2 text-foreground hover:bg-secondary/50 rounded-lg transition-colors"
             onClick={() => setIsOpen(!isOpen)}
             aria-label={isOpen ? "Close menu" : "Open menu"}
             aria-expanded={isOpen}
@@ -180,7 +180,7 @@ export function Navbar() {
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="md:hidden overflow-hidden"
+              className="lg:hidden overflow-hidden"
             >
               <div className="py-4 border-t border-border/50">
                 <div className="flex flex-col gap-1">
