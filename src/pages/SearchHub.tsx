@@ -54,6 +54,7 @@ import { toast } from "sonner";
 import { SECTOR_NAICS, SECTOR_CONFIG } from "@/config/sectors";
 import { useWinProbability, ContractScoreInput, ContractScoreResult } from "@/hooks/useWinProbability";
 import { NaicsCodeSelector } from "@/components/company/NaicsCodeSelector";
+import { PscCodeSelector } from "@/components/company/PscCodeSelector";
 import { WinScoreModal } from "@/components/search/WinScoreModal";
 import { useCompanyProfile } from "@/hooks/useProfile";
 
@@ -105,7 +106,7 @@ const SearchHub = () => {
 
   // Advanced filters
   const [advNaics, setAdvNaics] = useState<string[]>([]);
-  const [advPsc, setAdvPsc] = useState("");
+  const [advPsc, setAdvPsc] = useState<string[]>([]);
   const [advMinValue, setAdvMinValue] = useState("");
   const [advMaxValue, setAdvMaxValue] = useState("");
   const [advAgency, setAdvAgency] = useState("");
@@ -113,27 +114,9 @@ const SearchHub = () => {
   const [advState, setAdvState] = useState("");
   const [advType, setAdvType] = useState("");
 
-  const hasAdvancedFilters = !!(advNaics.length > 0 || advPsc || advMinValue || advMaxValue || advAgency || advDeadline || advState || advType);
+  const hasAdvancedFilters = !!(advNaics.length > 0 || advPsc.length > 0 || advMinValue || advMaxValue || advAgency || advDeadline || advState || advType);
 
 
-  const pscOptions = [
-    { value: "D302", label: "D302 — IT Systems Development" },
-    { value: "D307", label: "D307 — IT Network Support" },
-    { value: "D308", label: "D308 — IT Programming Services" },
-    { value: "D310", label: "D310 — IT Cyber Security" },
-    { value: "D318", label: "D318 — IT Integrated Solutions" },
-    { value: "D399", label: "D399 — Other IT/Telecom Services" },
-    { value: "R408", label: "R408 — Program Management" },
-    { value: "R425", label: "R425 — Engineering & Technical" },
-    { value: "R497", label: "R497 — Medical & Health" },
-    { value: "R707", label: "R707 — Consulting & Program Mgmt" },
-    { value: "S206", label: "S206 — Guard Services" },
-    { value: "U001", label: "U001 — Education & Training" },
-    { value: "Y1DA", label: "Y1DA — Construction of Office Buildings" },
-    { value: "Z1DA", label: "Z1DA — Maintenance of Office Buildings" },
-    { value: "7030", label: "7030 — ADP Software" },
-    { value: "6515", label: "6515 — Medical Instruments" },
-  ];
 
   const agencyOptions = [
     "Department of Defense",
@@ -189,7 +172,7 @@ const SearchHub = () => {
 
   const clearAdvancedFilters = () => {
     setAdvNaics([]);
-    setAdvPsc("");
+    setAdvPsc([]);
     setAdvMinValue("");
     setAdvMaxValue("");
     setAdvAgency("");
@@ -221,7 +204,7 @@ const SearchHub = () => {
     return {
       keywords: searchQuery.trim() ? searchQuery.trim().split(/\s+/) : [],
       naics_codes: advNaics,
-      psc_codes: advPsc ? [advPsc] : [],
+      psc_codes: advPsc,
       set_aside: quickSetAsides,
       agencies: advAgency ? [advAgency] : [],
       min_value: advMinValue ? parseInt(advMinValue) : null,
@@ -333,7 +316,7 @@ const SearchHub = () => {
     const combinedFilters: SearchFilters & { deadline_before?: string } = {
       keywords: searchQuery.trim() ? searchQuery.trim().split(/\s+/) : [],
       naics_codes: advNaics,
-      psc_codes: advPsc ? [advPsc] : [],
+      psc_codes: advPsc,
       set_aside: quickSetAsides,
       agencies: advAgency ? [advAgency] : [],
       min_value: advMinValue ? parseInt(advMinValue) : null,
@@ -599,52 +582,9 @@ const SearchHub = () => {
                     </div>
 
                     {/* PSC Code */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-xs text-muted-foreground">PSC Code</Label>
-                        {profilePscCodes.length > 0 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-5 text-[10px] text-accent hover:text-accent/80 px-1.5 py-0"
-                            onClick={() => {
-                              setAdvPsc(profilePscCodes[0]);
-                              toast.success(`Applied PSC ${profilePscCodes[0]} from your profile`);
-                            }}
-                          >
-                            Use My Profile ({profilePscCodes.length})
-                          </Button>
-                        )}
-                      </div>
-                      <Select value={advPsc || "any"} onValueChange={(val) => setAdvPsc(val === "any" ? "" : val)}>
-                        <SelectTrigger className="h-9 text-sm bg-card border-border">
-                          <SelectValue placeholder="Any PSC" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-card border-border z-50 max-h-60">
-                          <SelectItem value="any">Any PSC</SelectItem>
-                          {profilePscCodes.length > 0 && (
-                            <>
-                              <SelectItem value="__profile_header" disabled className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
-                                From Your Profile
-                              </SelectItem>
-                              {profilePscCodes.map(code => {
-                                const match = pscOptions.find(p => p.value === code);
-                                return (
-                                  <SelectItem key={`profile-${code}`} value={code}>
-                                    {match ? match.label : code}
-                                  </SelectItem>
-                                );
-                              })}
-                              <SelectItem value="__all_header" disabled className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
-                                All PSC Codes
-                              </SelectItem>
-                            </>
-                          )}
-                          {pscOptions.map(p => (
-                            <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
+                      <Label className="text-xs text-muted-foreground">PSC Code</Label>
+                      <PscCodeSelector selected={advPsc} onChange={setAdvPsc} />
                     </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
