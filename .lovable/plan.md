@@ -1,139 +1,81 @@
-
-
-# Expand PSC Code Database to Full GSA Manual (2,500+ Codes)
+# Contract Detail Page
 
 ## Overview
-The current PSC selector contains only 60 hand-picked codes as a flat list. The official GSA PSC Manual (April 2024) defines 2,500+ active codes organized into 4 major sections and dozens of categories. This upgrade will mirror the architecture used for the NAICS code expansion: a dedicated data file with grouped categories, imported by a shared component used in both the Company Profile and Search Hub Advanced Filters.
 
-## Current State vs. Target
+Add a dedicated in-app contract detail page so that clicking any contract title -- in Search results, My Opportunities (Kanban/List), Dashboard, or anywhere else -- opens a rich detail view within the app instead of redirecting to SAM.gov. The SAM.gov link will remain available as a secondary action on the detail page.
 
-| Metric | Current | Target |
-|--------|---------|--------|
-| Total PSC codes | 60 | ~2,500+ |
-| Categories | 12 (informal comments) | 40+ official categories |
-| Data structure | Flat array in component | Grouped by category in data file |
-| Sections covered | Partial D, R, J, S, U, V, W, Y, Z, some products | All 4 sections: R&D (A), IT (D), Services (B-Z), Products (numeric) |
+## What You'll Get
 
-## PSC Manual Structure (4 Sections)
+- A new `/dashboard/contract/:contractId` page with full contract details
+- Clickable contract titles everywhere in the app (search results, Kanban cards, list view, dashboard)
+- Contract detail page showing: title, agency, value, deadline countdown, set-aside type, document and attachment for that contract (if any), NAICS code, description, solicitation number, status, priority, notes, and a link to SAM.gov
+- Action buttons on the detail page: Start Bid, Save/Track, Ask AI, Score This, View on SAM.gov
+- For tracked contracts: editable notes, priority, and status directly on the detail page
 
-**Section A -- Research and Development (R&D) Codes (~155 codes)**
-- AA: Agriculture R&D
-- AB: Community and Regional Development R&D
-- AC: National Defense R&D
-- AF: Education, Training, Employment R&D
-- AG: Energy R&D
-- AH: Natural Resources and Environment R&D
-- AJ: General Science and Technology R&D
-- AK: Commerce and Housing Credit R&D
-- AL: Income Security R&D
-- AM: International Affairs R&D
-- AN: Health R&D
-- AR: Space R&D
-- AS: Transportation R&D
+## Pages and Components Affected
 
-Each major area has sub-areas, each with 5 stages (Basic Research, Applied Research, Experimental Development, Admin Expenses, Facilities/Equipment).
+### New Files
 
-**Section B -- IT Service Codes (~40 codes)**
-- DA: Application
-- DB: IT Security
-- DC: Data Center
-- DD: Delivery
-- DE: End User
-- DF: IT Management
-- DG: Network
-- DH: Platform
-- DJ: Compute
-- DK: Analytics/Statistics
+1. `**src/pages/ContractDetail.tsx**` -- Full-page contract detail view with:
+  - Contract header (title, agency, badges for type/set-aside)
+  - Key metrics row (value, deadline with countdown, location, NAICS, solicitation number)
+  - Full description section
+  - Action buttons (Start Bid, Save, Ask AI, Score, View on SAM.gov)
+  - For tracked contracts: inline notes editor, priority selector, status selector
+  - Data source indicator
 
-**Section C -- General Service Codes (~1,500+ codes)**
-- B: Special Studies/Analysis
-- C: Architect and Engineering Services
-- E: Purchase of Structures/Facilities
-- F: Natural Resources Management
-- G: Social Services
-- H: Quality Control, Testing, and Inspection (largest -- H1xx, H2xx, H3xx, H9xx sub-categories)
-- J: Maintenance, Repair, and Rebuilding of Equipment
-- K: Modification of Equipment
-- L: Technical Representative
-- M: Operation of Structures/Facilities
-- N: Installation of Equipment
-- P: Salvage
-- Q: Medical Services
-- R: Professional/Administrative/Management Support
-- S: Utilities and Housekeeping
-- T: Photo/Map/Print/Publication
-- U: Education/Training
-- V: Transportation/Travel/Relocation
-- W: Lease/Rental of Equipment (legacy codes)
-- X: Lease/Rental of Structures/Facilities
-- Y: Construction of Structures/Facilities
-- Z: Maintenance, Repair, Alteration of Structures/Facilities
+### Modified Files
 
-**Section D -- Product Codes (~800+ codes)**
-- Numeric 4-digit codes organized by Federal Supply Class (FSC)
-- Examples: 10xx Weapons, 15xx Aircraft, 58xx Communication Equipment, 65xx Medical, 70xx IT Equipment, 75xx Office Supplies, 89xx Food
-
-## Changes
-
-### 1. Create `src/data/pscCodes.ts` -- New File
-A comprehensive data file containing all active PSC codes from the April 2024 manual, organized into groups matching the official category structure.
-
-```text
-Export: PSC_GROUPS: Array<{ label: string; codes: Array<{ code: string; desc: string }> }>
-Export: ALL_PSC: flattened array of all codes
-~2,500+ PSC codes across 40+ category groups
-```
-
-The groups will use clear labels like:
-- "Section A: Agriculture R&D (AA)"
-- "Section B: IT -- Application (DA)"
-- "Section C: Special Studies/Analysis (B5)"
-- "Section C: Architect & Engineering (C1/C2)"
-- "Section C: Quality Control (H1)"
-- "Section D: Weapons (10xx)"
-- etc.
-
-End-dated codes (Q506, Q512, Q526, and the 721 legacy R&D codes from V1.5) will be excluded.
-
-### 2. Update `src/components/company/PscCodeSelector.tsx`
-- Remove the inline `PSC_CODES` constant (60 codes)
-- Import `PSC_GROUPS` and `ALL_PSC` from `@/data/pscCodes`
-- Switch from a flat `CommandGroup` to grouped `CommandGroup` per category (same pattern as NAICS selector)
-- Increase `PopoverContent` width to `480px` (matching NAICS)
-- Increase `CommandList` max-height to `400px`
-- Add scrollbar styling and bottom fade gradient indicator
-- Use `ALL_PSC` for the `getLabel` lookup function
-
-### 3. No changes needed to SearchHub
-The Search Hub already imports and uses `PscCodeSelector` as a shared component. It will automatically receive the expanded code list.
+2. `**src/App.tsx**` -- Add route: `/dashboard/contract/:contractId`
+3. `**src/pages/SearchHub.tsx**` -- Make contract titles clickable links to `/dashboard/contract/:id`, passing result data via router state
+4. `**src/components/tracked/KanbanCard.tsx**` -- Make title a clickable link to the detail page
+5. `**src/components/tracked/ListView.tsx**` -- Make title a clickable link to the detail page
+6. `**src/components/dashboard/OpportunityCard.tsx**` -- Make title a clickable link
+7. `**src/pages/Dashboard.tsx**` -- Make deadline contract titles clickable if they appear
 
 ## Technical Details
 
-```text
-New file:
-  src/data/pscCodes.ts
-    - Exports PSC_GROUPS: grouped array with ~40+ categories
-    - Exports ALL_PSC: flat array of all ~2,500+ codes
-    - Data extracted from GSA PSC Manual FY2024 (April 2024)
+### Data Flow
 
-Modified file:
-  src/components/company/PscCodeSelector.tsx
-    - Remove inline PSC_CODES constant
-    - Import { PSC_GROUPS, ALL_PSC } from "@/data/pscCodes"
-    - Render grouped CommandGroups with category headers
-    - Widen dropdown to 480px, increase max-height to 400px
-    - Add scrollbar styling and gradient fade indicator
-    - Update getLabel to use ALL_PSC for lookups
+- **From Search results**: Contract data is passed via React Router's `state` prop (since search results aren't persisted in the database). The detail page reads `location.state` to display the contract.
+- **From Tracked Contracts**: The page fetches the contract from the `tracked_contracts` table using the contract ID from the URL. This provides persisted notes, priority, and status.
+- **Fallback**: If no state and no tracked contract found, show a "Contract not found" message with a link back to search.
+
+### URL Structure
+
+```text
+/dashboard/contract/:contractId
 ```
 
-## Performance Considerations
-- The `cmdk` Command component handles large datasets efficiently with client-side filtering
-- Grouping into ~40+ categories helps users navigate without scrolling through 2,500 items
-- The dataset is ~200KB which loads instantly as part of the JS bundle
-- Same proven approach as the NAICS expansion (1,057 codes working well)
+Where `contractId` is the SAM.gov notice ID (e.g., `abc123def...`) or the tracked_contracts table `id`.
 
-## Impact
-- Both the Company Profile (/dashboard/company) PSC selector and the Search Hub (/dashboard/search) Advanced Filters PSC selector will show the complete GSA code set
-- Users can search across all 2,500+ codes by code or description
-- Codes are organized by official GSA categories for easy browsing
+### Contract Detail Page Layout
 
+```text
++------------------------------------------+
+| < Back to Search / My Opportunities      |
++------------------------------------------+
+| [Solicitation] [Full & Open] [SDVOSB]    |
+|                                          |
+| Contract Title (large heading)           |
+| Agency Name                              |
++------------------------------------------+
+| $4.2M  |  12 days left  |  VA  |  5415  |
++------------------------------------------+
+| Description                              |
+| (full text, not truncated)               |
++------------------------------------------+
+| Solicitation #: W912AB-24-R-0001         |
+| Posted: Jan 15, 2026                     |
+| Source: SAM.gov                          |
++------------------------------------------+
+| [Start Bid] [Save] [Ask AI] [Score]      |
+|                    [View on SAM.gov ->]   |
++------------------------------------------+
+| Notes & Tracking (if saved)              |
+| Priority: [High/Med/Low]                 |
+| Status: [Watching/Qualifying/...]        |
+| Notes: [editable textarea]              |
+| [Save Changes]                           |
++------------------------------------------+
+```
