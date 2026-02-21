@@ -1,4 +1,5 @@
 import { Draggable } from "@hello-pangea/dnd";
+import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -44,9 +45,13 @@ export function KanbanCard({ contract, index, onDelete, onCardClick }: Props) {
             onClick={() => onCardClick(contract)}
           >
             <CardContent className="p-3 space-y-2">
-              <p className="text-sm font-heading font-semibold text-foreground leading-snug line-clamp-2">
+              <Link
+                to={`/dashboard/contract/${contract.contract_id}`}
+                className="text-sm font-heading font-semibold text-foreground leading-snug line-clamp-2 hover:text-primary hover:underline transition-colors block"
+                onClick={(e) => e.stopPropagation()}
+              >
                 {contract.contract_title}
-              </p>
+              </Link>
               {contract.contract_agency && (
                 <p className="text-[11px] text-muted-foreground flex items-center gap-1 truncate">
                   <Building2 className="w-3 h-3 shrink-0" />

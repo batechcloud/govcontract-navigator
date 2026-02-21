@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -752,7 +752,15 @@ const SearchHub = () => {
                           </div>
 
                           {/* Title & Agency */}
-                          <h3 className="font-heading font-semibold text-lg text-foreground">{result.title}</h3>
+                          <h3 className="font-heading font-semibold text-lg text-foreground">
+                            <Link
+                              to={`/dashboard/contract/${result.id}`}
+                              state={{ contractData: result }}
+                              className="hover:text-primary hover:underline transition-colors"
+                            >
+                              {result.title}
+                            </Link>
+                          </h3>
                           <p className="text-sm text-muted-foreground flex items-center gap-2">
                             <Building2 className="w-4 h-4" />
                             {result.agency}
