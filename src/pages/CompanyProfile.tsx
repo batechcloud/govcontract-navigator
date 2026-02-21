@@ -256,7 +256,7 @@ const CompanyProfile = () => {
           naics_codes: formData.naics_codes,
           certifications: formData.certifications,
           capabilities: formData.capabilities,
-        });
+        }, { onConflict: "user_id" });
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["company-profile"] });
       toast({ title: "Saved!", description: "Your business profile has been updated." });
