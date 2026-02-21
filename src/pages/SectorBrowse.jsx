@@ -166,6 +166,7 @@ export default function SectorBrowse() {
       {!isLoading && contracts.length > 0 && (() => {
         const chartData = sectors
           .map(([key, cfg]) => ({
+            sectorKey: key,
             name: cfg.label,
             value: counts[key] || 0,
             color: SECTOR_COLORS[key] || "hsl(var(--muted-foreground))",
@@ -173,6 +174,10 @@ export default function SectorBrowse() {
           }))
           .filter(d => d.value > 0)
           .sort((a, b) => b.value - a.value);
+
+        const handleChartClick = (data) => {
+          if (data?.sectorKey) handleSectorClick(data.sectorKey);
+        };
 
         return (
           <div className="max-w-7xl mx-auto mb-10">
@@ -196,7 +201,7 @@ export default function SectorBrowse() {
                       strokeWidth={2}
                     >
                       {chartData.map((entry, i) => (
-                        <Cell key={i} fill={entry.color} />
+                        <Cell key={i} fill={entry.color} className="cursor-pointer" onClick={() => handleChartClick(entry)} />
                       ))}
                     </Pie>
                     <Tooltip
@@ -248,7 +253,7 @@ export default function SectorBrowse() {
                       }}
                       formatter={(value) => [`${value} contracts`]}
                     />
-                    <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]} className="cursor-pointer" onClick={(data) => handleChartClick(data)}>
                       {chartData.slice(0, 10).map((entry, i) => (
                         <Cell key={i} fill={entry.color} />
                       ))}
