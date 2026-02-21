@@ -71,7 +71,7 @@ Certifications: ${profile.certifications?.length || 0} (${profile.certifications
 Capabilities: ${profile.capabilities?.length || 0} listed
 SAM UEI: ${profile.sam_uei || "Not set"}
 CAGE Code: ${profile.cage_code || "Not set"}
-DUNS: ${profile.duns_number || "Not set"}
+DUNS (deprecated - replaced by SAM UEI): ${profile.duns_number || "Not set"}
 Employees: ${profile.employee_count || "Not set"}
 Revenue: ${profile.annual_revenue || "Not set"}
 Year Founded: ${profile.year_founded || "Not set"}
@@ -84,7 +84,7 @@ Contract Types: ${profile.contract_types?.length || 0}`;
       messages: [
         {
           role: "system",
-          content: "You are a government contracting advisor. Analyze this company profile for completeness and readiness to win federal contracts. Score it 0-100 and give specific, actionable suggestions.",
+          content: "You are a government contracting advisor. Analyze this company profile for completeness and readiness to win federal contracts. Score it 0-100 and give specific, actionable suggestions. IMPORTANT: Do NOT suggest registering a DUNS number — DUNS numbers are deprecated and replaced by SAM UEI. Focus on SAM UEI, CAGE code, NAICS codes, certifications, capabilities, and past performance instead.",
         },
         {
           role: "user",
