@@ -505,12 +505,12 @@ const SearchHub = () => {
                     {/* NAICS Code */}
                     <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">NAICS Code</Label>
-                      <Select value={advNaics} onValueChange={setAdvNaics}>
+                      <Select value={advNaics || "any"} onValueChange={(val) => setAdvNaics(val === "any" ? "" : val)}>
                         <SelectTrigger className="h-9 text-sm bg-card border-border">
                           <SelectValue placeholder="Any industry" />
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border z-50">
-                          <SelectItem value="">Any industry</SelectItem>
+                          <SelectItem value="any">Any industry</SelectItem>
                           {naicsOptions.map(n => (
                             <SelectItem key={n.value} value={n.value}>{n.label}</SelectItem>
                           ))}
@@ -522,9 +522,9 @@ const SearchHub = () => {
                     <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">Contract Value</Label>
                       <Select
-                        value={advMinValue && advMaxValue ? `${advMinValue}|${advMaxValue}` : advMinValue ? `${advMinValue}|` : advMaxValue ? `|${advMaxValue}` : ""}
+                        value={advMinValue || advMaxValue ? `${advMinValue}|${advMaxValue}` : "any"}
                         onValueChange={(val) => {
-                          if (!val) { setAdvMinValue(""); setAdvMaxValue(""); return; }
+                          if (val === "any") { setAdvMinValue(""); setAdvMaxValue(""); return; }
                           const [mn, mx] = val.split("|");
                           setAdvMinValue(mn || "");
                           setAdvMaxValue(mx || "");
@@ -534,7 +534,7 @@ const SearchHub = () => {
                           <SelectValue placeholder="Any value" />
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border z-50">
-                          <SelectItem value="">Any value</SelectItem>
+                          <SelectItem value="any">Any value</SelectItem>
                           {valueRanges.map(r => (
                             <SelectItem key={r.label} value={`${r.min}|${r.max}`}>{r.label}</SelectItem>
                           ))}
@@ -545,12 +545,12 @@ const SearchHub = () => {
                     {/* Agency */}
                     <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">Agency</Label>
-                      <Select value={advAgency} onValueChange={setAdvAgency}>
+                      <Select value={advAgency || "any"} onValueChange={(val) => setAdvAgency(val === "any" ? "" : val)}>
                         <SelectTrigger className="h-9 text-sm bg-card border-border">
                           <SelectValue placeholder="Any agency" />
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border z-50">
-                          <SelectItem value="">Any agency</SelectItem>
+                          <SelectItem value="any">Any agency</SelectItem>
                           {agencyOptions.map(a => (
                             <SelectItem key={a} value={a}>{a}</SelectItem>
                           ))}
@@ -561,12 +561,12 @@ const SearchHub = () => {
                     {/* Response Deadline */}
                     <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">Deadline</Label>
-                      <Select value={advDeadline} onValueChange={setAdvDeadline}>
+                      <Select value={advDeadline || "any"} onValueChange={(val) => setAdvDeadline(val === "any" ? "" : val)}>
                         <SelectTrigger className="h-9 text-sm bg-card border-border">
                           <SelectValue placeholder="Any deadline" />
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border z-50">
-                          <SelectItem value="">Any deadline</SelectItem>
+                          <SelectItem value="any">Any deadline</SelectItem>
                           {deadlineOptions.map(d => (
                             <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
                           ))}

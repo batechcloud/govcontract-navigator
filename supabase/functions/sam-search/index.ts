@@ -99,6 +99,22 @@ serve(async (req) => {
       params.append("state", filters.location);
     }
 
+    // Add agency/organization filter
+    if (filters.agencies && filters.agencies.length > 0) {
+      // SAM.gov uses 'organizationId' or keyword in title for agency filtering
+      // Since exact org IDs aren't available, add agency names to the keyword query
+      const existingQ = params.get("q") || "";
+      const agencyKeywords = filters.agencies.join(" ");
+      params.set("q", existingQ ? `${existingQ} ${agencyKeywords}` : agencyKeywords);
+    }
+
+    // Add response deadline filter
+    if (filters.deadline_before) {
+      const deadlineDate = new Date(filters.deadline_before);
+      params.append("rdlfrom", getTodayFormatted());
+      params.append("rdlto", formatSamDate(deadlineDate));
+    }
+
     // Only search for active opportunities (posted in last 6 months)
     // SAM.gov requires MM/dd/yyyy date format
     params.append("postedFrom", getDateMonthsAgo(6));
@@ -145,9 +161,26 @@ serve(async (req) => {
 
     const results = transformSamResults(opportunities, filters);
 
+    // Post-filter by value range (SAM.gov API doesn't support this natively)
+    let filteredResults = results;
+    if (filters.min_value || filters.max_value) {
+      filteredResults = results.filter((r: any) => {
+        const amount = parseFloat(r.value.replace(/[$,KMB]/g, ''));
+        if (isNaN(amount)) return true; // Keep TBD results
+        // Convert back to raw number
+        let rawAmount = amount;
+        if (r.value.includes('K')) rawAmount = amount * 1000;
+        if (r.value.includes('M')) rawAmount = amount * 1000000;
+        if (r.value.includes('B')) rawAmount = amount * 1000000000;
+        if (filters.min_value && rawAmount < filters.min_value) return false;
+        if (filters.max_value && rawAmount > filters.max_value) return false;
+        return true;
+      });
+    }
+
     return new Response(
       JSON.stringify({
-        results,
+        results: filteredResults,
         total: data.totalRecords || opportunities.length,
         page,
         limit
