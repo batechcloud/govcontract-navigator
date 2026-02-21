@@ -49,10 +49,11 @@ export function NaicsCodeSelector({ selected, onChange }: NaicsCodeSelectorProps
             + Add NAICS Code
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="p-0 w-[360px]" align="start">
+        <PopoverContent className="p-0 w-[480px] z-50 bg-popover" align="start">
           <Command>
             <CommandInput placeholder="Search by code or industry..." />
-            <CommandList className="max-h-[400px]">
+            <div className="relative">
+              <CommandList className="max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent">
               <CommandEmpty>No matching NAICS code found.</CommandEmpty>
               {NAICS_GROUPS.map((group) => {
                 const available = group.codes.filter((n) => !selected.includes(n.code));
@@ -69,6 +70,8 @@ export function NaicsCodeSelector({ selected, onChange }: NaicsCodeSelectorProps
                 );
               })}
             </CommandList>
+              <div className="sticky bottom-0 h-6 bg-gradient-to-t from-popover to-transparent pointer-events-none" />
+            </div>
           </Command>
         </PopoverContent>
       </Popover>
