@@ -39,6 +39,7 @@ import AIAssistant from "./pages/AIAssistant";
 import AIOpportunityChat from "./pages/AIOpportunityChat";
 import USASpendingIntel from "./pages/USASpendingIntel";
 import Settings from "./pages/Settings";
+import ContractDetail from "./pages/ContractDetail";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -92,6 +93,7 @@ const App = () => (
             <Route path="/dashboard/settings" element={<ProtectedRoute><ErrorBoundary><Settings /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/dashboard/sectors" element={<ProtectedRoute><ErrorBoundary><SectorBrowse /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/dashboard/usaspending" element={<ProtectedRoute><ErrorBoundary><USASpendingIntel /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/dashboard/contract/:contractId" element={<ProtectedRoute><ErrorBoundary><ContractDetail /></ErrorBoundary></ProtectedRoute>} />
             
             {/* Redirects from old routes */}
             <Route path="/dashboard/journey" element={<Navigate to="/dashboard/tracked" replace />} />

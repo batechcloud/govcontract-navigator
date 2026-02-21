@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { TrackedContract } from "@/hooks/useTrackedContracts";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -114,7 +115,11 @@ export function ListView({ contracts, onStatusChange, onDelete }: Props) {
             const label = PIPELINE_STATUSES.find(s => s.value === c.status)?.label || c.status;
             return (
               <tr key={c.id} className="border-b border-border/30 hover:bg-muted/20 transition-colors">
-                <td className="p-3 font-medium text-foreground max-w-[200px] truncate">{c.contract_title}</td>
+                <td className="p-3 font-medium text-foreground max-w-[200px] truncate">
+                  <Link to={`/dashboard/contract/${c.contract_id}`} className="hover:text-primary hover:underline transition-colors">
+                    {c.contract_title}
+                  </Link>
+                </td>
                 <td className="p-3 text-muted-foreground text-xs hidden md:table-cell max-w-[150px] truncate">{c.contract_agency || "—"}</td>
                 <td className="p-3">
                   {dl ? (

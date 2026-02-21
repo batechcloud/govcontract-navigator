@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { FileText, Clock, Star, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,9 +37,9 @@ export const OpportunityCard = ({ contract, onRemove, showRemove }: OpportunityC
         <FileText className="w-6 h-6 text-primary" />
       </div>
       <div className="flex-1 min-w-0">
-        <h4 className="font-heading font-semibold text-foreground mb-1 truncate">
+        <Link to={`/dashboard/contract/${contract.contract_id}`} className="font-heading font-semibold text-foreground mb-1 truncate block hover:text-primary hover:underline transition-colors">
           {contract.contract_title}
-        </h4>
+        </Link>
         <p className="text-sm text-muted-foreground mb-2">
           {contract.contract_agency || "Unknown Agency"}
         </p>
