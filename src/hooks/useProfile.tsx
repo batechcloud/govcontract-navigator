@@ -32,6 +32,7 @@ export interface CompanyProfile {
   year_founded: number | null;
   employee_count: string | null;
   annual_revenue: string | null;
+  psc_codes: string[] | null;
   past_performance: Record<string, unknown>[] | null;
   created_at: string;
   updated_at: string;
