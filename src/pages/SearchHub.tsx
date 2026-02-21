@@ -82,8 +82,9 @@ const SearchHub = () => {
   const [advMaxValue, setAdvMaxValue] = useState("");
   const [advAgency, setAdvAgency] = useState("");
   const [advDeadline, setAdvDeadline] = useState("");
+  const [advState, setAdvState] = useState("");
 
-  const hasAdvancedFilters = !!(advNaics || advMinValue || advMaxValue || advAgency || advDeadline);
+  const hasAdvancedFilters = !!(advNaics || advMinValue || advMaxValue || advAgency || advDeadline || advState);
 
   const naicsOptions = [
     { value: "541511", label: "541511 — Custom Computer Programming" },
@@ -129,12 +130,24 @@ const SearchHub = () => {
     { value: "90", label: "Due within 90 days" },
   ];
 
+  const stateOptions = [
+    "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut",
+    "Delaware","Florida","Georgia","Hawaii","Idaho","Illinois","Indiana","Iowa",
+    "Kansas","Kentucky","Louisiana","Maine","Maryland","Massachusetts","Michigan",
+    "Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada","New Hampshire",
+    "New Jersey","New Mexico","New York","North Carolina","North Dakota","Ohio",
+    "Oklahoma","Oregon","Pennsylvania","Rhode Island","South Carolina","South Dakota",
+    "Tennessee","Texas","Utah","Vermont","Virginia","Washington","West Virginia",
+    "Wisconsin","Wyoming","District of Columbia",
+  ];
+
   const clearAdvancedFilters = () => {
     setAdvNaics("");
     setAdvMinValue("");
     setAdvMaxValue("");
     setAdvAgency("");
     setAdvDeadline("");
+    setAdvState("");
   };
 
   const handleApplyAdvancedFilters = async () => {
@@ -154,7 +167,7 @@ const SearchHub = () => {
       agencies: advAgency ? [advAgency] : [],
       min_value: advMinValue ? parseInt(advMinValue) : null,
       max_value: advMaxValue ? parseInt(advMaxValue) : null,
-      location: null,
+      location: advState || null,
       opportunity_type: null,
       ...(deadlineDate ? { deadline_before: deadlineDate } : {}),
     };
@@ -501,7 +514,7 @@ const SearchHub = () => {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                     {/* NAICS Code */}
                     <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">NAICS Code</Label>
@@ -569,6 +582,22 @@ const SearchHub = () => {
                           <SelectItem value="any">Any deadline</SelectItem>
                           {deadlineOptions.map(d => (
                             <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Location / State */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Location</Label>
+                      <Select value={advState || "any"} onValueChange={(val) => setAdvState(val === "any" ? "" : val)}>
+                        <SelectTrigger className="h-9 text-sm bg-card border-border">
+                          <SelectValue placeholder="Any state" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border z-50 max-h-60">
+                          <SelectItem value="any">Any state</SelectItem>
+                          {stateOptions.map(s => (
+                            <SelectItem key={s} value={s}>{s}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
