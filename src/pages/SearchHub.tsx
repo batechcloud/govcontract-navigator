@@ -54,6 +54,7 @@ import { toast } from "sonner";
 import { SECTOR_NAICS, SECTOR_CONFIG } from "@/config/sectors";
 import { useWinProbability, ContractScoreInput, ContractScoreResult } from "@/hooks/useWinProbability";
 import { WinScoreModal } from "@/components/search/WinScoreModal";
+import { useCompanyProfile } from "@/hooks/useProfile";
 
 const RESULTS_PER_PAGE = 10;
 
@@ -82,6 +83,8 @@ const SearchHub = () => {
   const [scoreModalOpen, setScoreModalOpen] = useState(false);
   const [scoreTarget, setScoreTarget] = useState<{ title: string; input: ContractScoreInput } | null>(null);
   const winScore = useWinProbability();
+  const { data: companyProfile } = useCompanyProfile();
+  const profilePscCodes = companyProfile?.psc_codes?.filter(Boolean) || [];
 
   const handleScoreContract = (result: SearchResult) => {
     const input: ContractScoreInput = {
@@ -578,13 +581,46 @@ const SearchHub = () => {
 
                     {/* PSC Code */}
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">PSC Code</Label>
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs text-muted-foreground">PSC Code</Label>
+                        {profilePscCodes.length > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-5 text-[10px] text-accent hover:text-accent/80 px-1.5 py-0"
+                            onClick={() => {
+                              setAdvPsc(profilePscCodes[0]);
+                              toast.success(`Applied PSC ${profilePscCodes[0]} from your profile`);
+                            }}
+                          >
+                            Use My Profile ({profilePscCodes.length})
+                          </Button>
+                        )}
+                      </div>
                       <Select value={advPsc || "any"} onValueChange={(val) => setAdvPsc(val === "any" ? "" : val)}>
                         <SelectTrigger className="h-9 text-sm bg-card border-border">
                           <SelectValue placeholder="Any PSC" />
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border z-50 max-h-60">
                           <SelectItem value="any">Any PSC</SelectItem>
+                          {profilePscCodes.length > 0 && (
+                            <>
+                              <SelectItem value="__profile_header" disabled className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
+                                From Your Profile
+                              </SelectItem>
+                              {profilePscCodes.map(code => {
+                                const match = pscOptions.find(p => p.value === code);
+                                return (
+                                  <SelectItem key={`profile-${code}`} value={code}>
+                                    {match ? match.label : code}
+                                  </SelectItem>
+                                );
+                              })}
+                              <SelectItem value="__all_header" disabled className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
+                                All PSC Codes
+                              </SelectItem>
+                            </>
+                          )}
                           {pscOptions.map(p => (
                             <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
                           ))}
