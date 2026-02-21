@@ -101,6 +101,7 @@ const SearchHub = () => {
 
   // Advanced filters
   const [advNaics, setAdvNaics] = useState("");
+  const [advPsc, setAdvPsc] = useState("");
   const [advMinValue, setAdvMinValue] = useState("");
   const [advMaxValue, setAdvMaxValue] = useState("");
   const [advAgency, setAdvAgency] = useState("");
@@ -108,7 +109,7 @@ const SearchHub = () => {
   const [advState, setAdvState] = useState("");
   const [advType, setAdvType] = useState("");
 
-  const hasAdvancedFilters = !!(advNaics || advMinValue || advMaxValue || advAgency || advDeadline || advState || advType);
+  const hasAdvancedFilters = !!(advNaics || advPsc || advMinValue || advMaxValue || advAgency || advDeadline || advState || advType);
 
   const naicsOptions = [
     { value: "541511", label: "541511 — Custom Computer Programming" },
@@ -121,6 +122,25 @@ const SearchHub = () => {
     { value: "334111", label: "334111 — Electronic Computers" },
     { value: "611430", label: "611430 — Professional Training" },
     { value: "621999", label: "621999 — Health Services" },
+  ];
+
+  const pscOptions = [
+    { value: "D302", label: "D302 — IT Systems Development" },
+    { value: "D307", label: "D307 — IT Network Support" },
+    { value: "D308", label: "D308 — IT Programming Services" },
+    { value: "D310", label: "D310 — IT Cyber Security" },
+    { value: "D318", label: "D318 — IT Integrated Solutions" },
+    { value: "D399", label: "D399 — Other IT/Telecom Services" },
+    { value: "R408", label: "R408 — Program Management" },
+    { value: "R425", label: "R425 — Engineering & Technical" },
+    { value: "R497", label: "R497 — Medical & Health" },
+    { value: "R707", label: "R707 — Consulting & Program Mgmt" },
+    { value: "S206", label: "S206 — Guard Services" },
+    { value: "U001", label: "U001 — Education & Training" },
+    { value: "Y1DA", label: "Y1DA — Construction of Office Buildings" },
+    { value: "Z1DA", label: "Z1DA — Maintenance of Office Buildings" },
+    { value: "7030", label: "7030 — ADP Software" },
+    { value: "6515", label: "6515 — Medical Instruments" },
   ];
 
   const agencyOptions = [
@@ -177,6 +197,7 @@ const SearchHub = () => {
 
   const clearAdvancedFilters = () => {
     setAdvNaics("");
+    setAdvPsc("");
     setAdvMinValue("");
     setAdvMaxValue("");
     setAdvAgency("");
@@ -195,6 +216,7 @@ const SearchHub = () => {
     const combinedFilters = {
       keywords: searchQuery ? searchQuery.split(' ').filter(w => w.length > 2) : [],
       naics_codes: advNaics ? [advNaics] : [],
+      psc_codes: advPsc ? [advPsc] : [],
       set_aside: activeFilters.flatMap(key => {
         const qf = quickFilters.find(f => f.label === key);
         return qf?.filter.set_aside || [];
@@ -236,6 +258,7 @@ const SearchHub = () => {
       const filters = {
         keywords: [],
         naics_codes: naicsCodes,
+        psc_codes: [] as string[],
         set_aside: [] as string[],
         agencies: [] as string[],
         min_value: null,
@@ -283,6 +306,7 @@ const SearchHub = () => {
     const combinedFilters: SearchFilters = {
       keywords: searchQuery ? searchQuery.split(' ').filter(w => w.length > 2) : [],
       naics_codes: [],
+      psc_codes: [],
       set_aside: [],
       agencies: [],
       min_value: null,
@@ -489,6 +513,9 @@ const SearchHub = () => {
                     {parsedFilters.min_value && (
                       <Badge variant="outline">From ${(parsedFilters.min_value / 1000000).toFixed(1)}M</Badge>
                     )}
+                    {parsedFilters.psc_codes && parsedFilters.psc_codes.length > 0 && (
+                      <Badge variant="glass">PSC: {parsedFilters.psc_codes.join(", ")}</Badge>
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -547,7 +574,23 @@ const SearchHub = () => {
                         Clear all
                       </Button>
                     )}
-                  </div>
+                    </div>
+
+                    {/* PSC Code */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">PSC Code</Label>
+                      <Select value={advPsc || "any"} onValueChange={(val) => setAdvPsc(val === "any" ? "" : val)}>
+                        <SelectTrigger className="h-9 text-sm bg-card border-border">
+                          <SelectValue placeholder="Any PSC" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border z-50 max-h-60">
+                          <SelectItem value="any">Any PSC</SelectItem>
+                          {pscOptions.map(p => (
+                            <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {/* NAICS Code */}
