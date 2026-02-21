@@ -83,13 +83,16 @@ serve(async (req) => {
     console.log("Searching SAM.gov with filters:", JSON.stringify(filters));
 
     // Build SAM.gov API query parameters
-    // When post-filtering by location, fetch more results to ensure enough matches
-    const needsPostFilter = !!(filters.location || filters.min_value || filters.max_value);
-    const fetchLimit = needsPostFilter ? Math.max(limit * 10, 100) : limit;
+    // When post-filtering is needed, fetch more results from offset 0 to ensure enough matches
+    const needsPostFilter = !!(filters.location || filters.min_value || filters.max_value ||
+      (filters.psc_codes && filters.psc_codes.length > 0) ||
+      (filters.agencies && filters.agencies.length > 0));
+    const fetchLimit = needsPostFilter ? Math.max(limit * 10, 200) : limit;
     const params = new URLSearchParams();
     params.append("api_key", SAM_API_KEY);
     params.append("limit", fetchLimit.toString());
-    params.append("offset", (page * limit).toString());
+    // When post-filtering, always fetch from offset 0 so we can paginate filtered results correctly
+    params.append("offset", needsPostFilter ? "0" : (page * limit).toString());
     
     // Add keyword search
     if (filters.keywords && filters.keywords.length > 0) {
@@ -101,13 +104,11 @@ serve(async (req) => {
       params.append("naics", filters.naics_codes.join(","));
     }
 
-    // Add PSC codes — SAM.gov doesn't have a native PSC filter,
-    // so we append them to the keyword query for relevance matching
-    if (filters.psc_codes && filters.psc_codes.length > 0) {
-      const existingQ = params.get("q") || "";
-      const pscKeywords = filters.psc_codes.join(" ");
-      params.set("q", existingQ ? `${existingQ} ${pscKeywords}` : pscKeywords);
-      console.log("Adding PSC codes to query:", filters.psc_codes.join(", "));
+    // PSC codes — post-filter on results instead of polluting keyword query
+    // (SAM.gov v2 API does not have a native PSC filter parameter)
+    const pscFilter = filters.psc_codes && filters.psc_codes.length > 0 ? filters.psc_codes : null;
+    if (pscFilter) {
+      console.log("Will post-filter by PSC codes:", pscFilter.join(", "));
     }
     
     // Add set-aside types
@@ -148,13 +149,10 @@ serve(async (req) => {
       }
     }
 
-    // Add agency/organization filter
-    if (filters.agencies && filters.agencies.length > 0) {
-      // SAM.gov uses 'organizationId' or keyword in title for agency filtering
-      // Since exact org IDs aren't available, add agency names to the keyword query
-      const existingQ = params.get("q") || "";
-      const agencyKeywords = filters.agencies.join(" ");
-      params.set("q", existingQ ? `${existingQ} ${agencyKeywords}` : agencyKeywords);
+    // Agency filter — post-filter on fullParentPathName instead of polluting keyword query
+    const agencyFilter = filters.agencies && filters.agencies.length > 0 ? filters.agencies : null;
+    if (agencyFilter) {
+      console.log("Will post-filter by agencies:", agencyFilter.join(", "));
     }
 
     // Add response deadline filter
@@ -210,24 +208,45 @@ serve(async (req) => {
 
     const results = transformSamResults(opportunities, filters);
 
-    // Post-filter by location if SAM.gov API didn't filter precisely
+    // Post-filter by PSC codes
     let filteredResults = results;
+    if (pscFilter) {
+      filteredResults = filteredResults.filter((r: any) => {
+        // Check if any of the opportunity's classification codes match the PSC filter
+        const oppPsc = r._rawPsc || [];
+        return pscFilter.some((code: string) =>
+          oppPsc.some((p: string) => p.startsWith(code) || code.startsWith(p))
+        );
+      });
+      console.log(`PSC post-filter: ${results.length} → ${filteredResults.length} results`);
+    }
+
+    // Post-filter by agency on fullParentPathName
+    if (agencyFilter) {
+      filteredResults = filteredResults.filter((r: any) => {
+        const agencyPath = (r._rawAgencyPath || "").toLowerCase();
+        return agencyFilter.some((a: string) => agencyPath.includes(a.toLowerCase()));
+      });
+      console.log(`Agency post-filter: ${filteredResults.length} results after agency filter`);
+    }
+
+    // Post-filter by location if SAM.gov API didn't filter precisely
     if (filters.location) {
       const stateCode = STATE_ABBREVIATIONS[filters.location] || filters.location;
       const stateName = filters.location.toLowerCase();
-      filteredResults = results.filter((r: any) => {
+      filteredResults = filteredResults.filter((r: any) => {
         const loc = (r.location || "").toLowerCase();
-        if (loc === "various" || loc === "") return false; // Exclude generic "Various"
+        if (loc === "various" || loc === "") return false;
         return loc.includes(stateName) || loc.includes(stateCode.toLowerCase()) || loc.includes(`, ${stateCode.toLowerCase()}`);
       });
-      console.log(`Location post-filter: ${results.length} → ${filteredResults.length} results for ${filters.location}`);
+      console.log(`Location post-filter: ${filteredResults.length} results for ${filters.location}`);
     }
 
     // Post-filter by value range (SAM.gov API doesn't support this natively)
     if (filters.min_value || filters.max_value) {
       filteredResults = filteredResults.filter((r: any) => {
         const amount = parseFloat(r.value.replace(/[$,KMB]/g, ''));
-        if (isNaN(amount)) return true; // Keep TBD results
+        if (isNaN(amount)) return true;
         let rawAmount = amount;
         if (r.value.includes('K')) rawAmount = amount * 1000;
         if (r.value.includes('M')) rawAmount = amount * 1000000;
@@ -238,14 +257,18 @@ serve(async (req) => {
       });
     }
 
-    // Slice to requested page size after post-filtering
-    const totalFiltered = filteredResults.length;
-    const pagedResults = needsPostFilter ? filteredResults.slice(0, limit) : filteredResults;
+    // Paginate post-filtered results correctly
+    const totalFiltered = needsPostFilter ? filteredResults.length : (data.totalRecords || opportunities.length);
+    const startIdx = needsPostFilter ? page * limit : 0;
+    const pagedResults = needsPostFilter ? filteredResults.slice(startIdx, startIdx + limit) : filteredResults;
+
+    // Strip internal fields before sending to client
+    const cleanResults = pagedResults.map(({ _rawPsc, _rawAgencyPath, ...rest }: any) => rest);
 
     return new Response(
       JSON.stringify({
-        results: pagedResults,
-        total: needsPostFilter ? totalFiltered : (data.totalRecords || opportunities.length),
+        results: cleanResults,
+        total: totalFiltered,
         page,
         limit
       }),
@@ -313,7 +336,10 @@ function transformSamResults(opportunities: any[], filters: SearchFilters) {
       matchScore: calculateMatchScore(opp, filters),
       description,
       solicitationNumber: opp.solicitationNumber || "",
-      link: opp.uiLink || (opp.noticeId ? `https://sam.gov/opp/${opp.noticeId}/view` : "https://sam.gov")
+      link: opp.uiLink || (opp.noticeId ? `https://sam.gov/opp/${opp.noticeId}/view` : "https://sam.gov"),
+      // Internal fields for post-filtering (stripped before sending to client)
+      _rawPsc: opp.psc?.map((p: any) => p.code) || opp.classificationCode ? [opp.classificationCode] : [],
+      _rawAgencyPath: opp.fullParentPathName || "",
     };
   });
 }

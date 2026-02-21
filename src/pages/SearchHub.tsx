@@ -209,30 +209,43 @@ const SearchHub = () => {
     setAdvType("");
   };
 
-  const handleApplyAdvancedFilters = async () => {
-    setCurrentPage(0);
+  // Unified filter builder — merges search bar keywords, quick filters, and advanced filters
+  const buildCombinedFilters = (): SearchFilters & { deadline_before?: string } => {
     const deadlineDays = advDeadline ? parseInt(advDeadline) : null;
     const deadlineDate = deadlineDays
       ? new Date(Date.now() + deadlineDays * 24 * 60 * 60 * 1000).toISOString()
       : null;
 
-    const combinedFilters = {
-      keywords: searchQuery ? searchQuery.split(' ').filter(w => w.length > 2) : [],
+    // Collect set-aside values from active quick filters
+    const quickSetAsides = activeFilters.flatMap(key => {
+      const qf = quickFilters.find(f => f.label === key);
+      return qf?.filter.set_aside || [];
+    });
+
+    // Collect opportunity type from quick filters (last one wins)
+    let quickOpportunityType: string | null = null;
+    activeFilters.forEach(key => {
+      const qf = quickFilters.find(f => f.label === key);
+      if (qf?.filter.opportunity_type) quickOpportunityType = qf.filter.opportunity_type;
+    });
+
+    return {
+      keywords: searchQuery.trim() ? searchQuery.trim().split(/\s+/) : [],
       naics_codes: advNaics ? [advNaics] : [],
       psc_codes: advPsc ? [advPsc] : [],
-      set_aside: activeFilters.flatMap(key => {
-        const qf = quickFilters.find(f => f.label === key);
-        return qf?.filter.set_aside || [];
-      }),
+      set_aside: quickSetAsides,
       agencies: advAgency ? [advAgency] : [],
       min_value: advMinValue ? parseInt(advMinValue) : null,
       max_value: advMaxValue ? parseInt(advMaxValue) : null,
       location: advState || null,
-      opportunity_type: advType || null,
+      opportunity_type: advType || quickOpportunityType || null,
       ...(deadlineDate ? { deadline_before: deadlineDate } : {}),
     };
+  };
 
-    await searchWithFilters(combinedFilters as any, 0);
+  const handleApplyAdvancedFilters = async () => {
+    setCurrentPage(0);
+    await searchWithFilters(buildCombinedFilters() as any, 0);
   };
 
   const {
@@ -283,13 +296,18 @@ const SearchHub = () => {
   const totalPages = Math.ceil(total / RESULTS_PER_PAGE);
 
   const handleSearch = async (page = 0) => {
-    if (!searchQuery.trim()) {
-      toast.error("Please enter a search query");
+    if (!searchQuery.trim() && !hasAdvancedFilters && activeFilters.length === 0) {
+      toast.error("Please enter a search query or apply filters");
       return;
     }
     try {
       setCurrentPage(page);
-      await search(searchQuery, page);
+      // If advanced or quick filters are active, use combined filters instead of AI parse
+      if (hasAdvancedFilters || activeFilters.length > 0) {
+        await searchWithFilters(buildCombinedFilters() as any, page);
+      } else {
+        await search(searchQuery, page);
+      }
     } catch (error) {}
   };
 
@@ -306,26 +324,38 @@ const SearchHub = () => {
     setActiveFilters(newActiveFilters);
     setCurrentPage(0);
 
-    const combinedFilters: SearchFilters = {
-      keywords: searchQuery ? searchQuery.split(' ').filter(w => w.length > 2) : [],
-      naics_codes: [],
-      psc_codes: [],
-      set_aside: [],
-      agencies: [],
-      min_value: null,
-      max_value: null,
-      location: null,
-      opportunity_type: null,
-    };
-
+    // Use buildCombinedFilters but with the new activeFilters (state hasn't updated yet)
+    // We need to temporarily compute what buildCombinedFilters would return with newActiveFilters
+    const quickSetAsides = newActiveFilters.flatMap(key => {
+      const qf = quickFilters.find(f => f.label === key);
+      return qf?.filter.set_aside || [];
+    });
+    let quickOpportunityType: string | null = null;
     newActiveFilters.forEach(key => {
       const qf = quickFilters.find(f => f.label === key);
-      if (qf?.filter.set_aside) combinedFilters.set_aside.push(...qf.filter.set_aside);
-      if (qf?.filter.opportunity_type) combinedFilters.opportunity_type = qf.filter.opportunity_type;
+      if (qf?.filter.opportunity_type) quickOpportunityType = qf.filter.opportunity_type;
     });
 
-    if (newActiveFilters.length > 0 || searchQuery) {
-      await searchWithFilters(combinedFilters, 0);
+    const deadlineDays = advDeadline ? parseInt(advDeadline) : null;
+    const deadlineDate = deadlineDays
+      ? new Date(Date.now() + deadlineDays * 24 * 60 * 60 * 1000).toISOString()
+      : null;
+
+    const combinedFilters: SearchFilters & { deadline_before?: string } = {
+      keywords: searchQuery.trim() ? searchQuery.trim().split(/\s+/) : [],
+      naics_codes: advNaics ? [advNaics] : [],
+      psc_codes: advPsc ? [advPsc] : [],
+      set_aside: quickSetAsides,
+      agencies: advAgency ? [advAgency] : [],
+      min_value: advMinValue ? parseInt(advMinValue) : null,
+      max_value: advMaxValue ? parseInt(advMaxValue) : null,
+      location: advState || null,
+      opportunity_type: advType || quickOpportunityType || null,
+      ...(deadlineDate ? { deadline_before: deadlineDate } : {}),
+    };
+
+    if (newActiveFilters.length > 0 || searchQuery.trim() || hasAdvancedFilters) {
+      await searchWithFilters(combinedFilters as any, 0);
     }
   };
 
