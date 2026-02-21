@@ -48,23 +48,33 @@ serve(async (req) => {
 
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured");
+      // No API key — use local fallback
+      return new Response(
+        JSON.stringify({ 
+          filters: buildFallbackFilters(query), 
+          original_query: query 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     console.log("Parsing search query:", query);
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: `You are a government contract search query parser. Extract structured filters from natural language queries about government contracts.
+    // Attempt OpenAI call with one retry on 429
+    let aiFilters = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "system",
+              content: `You are a government contract search query parser. Extract structured filters from natural language queries about government contracts.
 
 Parse the user's query and extract:
 - keywords: Main search terms (array of strings)
@@ -77,87 +87,75 @@ Parse the user's query and extract:
 - opportunity_type: Type like "Federal", "State", "Grants" (string or null)
 
 Return ONLY a valid JSON object with these fields. If a field is not mentioned, use null for single values or empty array for arrays.`
-          },
-          {
-            role: "user",
-            content: query
-          }
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "extract_search_filters",
-              description: "Extract structured search filters from the query",
-              parameters: {
-                type: "object",
-                properties: {
-                  keywords: { type: "array", items: { type: "string" } },
-                  naics_codes: { type: "array", items: { type: "string" } },
-                  set_aside: { type: "array", items: { type: "string" } },
-                  agencies: { type: "array", items: { type: "string" } },
-                  min_value: { type: "number", nullable: true },
-                  max_value: { type: "number", nullable: true },
-                  location: { type: "string", nullable: true },
-                  opportunity_type: { type: "string", nullable: true }
-                },
-                required: ["keywords", "naics_codes", "set_aside", "agencies"],
-                additionalProperties: false
+            },
+            { role: "user", content: query }
+          ],
+          tools: [
+            {
+              type: "function",
+              function: {
+                name: "extract_search_filters",
+                description: "Extract structured search filters from the query",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    keywords: { type: "array", items: { type: "string" } },
+                    naics_codes: { type: "array", items: { type: "string" } },
+                    set_aside: { type: "array", items: { type: "string" } },
+                    agencies: { type: "array", items: { type: "string" } },
+                    min_value: { type: "number", nullable: true },
+                    max_value: { type: "number", nullable: true },
+                    location: { type: "string", nullable: true },
+                    opportunity_type: { type: "string", nullable: true }
+                  },
+                  required: ["keywords", "naics_codes", "set_aside", "agencies"],
+                  additionalProperties: false
+                }
               }
             }
-          }
-        ],
-        tool_choice: { type: "function", function: { name: "extract_search_filters" } }
-      }),
-    });
+          ],
+          tool_choice: { type: "function", function: { name: "extract_search_filters" } }
+        }),
+      });
 
-    if (!response.ok) {
       if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limits exceeded, please try again later." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        console.warn(`OpenAI 429 on attempt ${attempt + 1}, ${attempt === 0 ? "retrying in 2s..." : "falling back to local parser"}`);
+        if (attempt === 0) {
+          await new Promise(r => setTimeout(r, 2000));
+          continue;
+        }
+        // Second attempt also 429 — fall back to local parsing
+        break;
       }
+
       if (response.status === 402) {
+        await response.text();
         return new Response(
           JSON.stringify({ error: "Payment required, please add funds to your workspace." }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error(`AI gateway error: ${response.status}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("AI gateway error:", response.status, errorText);
+        break; // Fall back to local parsing
+      }
+
+      const data = await response.json();
+      const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+      if (toolCall?.function?.arguments) {
+        aiFilters = JSON.parse(toolCall.function.arguments);
+        console.log("Parsed filters:", aiFilters);
+      }
+      break;
     }
 
-    const data = await response.json();
-    console.log("AI response:", JSON.stringify(data));
+    // Use AI result or fall back to local parser
+    const filters = aiFilters || buildFallbackFilters(query);
 
-    // Extract the tool call result
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (toolCall?.function?.arguments) {
-      const filters = JSON.parse(toolCall.function.arguments);
-      console.log("Parsed filters:", filters);
-      return new Response(
-        JSON.stringify({ filters, original_query: query }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Fallback: return basic keyword search
     return new Response(
-      JSON.stringify({ 
-        filters: { 
-          keywords: query.split(' ').filter(w => w.length > 2),
-          naics_codes: [],
-          set_aside: [],
-          agencies: [],
-          min_value: null,
-          max_value: null,
-          location: null,
-          opportunity_type: null
-        }, 
-        original_query: query 
-      }),
+      JSON.stringify({ filters, original_query: query }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
@@ -168,3 +166,33 @@ Return ONLY a valid JSON object with these fields. If a field is not mentioned, 
     );
   }
 });
+
+/** Local fallback parser — extracts keywords from the query string */
+function buildFallbackFilters(query: string) {
+  const lower = query.toLowerCase();
+  const setAsideMap: Record<string, string[]> = {
+    "small business": ["Small Business"],
+    "veteran": ["SDVOSB", "VOSB"],
+    "woman": ["WOSB", "EDWOSB"],
+    "minority": ["8(a)", "SDB"],
+    "hubzone": ["HUBZone"],
+  };
+
+  const set_aside: string[] = [];
+  for (const [keyword, codes] of Object.entries(setAsideMap)) {
+    if (lower.includes(keyword)) set_aside.push(...codes);
+  }
+
+  const keywords = query.split(/\s+/).filter(w => w.length > 2 && !["contracts", "for", "the", "and", "with"].includes(w.toLowerCase()));
+
+  return {
+    keywords,
+    naics_codes: [] as string[],
+    set_aside,
+    agencies: [] as string[],
+    min_value: null,
+    max_value: null,
+    location: null,
+    opportunity_type: null,
+  };
+}
