@@ -67,27 +67,12 @@ export function useContracts() {
     try {
       let data = await fetchAllContracts(activeFilters);
 
-      if (activeFilters.setAside !== "any") {
-        data = data.filter(c =>
-          (c.setAside || "").toLowerCase().includes(activeFilters.setAside.toLowerCase())
-        );
-      }
+      // Set-aside, agency, location, and value filtering is now handled server-side
+      // Only keep client-side filters that the edge function doesn't handle
 
       if (activeFilters.contractType !== "any") {
         data = data.filter(c =>
           (c.contractType || "").toLowerCase().includes(activeFilters.contractType.toLowerCase())
-        );
-      }
-
-      if (activeFilters.agency) {
-        data = data.filter(c =>
-          (c.agency || "").toLowerCase().includes(activeFilters.agency.toLowerCase())
-        );
-      }
-
-      if (activeFilters.location) {
-        data = data.filter(c =>
-          (c.location || "").toLowerCase().includes(activeFilters.location.toLowerCase())
         );
       }
 

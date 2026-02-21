@@ -1,16 +1,23 @@
 import { supabase } from "@/integrations/supabase/client";
+import { SECTOR_NAICS } from "@/config/sectors";
 
 /**
- * Maps useContracts hook filters → SAM.gov edge function format,
- * calls sam-search, and normalises results into the contract shape
+ * Maps useContracts hook filters → SearchFilters format (same as useSearch.tsx),
+ * calls sam-search edge function, and normalises results into the contract shape
  * expected by the rest of the app.
  */
 async function fetchFromSamGov(filters, signal) {
+  // Convert legacy filter format to unified SearchFilters format
   const samFilters = {
-    keywords: filters.keyword ? [filters.keyword] : [],
-    naics_codes: [],
+    keywords: filters.keyword ? filters.keyword.trim().split(/\s+/) : [],
+    naics_codes: filters.sector && filters.sector !== "all" && SECTOR_NAICS[filters.sector]
+      ? SECTOR_NAICS[filters.sector]
+      : [],
+    psc_codes: [],
     set_aside: filters.setAside && filters.setAside !== "any" ? [filters.setAside] : [],
     agencies: filters.agency ? [filters.agency] : [],
+    min_value: filters.minValue || null,
+    max_value: filters.maxValue || null,
     location: filters.location || null,
     opportunity_type: null,
   };
@@ -72,7 +79,7 @@ async function fetchFromUSASpending(filters, signal) {
     agency: r["Awarding Agency"] || "Federal Agency",
     sector: guessSector(r["NAICS Code"]),
     value: typeof r["Award Amount"] === "number" ? r["Award Amount"] : parseValue(String(r["Award Amount"] || "0")),
-    deadline: null, // awards don't have deadlines
+    deadline: null,
     naicsCode: r["NAICS Code"] || "",
     setAside: "Any",
     roiScore: 65,
@@ -163,8 +170,7 @@ const NAICS_SECTOR_MAP = {
 };
 
 function guessSector(naics) {
-  if (!naics) return "technology"; // default fallback
-  // Try 4-digit, then 2-digit prefix
+  if (!naics) return "technology";
   const four = naics.substring(0, 4);
   const two = naics.substring(0, 2);
   return NAICS_SECTOR_MAP[four] || NAICS_SECTOR_MAP[two] || "technology";
