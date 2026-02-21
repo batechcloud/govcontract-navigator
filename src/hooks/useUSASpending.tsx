@@ -22,42 +22,51 @@ export function useSpendingSnapshot(fy: string, refreshKey: number) {
   return useQuery({
     queryKey: ["usa-snapshot", fy, refreshKey],
     queryFn: async () => {
-      const budgetRes = await getAPI(`references/total_budgetary_resources/?fiscal_year=${year}`);
       const dates = getFiscalYearDates(fy);
-      const awardsRes = await postAPI("search/spending_by_award/", {
-        filters: {
-          award_type_codes: ["A", "B", "C", "D"],
-          time_period: [{ start_date: dates.start_date, end_date: dates.end_date }],
-        },
-        fields: ["Award Amount"],
-        limit: 1,
-        page: 1,
-        sort: "Award Amount",
-        order: "desc",
-      });
-      const sbRes = await postAPI("search/spending_by_award/", {
-        filters: {
-          award_type_codes: ["A", "B", "C", "D"],
-          time_period: [{ start_date: dates.start_date, end_date: dates.end_date }],
-          set_aside_type_codes: ["SBA", "8A", "WOSB", "HZC", "SDVOSBC", "VSA"],
-        },
-        fields: ["Award Amount"],
-        limit: 1,
-        page: 1,
-        sort: "Award Amount",
-        order: "desc",
-      });
+
+      const [budgetRes, agencyRes, sbCountRes, allCountRes] = await Promise.all([
+        getAPI(`references/total_budgetary_resources/?fiscal_year=${year}`),
+        postAPI("spending/", {
+          type: "agency",
+          filters: { fy: String(year), quarter: "4" },
+        }),
+        postAPI("search/spending_by_award_count/", {
+          filters: {
+            award_type_codes: ["A", "B", "C", "D"],
+            time_period: [{ start_date: dates.start_date, end_date: dates.end_date }],
+            set_aside_type_codes: ["SBA", "8A", "WOSB", "HZC", "SDVOSBC", "VSA"],
+          },
+        }).catch(() => null),
+        postAPI("search/spending_by_award_count/", {
+          filters: {
+            award_type_codes: ["A", "B", "C", "D"],
+            time_period: [{ start_date: dates.start_date, end_date: dates.end_date }],
+          },
+        }).catch(() => null),
+      ]);
 
       const totalBudget = budgetRes?.results?.[0]?.total_budgetary_resources || 0;
-      const totalContracts = awardsRes?.page_metadata?.total || 0;
-      const sbContracts = sbRes?.page_metadata?.total || 0;
+      const totalSpending = agencyRes?.total || 0;
+      const agencyCount = agencyRes?.results?.filter((r: any) => r.name && r.name !== "Unreported Data")?.length || 0;
+
+      // Extract contract counts from award_count endpoint
+      let totalContracts = 0;
+      let sbContracts = 0;
+      if (allCountRes?.results) {
+        totalContracts = Object.values(allCountRes.results as Record<string, number>).reduce((sum: number, v) => sum + (v as number), 0);
+      }
+      if (sbCountRes?.results) {
+        sbContracts = Object.values(sbCountRes.results as Record<string, number>).reduce((sum: number, v) => sum + (v as number), 0);
+      }
+
       const sbPercent = totalContracts > 0 ? (sbContracts / totalContracts) * 100 : 0;
 
       return {
-        totalSpending: totalBudget,
+        totalSpending,
+        totalBudget,
         totalContracts,
-        agencyCount: 0, // populated from agencies section
-        avgContractValue: totalContracts > 0 ? totalBudget / totalContracts : 0,
+        agencyCount,
+        avgContractValue: totalContracts > 0 ? totalSpending / totalContracts : 0,
         sbPercent,
       };
     },
@@ -73,23 +82,21 @@ export function useTopAgencies(fy: string, refreshKey: number) {
       postAPI("spending/", {
         type: "agency",
         filters: { fy: String(year), quarter: "4" },
-      }).catch(() =>
-        // Fallback: use spending explorer endpoint
-        postAPI("spending_explorer/", {
-          type: "agency",
-          filters: { fy: String(year), quarter: "4" },
-        })
-      ),
+      }),
     staleTime: 5 * 60 * 1000,
     select: (data) => {
-      const results = data?.results || data?.total?.results || [];
-      return results.slice(0, 10).map((item: any, i: number) => ({
-        rank: i + 1,
-        name: item.name || item.agency_name || "Unknown",
-        amount: item.total_obligations || item.obligated_amount || 0,
-        percentage: item.percentage || 0,
-        id: item.id || item.agency_id,
-      }));
+      const results = data?.results || [];
+      const total = data?.total || 1;
+      return results
+        .filter((item: any) => item.name && item.name !== "Unreported Data")
+        .slice(0, 10)
+        .map((item: any, i: number) => ({
+          rank: i + 1,
+          name: item.name || "Unknown",
+          amount: item.amount || 0,
+          percentage: total > 0 ? ((item.amount || 0) / total) * 100 : 0,
+          id: item.id,
+        }));
     },
   });
 }
@@ -102,20 +109,19 @@ export function useSpendingByCategory(fy: string, refreshKey: number) {
       postAPI("spending/", {
         type: "object_class",
         filters: { fy: String(year), quarter: "4" },
-      }).catch(() =>
-        postAPI("spending_explorer/", {
-          type: "object_class",
-          filters: { fy: String(year), quarter: "4" },
-        })
-      ),
+      }),
     staleTime: 5 * 60 * 1000,
     select: (data) => {
-      const results = data?.results || data?.total?.results || [];
-      return results.slice(0, 10).map((item: any) => ({
-        name: item.name || item.object_class_name || "Other",
-        amount: item.total_obligations || item.obligated_amount || 0,
-        percentage: item.percentage || 0,
-      }));
+      const results = data?.results || [];
+      const total = data?.total || 1;
+      return results
+        .filter((item: any) => item.name && item.name !== "Unreported Data" && (item.amount || 0) > 0)
+        .slice(0, 10)
+        .map((item: any) => ({
+          name: item.name || "Other",
+          amount: item.amount || 0,
+          percentage: total > 0 ? ((item.amount || 0) / total) * 100 : 0,
+        }));
     },
   });
 }
@@ -167,7 +173,7 @@ export function useAwardSearch(filters: AwardSearchFilters, refreshKey: number) 
       }
       return postAPI("search/spending_by_award/", body);
     },
-    enabled: false, // Manual trigger
+    enabled: false,
     staleTime: 60 * 1000,
   });
 }
@@ -216,36 +222,28 @@ export function useSpendingTrends(refreshKey: number) {
         years.map(async (year) => {
           const dates = getFiscalYearDates(`FY${year}`);
           try {
-            const [all, sb] = await Promise.all([
-              postAPI("search/spending_by_award/", {
+            const [allCount, sbCount] = await Promise.all([
+              postAPI("search/spending_by_award_count/", {
                 filters: {
                   award_type_codes: ["A", "B", "C", "D"],
                   time_period: [{ start_date: dates.start_date, end_date: dates.end_date }],
                 },
-                fields: ["Award Amount"],
-                limit: 1,
-                page: 1,
-                sort: "Award Amount",
-                order: "desc",
-              }),
-              postAPI("search/spending_by_award/", {
+              }).catch(() => null),
+              postAPI("search/spending_by_award_count/", {
                 filters: {
                   award_type_codes: ["A", "B", "C", "D"],
                   time_period: [{ start_date: dates.start_date, end_date: dates.end_date }],
                   set_aside_type_codes: ["SBA", "8A", "WOSB", "HZC", "SDVOSBC", "VSA"],
                 },
-                fields: ["Award Amount"],
-                limit: 1,
-                page: 1,
-                sort: "Award Amount",
-                order: "desc",
-              }),
+              }).catch(() => null),
             ]);
-            return {
-              year: `FY${year}`,
-              totalContracts: all?.page_metadata?.total || 0,
-              sbContracts: sb?.page_metadata?.total || 0,
-            };
+            const totalContracts = allCount?.results
+              ? Object.values(allCount.results as Record<string, number>).reduce((sum: number, v) => sum + (v as number), 0)
+              : 0;
+            const sbContracts = sbCount?.results
+              ? Object.values(sbCount.results as Record<string, number>).reduce((sum: number, v) => sum + (v as number), 0)
+              : 0;
+            return { year: `FY${year}`, totalContracts, sbContracts };
           } catch {
             return { year: `FY${year}`, totalContracts: 0, sbContracts: 0 };
           }
@@ -305,19 +303,17 @@ export function useSmallBusinessData(fy: string, refreshKey: number) {
       const results = await Promise.all(
         setAsideTypes.map(async (sa) => {
           try {
-            const res = await postAPI("search/spending_by_award/", {
+            const res = await postAPI("search/spending_by_award_count/", {
               filters: {
                 award_type_codes: ["A", "B", "C", "D"],
                 time_period: [{ start_date: dates.start_date, end_date: dates.end_date }],
                 set_aside_type_codes: sa.code,
               },
-              fields: ["Award Amount"],
-              limit: 1,
-              page: 1,
-              sort: "Award Amount",
-              order: "desc",
             });
-            return { label: sa.label, count: res?.page_metadata?.total || 0 };
+            const count = res?.results
+              ? Object.values(res.results as Record<string, number>).reduce((sum: number, v) => sum + (v as number), 0)
+              : 0;
+            return { label: sa.label, count };
           } catch {
             return { label: sa.label, count: 0 };
           }

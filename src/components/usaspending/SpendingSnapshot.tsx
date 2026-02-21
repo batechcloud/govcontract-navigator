@@ -26,9 +26,9 @@ export const SpendingSnapshot = ({ fy, refreshKey }: Props) => {
   }
 
   const cards = [
-    { icon: DollarSign, label: "Total Federal Budget", value: data ? formatDollars(data.totalSpending) : "-", color: "text-primary" },
+    { icon: DollarSign, label: "Total Federal Spending", value: data ? formatDollars(data.totalSpending) : "-", color: "text-primary" },
     { icon: FileText, label: "Total Contracts", value: data ? data.totalContracts.toLocaleString() : "-", color: "text-accent" },
-    { icon: Building2, label: "Agencies Spending", value: data ? "24+" : "-", color: "text-blue-400" },
+    { icon: Building2, label: "Agencies Spending", value: data ? `${data.agencyCount}` : "-", color: "text-blue-400" },
     { icon: Trophy, label: "Avg Contract Value", value: data ? formatDollars(data.avgContractValue) : "-", color: "text-emerald-400" },
     { icon: Users, label: "Small Biz Awards", value: data ? formatPercent(data.sbPercent) : "-", color: "text-amber-400" },
   ];
