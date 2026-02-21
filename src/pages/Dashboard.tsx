@@ -15,6 +15,8 @@ import {
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useProfile } from "@/hooks/useProfile";
 import { useTrackedContracts } from "@/hooks/useTrackedContracts";
+import { AIRecommendationsCard } from "@/components/dashboard/AIRecommendationsCard";
+import { ProfileHealthCard } from "@/components/dashboard/ProfileHealthCard";
 
 const Dashboard = () => {
   const { data: profile, isLoading: profileLoading } = useProfile();
@@ -91,6 +93,12 @@ const Dashboard = () => {
               </Link>
             </motion.div>
           ))}
+        </div>
+
+        {/* AI Recommendations + Profile Health */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <AIRecommendationsCard />
+          <ProfileHealthCard />
         </div>
 
         {/* Upcoming Deadlines */}

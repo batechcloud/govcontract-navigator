@@ -17,3 +17,12 @@ verify_jwt = false
 
 [functions.ai-opportunity-chat]
 verify_jwt = false
+
+[functions.ai-contract-score]
+verify_jwt = false
+
+[functions.ai-recommend-contracts]
+verify_jwt = false
+
+[functions.ai-profile-optimizer]
+verify_jwt = false
