@@ -1,7 +1,8 @@
+import { useState, useMemo } from "react";
 import { TrackedContract } from "@/hooks/useTrackedContracts";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, ChevronDown, Clock } from "lucide-react";
+import { Trash2, ChevronDown, Clock, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { PIPELINE_STATUSES } from "./KanbanBoard";
 import {
   DropdownMenu,
@@ -15,6 +16,9 @@ interface Props {
   onStatusChange: (id: string, status: string) => void;
   onDelete: (id: string) => void;
 }
+
+type SortKey = "deadline" | "value" | "added";
+type SortDir = "asc" | "desc";
 
 const statusBadgeVariant = (s: string) => {
   if (s === "won") return "default" as const;
@@ -32,7 +36,47 @@ function getDaysLeft(deadline: string | null) {
   return { text: `${days}d`, cls: "text-success" };
 }
 
+function parseValue(v: string | null): number {
+  if (!v) return 0;
+  const n = parseFloat(v.replace(/[^0-9.]/g, ""));
+  return isNaN(n) ? 0 : n;
+}
+
+function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+  if (!active) return <ArrowUpDown className="w-3 h-3 opacity-40" />;
+  return dir === "asc" ? <ArrowUp className="w-3 h-3 text-primary" /> : <ArrowDown className="w-3 h-3 text-primary" />;
+}
+
 export function ListView({ contracts, onStatusChange, onDelete }: Props) {
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir(d => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const sorted = useMemo(() => {
+    if (!sortKey) return contracts;
+    return [...contracts].sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === "deadline") {
+        const ta = a.response_deadline ? new Date(a.response_deadline).getTime() : Infinity;
+        const tb = b.response_deadline ? new Date(b.response_deadline).getTime() : Infinity;
+        cmp = ta - tb;
+      } else if (sortKey === "value") {
+        cmp = parseValue(a.contract_value) - parseValue(b.contract_value);
+      } else {
+        cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [contracts, sortKey, sortDir]);
+
   if (contracts.length === 0) return null;
 
   return (
@@ -42,14 +86,30 @@ export function ListView({ contracts, onStatusChange, onDelete }: Props) {
           <tr className="border-b border-border/50 bg-muted/30">
             <th className="text-left p-3 text-xs font-medium text-muted-foreground">Title</th>
             <th className="text-left p-3 text-xs font-medium text-muted-foreground hidden md:table-cell">Agency</th>
-            <th className="text-left p-3 text-xs font-medium text-muted-foreground">Deadline</th>
-            <th className="text-left p-3 text-xs font-medium text-muted-foreground hidden sm:table-cell">Value</th>
+            <th
+              className="text-left p-3 text-xs font-medium text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors"
+              onClick={() => toggleSort("deadline")}
+            >
+              <span className="flex items-center gap-1">Deadline <SortIcon active={sortKey === "deadline"} dir={sortDir} /></span>
+            </th>
+            <th
+              className="text-left p-3 text-xs font-medium text-muted-foreground hidden sm:table-cell cursor-pointer select-none hover:text-foreground transition-colors"
+              onClick={() => toggleSort("value")}
+            >
+              <span className="flex items-center gap-1">Value <SortIcon active={sortKey === "value"} dir={sortDir} /></span>
+            </th>
             <th className="text-left p-3 text-xs font-medium text-muted-foreground">Status</th>
+            <th
+              className="p-3 text-xs font-medium text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors text-left"
+              onClick={() => toggleSort("added")}
+            >
+              <span className="flex items-center gap-1">Added <SortIcon active={sortKey === "added"} dir={sortDir} /></span>
+            </th>
             <th className="p-3 w-10" />
           </tr>
         </thead>
         <tbody>
-          {contracts.map(c => {
+          {sorted.map(c => {
             const dl = getDaysLeft(c.response_deadline);
             const label = PIPELINE_STATUSES.find(s => s.value === c.status)?.label || c.status;
             return (
@@ -88,6 +148,9 @@ export function ListView({ contracts, onStatusChange, onDelete }: Props) {
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
+                </td>
+                <td className="p-3 text-xs text-muted-foreground">
+                  {new Date(c.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                 </td>
                 <td className="p-3">
                   <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => onDelete(c.id)}>
