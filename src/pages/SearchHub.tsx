@@ -53,6 +53,7 @@ import { useSmartSearch, useSaveSearch, SearchFilters, SearchResult } from "@/ho
 import { toast } from "sonner";
 import { SECTOR_NAICS, SECTOR_CONFIG } from "@/config/sectors";
 import { useWinProbability, ContractScoreInput, ContractScoreResult } from "@/hooks/useWinProbability";
+import { NaicsCodeSelector } from "@/components/company/NaicsCodeSelector";
 import { WinScoreModal } from "@/components/search/WinScoreModal";
 import { useCompanyProfile } from "@/hooks/useProfile";
 
@@ -103,7 +104,7 @@ const SearchHub = () => {
   };
 
   // Advanced filters
-  const [advNaics, setAdvNaics] = useState("");
+  const [advNaics, setAdvNaics] = useState<string[]>([]);
   const [advPsc, setAdvPsc] = useState("");
   const [advMinValue, setAdvMinValue] = useState("");
   const [advMaxValue, setAdvMaxValue] = useState("");
@@ -112,20 +113,8 @@ const SearchHub = () => {
   const [advState, setAdvState] = useState("");
   const [advType, setAdvType] = useState("");
 
-  const hasAdvancedFilters = !!(advNaics || advPsc || advMinValue || advMaxValue || advAgency || advDeadline || advState || advType);
+  const hasAdvancedFilters = !!(advNaics.length > 0 || advPsc || advMinValue || advMaxValue || advAgency || advDeadline || advState || advType);
 
-  const naicsOptions = [
-    { value: "541511", label: "541511 — Custom Computer Programming" },
-    { value: "541512", label: "541512 — Computer Systems Design" },
-    { value: "541519", label: "541519 — Other Computer Services" },
-    { value: "541330", label: "541330 — Engineering Services" },
-    { value: "541620", label: "541620 — Environmental Consulting" },
-    { value: "561210", label: "561210 — Facilities Support" },
-    { value: "236220", label: "236220 — Commercial Construction" },
-    { value: "334111", label: "334111 — Electronic Computers" },
-    { value: "611430", label: "611430 — Professional Training" },
-    { value: "621999", label: "621999 — Health Services" },
-  ];
 
   const pscOptions = [
     { value: "D302", label: "D302 — IT Systems Development" },
@@ -199,7 +188,7 @@ const SearchHub = () => {
   ];
 
   const clearAdvancedFilters = () => {
-    setAdvNaics("");
+    setAdvNaics([]);
     setAdvPsc("");
     setAdvMinValue("");
     setAdvMaxValue("");
@@ -231,7 +220,7 @@ const SearchHub = () => {
 
     return {
       keywords: searchQuery.trim() ? searchQuery.trim().split(/\s+/) : [],
-      naics_codes: advNaics ? [advNaics] : [],
+      naics_codes: advNaics,
       psc_codes: advPsc ? [advPsc] : [],
       set_aside: quickSetAsides,
       agencies: advAgency ? [advAgency] : [],
@@ -343,7 +332,7 @@ const SearchHub = () => {
 
     const combinedFilters: SearchFilters & { deadline_before?: string } = {
       keywords: searchQuery.trim() ? searchQuery.trim().split(/\s+/) : [],
-      naics_codes: advNaics ? [advNaics] : [],
+      naics_codes: advNaics,
       psc_codes: advPsc ? [advPsc] : [],
       set_aside: quickSetAsides,
       agencies: advAgency ? [advAgency] : [],
@@ -660,19 +649,9 @@ const SearchHub = () => {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {/* NAICS Code */}
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
                       <Label className="text-xs text-muted-foreground">NAICS Code</Label>
-                      <Select value={advNaics || "any"} onValueChange={(val) => setAdvNaics(val === "any" ? "" : val)}>
-                        <SelectTrigger className="h-9 text-sm bg-card border-border">
-                          <SelectValue placeholder="Any industry" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-card border-border z-50">
-                          <SelectItem value="any">Any industry</SelectItem>
-                          {naicsOptions.map(n => (
-                            <SelectItem key={n.value} value={n.value}>{n.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <NaicsCodeSelector selected={advNaics} onChange={setAdvNaics} />
                     </div>
 
                     {/* Contract Value Range */}
