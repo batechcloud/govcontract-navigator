@@ -6,16 +6,20 @@ import { Button } from "@/components/ui/button";
 import { Heart, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
-import { useTrackedContracts, useUntrackContract, useUpdateContractStatus } from "@/hooks/useTrackedContracts";
+import { useTrackedContracts, useUntrackContract, useUpdateContractStatus, useUpdateContractNotes, TrackedContract } from "@/hooks/useTrackedContracts";
 import { PipelineAnalytics } from "@/components/tracked/PipelineAnalytics";
 import { KanbanBoard } from "@/components/tracked/KanbanBoard";
 import { ListView } from "@/components/tracked/ListView";
 import { OpportunityFilters } from "@/components/tracked/OpportunityFilters";
+import { NotesModal } from "@/components/tracked/NotesModal";
 
 const TrackedContracts = () => {
   const { data: contracts, isLoading } = useTrackedContracts();
   const untrackContract = useUntrackContract();
   const updateStatus = useUpdateContractStatus();
+  const updateNotes = useUpdateContractNotes();
+  const [selectedContract, setSelectedContract] = useState<TrackedContract | null>(null);
+  const [notesOpen, setNotesOpen] = useState(false);
 
   const [search, setSearch] = useState("");
   const [priority, setPriority] = useState("all");
@@ -47,6 +51,15 @@ const TrackedContracts = () => {
 
   const handleDelete = (id: string) => {
     untrackContract.mutate(id);
+  };
+
+  const handleCardClick = (contract: TrackedContract) => {
+    setSelectedContract(contract);
+    setNotesOpen(true);
+  };
+
+  const handleSaveNotes = (id: string, notes: string) => {
+    updateNotes.mutate({ id, notes }, { onSuccess: () => setNotesOpen(false) });
   };
 
   return (
@@ -99,7 +112,7 @@ const TrackedContracts = () => {
 
             {/* Board or List */}
             {view === "board" ? (
-              <KanbanBoard contracts={filtered} onStatusChange={handleStatusChange} onDelete={handleDelete} />
+              <KanbanBoard contracts={filtered} onStatusChange={handleStatusChange} onDelete={handleDelete} onCardClick={handleCardClick} />
             ) : (
               <ListView contracts={filtered} onStatusChange={handleStatusChange} onDelete={handleDelete} />
             )}
@@ -110,6 +123,14 @@ const TrackedContracts = () => {
           </>
         )}
       </motion.div>
+
+      <NotesModal
+        contract={selectedContract}
+        open={notesOpen}
+        onOpenChange={setNotesOpen}
+        onSave={handleSaveNotes}
+        saving={updateNotes.isPending}
+      />
     </DashboardLayout>
   );
 };
