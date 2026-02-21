@@ -125,7 +125,7 @@ async function fetchSamContracts() {
     body: {
       filters: { keywords: [], naics_codes: [], set_aside: [], agencies: [], min_value: null, max_value: null, location: null, opportunity_type: null },
       page: 0,
-      limit: 100,
+      limit: 1000,
     },
   });
   if (error) throw error;
