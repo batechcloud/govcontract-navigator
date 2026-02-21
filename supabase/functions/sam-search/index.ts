@@ -20,6 +20,22 @@ interface SearchFilters {
   opportunity_type: string | null;
 }
 
+const STATE_ABBREVIATIONS: Record<string, string> = {
+  "Alabama": "AL", "Alaska": "AK", "Arizona": "AZ", "Arkansas": "AR",
+  "California": "CA", "Colorado": "CO", "Connecticut": "CT", "Delaware": "DE",
+  "Florida": "FL", "Georgia": "GA", "Hawaii": "HI", "Idaho": "ID",
+  "Illinois": "IL", "Indiana": "IN", "Iowa": "IA", "Kansas": "KS",
+  "Kentucky": "KY", "Louisiana": "LA", "Maine": "ME", "Maryland": "MD",
+  "Massachusetts": "MA", "Michigan": "MI", "Minnesota": "MN", "Mississippi": "MS",
+  "Missouri": "MO", "Montana": "MT", "Nebraska": "NE", "Nevada": "NV",
+  "New Hampshire": "NH", "New Jersey": "NJ", "New Mexico": "NM", "New York": "NY",
+  "North Carolina": "NC", "North Dakota": "ND", "Ohio": "OH", "Oklahoma": "OK",
+  "Oregon": "OR", "Pennsylvania": "PA", "Rhode Island": "RI", "South Carolina": "SC",
+  "South Dakota": "SD", "Tennessee": "TN", "Texas": "TX", "Utah": "UT",
+  "Vermont": "VT", "Virginia": "VA", "Washington": "WA", "West Virginia": "WV",
+  "Wisconsin": "WI", "Wyoming": "WY", "District of Columbia": "DC",
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -66,9 +82,12 @@ serve(async (req) => {
     console.log("Searching SAM.gov with filters:", JSON.stringify(filters));
 
     // Build SAM.gov API query parameters
+    // When post-filtering by location, fetch more results to ensure enough matches
+    const needsPostFilter = !!(filters.location || filters.min_value || filters.max_value);
+    const fetchLimit = needsPostFilter ? Math.max(limit * 10, 100) : limit;
     const params = new URLSearchParams();
     params.append("api_key", SAM_API_KEY);
-    params.append("limit", limit.toString());
+    params.append("limit", fetchLimit.toString());
     params.append("offset", (page * limit).toString());
     
     // Add keyword search
@@ -96,7 +115,9 @@ serve(async (req) => {
     
     // Add location/state (place of performance state)
     if (filters.location) {
-      params.append("state", filters.location);
+      const stateCode = STATE_ABBREVIATIONS[filters.location] || filters.location;
+      params.append("state", stateCode);
+      console.log("Filtering by state:", filters.location, "→", stateCode);
     }
 
     // Add agency/organization filter
@@ -161,13 +182,24 @@ serve(async (req) => {
 
     const results = transformSamResults(opportunities, filters);
 
-    // Post-filter by value range (SAM.gov API doesn't support this natively)
+    // Post-filter by location if SAM.gov API didn't filter precisely
     let filteredResults = results;
-    if (filters.min_value || filters.max_value) {
+    if (filters.location) {
+      const stateCode = STATE_ABBREVIATIONS[filters.location] || filters.location;
+      const stateName = filters.location.toLowerCase();
       filteredResults = results.filter((r: any) => {
+        const loc = (r.location || "").toLowerCase();
+        if (loc === "various" || loc === "") return false; // Exclude generic "Various"
+        return loc.includes(stateName) || loc.includes(stateCode.toLowerCase()) || loc.includes(`, ${stateCode.toLowerCase()}`);
+      });
+      console.log(`Location post-filter: ${results.length} → ${filteredResults.length} results for ${filters.location}`);
+    }
+
+    // Post-filter by value range (SAM.gov API doesn't support this natively)
+    if (filters.min_value || filters.max_value) {
+      filteredResults = filteredResults.filter((r: any) => {
         const amount = parseFloat(r.value.replace(/[$,KMB]/g, ''));
         if (isNaN(amount)) return true; // Keep TBD results
-        // Convert back to raw number
         let rawAmount = amount;
         if (r.value.includes('K')) rawAmount = amount * 1000;
         if (r.value.includes('M')) rawAmount = amount * 1000000;
@@ -178,10 +210,14 @@ serve(async (req) => {
       });
     }
 
+    // Slice to requested page size after post-filtering
+    const totalFiltered = filteredResults.length;
+    const pagedResults = needsPostFilter ? filteredResults.slice(0, limit) : filteredResults;
+
     return new Response(
       JSON.stringify({
-        results: filteredResults,
-        total: data.totalRecords || opportunities.length,
+        results: pagedResults,
+        total: needsPostFilter ? totalFiltered : (data.totalRecords || opportunities.length),
         page,
         limit
       }),
