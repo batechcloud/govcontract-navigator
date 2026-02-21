@@ -1,103 +1,66 @@
 
 
-# NAICS Code Validation Report
+# Add Complete NAICS Code Database (1,000+ Codes)
 
-## Summary
+## Overview
+Add all NAICS codes from the SBA Table of Size Standards to the application. The current selector has 68 codes -- this will expand it to the full ~1,057 codes across 20 NAICS sectors, matching the official SBA document.
 
-After cross-referencing the SBA's official Table of Size Standards (effective March 17, 2023) against the two files that contain NAICS codes in your application, I found **several codes that need updating** due to the 2022 NAICS revision. The issues fall into two categories.
+## Architecture Decision
+Given the volume of data (~1,000+ entries), the NAICS code data will be moved to a dedicated data file (`src/data/naicsCodes.ts`) rather than keeping it inline in the component. This keeps the component clean and makes the data reusable across the app.
 
----
+## Changes
 
-## File 1: `src/config/sectors.ts` (SECTOR_NAICS — 4-digit prefixes)
+### 1. Create `src/data/naicsCodes.ts` -- New File
+A comprehensive data file containing all NAICS codes organized into 20 sector groups, extracted directly from the SBA Table of Size Standards (March 17, 2023):
 
-These prefixes are used for sector-based filtering on the Search Hub and Sector Browse pages.
+- **Sector 11** -- Agriculture, Forestry, Fishing & Hunting (~60 codes)
+- **Sector 21** -- Mining, Quarrying, Oil & Gas (~20 codes)
+- **Sector 22** -- Utilities (~15 codes)
+- **Sector 23** -- Construction (~35 codes)
+- **Sector 31-33** -- Manufacturing (~400 codes, the largest sector)
+- **Sector 42** -- Wholesale Trade (~60 codes)
+- **Sector 44-45** -- Retail Trade (~40 codes)
+- **Sector 48-49** -- Transportation & Warehousing (~50 codes)
+- **Sector 51** -- Information (~25 codes)
+- **Sector 52** -- Finance & Insurance (~35 codes)
+- **Sector 53** -- Real Estate & Rental/Leasing (~25 codes)
+- **Sector 54** -- Professional, Scientific & Technical Services (~50 codes)
+- **Sector 55** -- Management of Companies (~2 codes)
+- **Sector 56** -- Administrative & Support Services (~45 codes)
+- **Sector 61** -- Educational Services (~20 codes)
+- **Sector 62** -- Health Care & Social Assistance (~45 codes)
+- **Sector 71** -- Arts, Entertainment & Recreation (~25 codes)
+- **Sector 72** -- Accommodation & Food Services (~15 codes)
+- **Sector 81** -- Other Services (~30 codes)
+- **Sector 92** -- Public Administration (note: no SBA size standards, but included for contract search)
 
-### Issues Found
-
-| Sector | Current Code | Problem | Correct Code | Notes |
-|--------|-------------|---------|-------------|-------|
-| technology | `"5112"` | Old prefix for Software Publishers (was 511210) | `"5132"` | Now 513210 per 2022 revision |
-| technology | `"5179"` | No matching NAICS codes exist | Remove | No 5179xx codes in 2022 NAICS |
-| technology | `"5191"` | Maps to Libraries (519210), not Web/Info Services | `"5192"` | Web Search Portals is 519290 |
-| marketing | `"5191"` | Same issue as above | `"5192"` | 519290 is the target code |
-| data_analytics | `"5191"` | Same issue as above | `"5192"` | 519290 is the target code |
-| telecom | `"5171"` | Valid (maps to 517111 Wired Carriers) | OK | Keep |
-| telecom | `"5172"` | Valid (maps to 517121 Resellers) | OK | Keep |
-| telecom | `"5174"` | Valid (maps to 517410 Satellite) | OK | Keep |
-| telecom | `"5179"` | No matching NAICS codes exist | `"5178"` | 517810 = All Other Telecom |
-| scientific | `"7132"` | Maps to Amusement Parks/Arcades, not scientific | Remove or replace | Not a scientific category |
-| scientific | `"8099"` | Does not exist in NAICS at all | Remove | No 8099xx codes exist |
-
-### Codes That Are Valid (confirmed against SBA document)
-- All construction codes (2361, 2362, 2371, 2372, 2381, 2382) -- confirmed
-- All healthcare codes (6211, 6212, 6216, 6219, 6221, 6231) -- confirmed
-- All consulting codes (5411-5417) -- confirmed
-- All education codes (6111-6116) -- confirmed
-- All logistics codes (4811, 4841, 4851, 4911, 4921, 4931) -- confirmed
-- All energy codes (2211, 2212, 2213, 3241, 3353) -- confirmed
-- All admin codes (5611-5615) -- confirmed
-- All social services codes (6241-6244) -- confirmed
-- Finance codes (5221, 5231, 5241, 5251) -- confirmed
-- Note: Public Administration codes (9221, 9241, 9281) are valid NAICS codes but the SBA does not set size standards for Sector 92. They are still useful for contract search filtering.
-
----
-
-## File 2: `src/components/company/NaicsCodeSelector.tsx` (6-digit codes)
-
-These are the specific codes users can select for their company profile.
-
-### Issues Found
-
-| Current Code | Current Description | Problem | Correct Code | Correct Description |
-|-------------|-------------------|---------|-------------|-------------------|
-| `511210` | Software Publishers | Old code from pre-2022 NAICS | `513210` | Software Publishers |
-| `517311` | Wired Telecommunications Carriers | Old code from pre-2022 NAICS | `517111` | Wired Telecommunications Carriers |
-
-### All Other Codes Validated as Correct
-The remaining 33 codes in NaicsCodeSelector (236220, 238210, 334111, 334511, 336411, 423430, 518210, 519290, 541330, 541380, 541511-541519, 541611-541690, 541715, 541990, 561210, 561320, 561612, 561621, 561720, 562111, 611430, 621999, 811212, 928110) are all confirmed valid per the SBA document.
-
----
-
-## Proposed Changes
-
-### 1. Update `src/config/sectors.ts`
-
-```text
-SECTOR_NAICS changes:
-  technology:    ["5415", "5182", "5132", "5192"]
-                  (removed 5179, changed 5112->5132, changed 5191->5192)
-
-  marketing:     ["5418", "5192", "7111", "7113"]
-                  (changed 5191->5192)
-
-  data_analytics: ["5415", "5182", "5192"]
-                  (changed 5191->5192)
-
-  telecom:       ["5171", "5172", "5174", "5178"]
-                  (changed 5179->5178 for "All Other Telecom")
-
-  scientific:    ["5417", "5414", "5419"]
-                  (removed invalid 7132 and 8099, added 5414 for
-                   Specialized Design Services and 5419 for Other
-                   Professional/Scientific/Technical Services)
-```
+Each entry will include: `code` (6-digit), `desc` (industry description), and optionally `sizeStandard` (for future use).
 
 ### 2. Update `src/components/company/NaicsCodeSelector.tsx`
+- Import NAICS groups from the new data file instead of defining them inline
+- Increase the dropdown max-height from 300px to 400px for better browsing
+- Add a count indicator showing how many codes are available in each group
+- The existing search, add, and remove functionality remains unchanged -- the `cmdk` Command component handles filtering efficiently even with 1,000+ items
+
+## Performance Considerations
+- The `cmdk` library (Command component) already handles virtualized filtering efficiently
+- Search is instant because `cmdk` filters on the client side using the `value` prop
+- Only visible items are rendered in the DOM thanks to CommandList's built-in scroll behavior
+- No API calls or lazy loading needed -- the full dataset is ~80KB which is negligible
+
+## Technical Details
 
 ```text
-Change:  { code: "511210", desc: "Software Publishers" }
-To:      { code: "513210", desc: "Software Publishers" }
+New file:
+  src/data/naicsCodes.ts
+    - Exports NAICS_GROUPS: Array<{ label: string; codes: Array<{ code: string; desc: string }> }>
+    - Exports ALL_NAICS: flattened array of all codes
+    - ~1,057 NAICS codes across 20 sector groups
 
-Change:  { code: "517311", desc: "Wired Telecommunications Carriers" }
-To:      { code: "517111", desc: "Wired Telecommunications Carriers" }
+Modified file:
+  src/components/company/NaicsCodeSelector.tsx
+    - Remove inline NAICS_GROUPS constant
+    - Import { NAICS_GROUPS, ALL_NAICS } from "@/data/naicsCodes"
+    - Increase CommandList max-height to 400px
 ```
-
----
-
-## Impact
-
-- **Sector Browse page**: Sector cards will map to correct NAICS prefixes for filtering
-- **Search Hub**: Industry-based search will use accurate NAICS prefix matching
-- **Company Profile**: Users selecting NAICS codes will see current 2022-revision codes
-- **No database migration needed** -- these are frontend-only configuration changes
 
