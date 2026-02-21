@@ -72,6 +72,7 @@ serve(async (req) => {
     const profileContext = profile
       ? `Company: ${profile.company_name}
 NAICS: ${profile.naics_codes?.join(", ") || "None"}
+PSC Codes: ${profile.psc_codes?.join(", ") || "None"}
 Certifications: ${profile.certifications?.join(", ") || "None"}
 Capabilities: ${profile.capabilities?.join("; ") || "None"}
 Employees: ${profile.employee_count || "N/A"}
