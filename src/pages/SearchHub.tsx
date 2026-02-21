@@ -83,8 +83,9 @@ const SearchHub = () => {
   const [advAgency, setAdvAgency] = useState("");
   const [advDeadline, setAdvDeadline] = useState("");
   const [advState, setAdvState] = useState("");
+  const [advType, setAdvType] = useState("");
 
-  const hasAdvancedFilters = !!(advNaics || advMinValue || advMaxValue || advAgency || advDeadline || advState);
+  const hasAdvancedFilters = !!(advNaics || advMinValue || advMaxValue || advAgency || advDeadline || advState || advType);
 
   const naicsOptions = [
     { value: "541511", label: "541511 — Custom Computer Programming" },
@@ -141,6 +142,16 @@ const SearchHub = () => {
     "Wisconsin","Wyoming","District of Columbia",
   ];
 
+  const opportunityTypeOptions = [
+    { value: "Solicitation", label: "Solicitation" },
+    { value: "Presolicitation", label: "Presolicitation" },
+    { value: "Sources Sought", label: "Sources Sought" },
+    { value: "Combined Synopsis/Solicitation", label: "Combined Synopsis/Solicitation" },
+    { value: "Award Notice", label: "Award Notice" },
+    { value: "Special Notice", label: "Special Notice" },
+    { value: "Intent to Bundle", label: "Intent to Bundle" },
+  ];
+
   const clearAdvancedFilters = () => {
     setAdvNaics("");
     setAdvMinValue("");
@@ -148,6 +159,7 @@ const SearchHub = () => {
     setAdvAgency("");
     setAdvDeadline("");
     setAdvState("");
+    setAdvType("");
   };
 
   const handleApplyAdvancedFilters = async () => {
@@ -168,7 +180,7 @@ const SearchHub = () => {
       min_value: advMinValue ? parseInt(advMinValue) : null,
       max_value: advMaxValue ? parseInt(advMaxValue) : null,
       location: advState || null,
-      opportunity_type: null,
+      opportunity_type: advType || null,
       ...(deadlineDate ? { deadline_before: deadlineDate } : {}),
     };
 
@@ -514,7 +526,7 @@ const SearchHub = () => {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {/* NAICS Code */}
                     <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">NAICS Code</Label>
@@ -566,6 +578,22 @@ const SearchHub = () => {
                           <SelectItem value="any">Any agency</SelectItem>
                           {agencyOptions.map(a => (
                             <SelectItem key={a} value={a}>{a}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Opportunity Type */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Opportunity Type</Label>
+                      <Select value={advType || "any"} onValueChange={(val) => setAdvType(val === "any" ? "" : val)}>
+                        <SelectTrigger className="h-9 text-sm bg-card border-border">
+                          <SelectValue placeholder="Any type" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border z-50">
+                          <SelectItem value="any">Any type</SelectItem>
+                          {opportunityTypeOptions.map(t => (
+                            <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>

@@ -120,6 +120,24 @@ serve(async (req) => {
       console.log("Filtering by state:", filters.location, "→", stateCode);
     }
 
+    // Add opportunity type (notice type) filter
+    if (filters.opportunity_type) {
+      const ntypeMapping: Record<string, string> = {
+        "Solicitation": "o",
+        "Presolicitation": "p",
+        "Sources Sought": "s",
+        "Combined Synopsis/Solicitation": "k",
+        "Award Notice": "a",
+        "Special Notice": "i",
+        "Intent to Bundle": "r",
+      };
+      const ntype = ntypeMapping[filters.opportunity_type];
+      if (ntype) {
+        params.append("ntype", ntype);
+        console.log("Filtering by notice type:", filters.opportunity_type, "→", ntype);
+      }
+    }
+
     // Add agency/organization filter
     if (filters.agencies && filters.agencies.length > 0) {
       // SAM.gov uses 'organizationId' or keyword in title for agency filtering
