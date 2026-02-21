@@ -17,37 +17,38 @@ export interface AIRecommendation {
   priority: "high" | "medium" | "low";
 }
 
+async function invokeWithRetry(maxRetries = 4): Promise<{ recommendations: AIRecommendation[]; message?: string; error?: string }> {
+  let delay = 1500;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const { data, error } = await supabase.functions.invoke("ai-recommend-contracts");
+
+    const is429 = error?.message?.includes("429") || data?.error?.includes("busy");
+
+    if (is429 && attempt < maxRetries) {
+      await new Promise(r => setTimeout(r, delay));
+      delay *= 2;
+      continue;
+    }
+
+    if (error) throw error;
+    if (data?.error === "no_profile") return { recommendations: [], message: data.message };
+    if (data?.error) throw new Error(data.error);
+    return data;
+  }
+
+  throw new Error("AI service is temporarily unavailable. Please try again shortly.");
+}
+
 export function useAIRecommendations() {
   const { session } = useAuth();
 
   return useQuery({
     queryKey: ["ai-recommendations"],
-    queryFn: async (): Promise<{ recommendations: AIRecommendation[]; message?: string; error?: string }> => {
-      const { data, error } = await supabase.functions.invoke("ai-recommend-contracts");
-
-      if (error) {
-        if (error.message?.includes("429")) {
-          toast.error("AI is busy, please try again in a moment.");
-          throw new Error("rate_limited");
-        }
-        throw error;
-      }
-      if (data?.error === "no_profile") return { recommendations: [], message: data.message };
-      if (data?.error) {
-        if (data.error.includes("busy")) {
-          toast.error("AI is busy, please try again in a moment.");
-          throw new Error("rate_limited");
-        }
-        throw new Error(data.error);
-      }
-      return data;
-    },
+    queryFn: () => invokeWithRetry(),
     enabled: !!session,
     staleTime: 30 * 60 * 1000,
-    retry: (failureCount, error) => {
-      if (error?.message === "rate_limited") return false;
-      return failureCount < 1;
-    },
+    retry: 1,
     retryDelay: 5000,
   });
 }
