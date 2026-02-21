@@ -35,28 +35,33 @@ export const GeographicSpending = ({ fy, refreshKey }: Props) => {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border text-muted-foreground">
-                  <th className="text-left p-3">Rank</th>
-                  <th className="text-left p-3">State</th>
-                  <th className="text-right p-3">Total Obligated</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading
-                  ? Array.from({ length: 8 }).map((_, i) => (
-                      <tr key={i} className="border-b border-border/50">
-                        <td className="p-3"><Skeleton className="h-5 w-6" /></td>
-                        <td className="p-3"><Skeleton className="h-5 w-24" /></td>
-                        <td className="p-3"><Skeleton className="h-5 w-16" /></td>
-                      </tr>
-                    ))
-                  : data?.map((state) => (
-                      <tr key={state.rank} className="border-b border-border/50 hover:bg-primary/5 transition-colors">
-                        <td className="p-3 text-muted-foreground">{state.rank}</td>
-                        <td className="p-3 text-foreground font-medium">{state.state}</td>
-                        <td className="p-3 text-right text-foreground">{formatDollars(state.amount)}</td>
-                      </tr>
-                    ))}
+                 <tr className="border-b border-border text-muted-foreground">
+                   <th className="text-left p-3">Rank</th>
+                   <th className="text-left p-3">State</th>
+                   <th className="text-right p-3">Total Obligated</th>
+                   <th className="text-right p-3">Per Capita</th>
+                 </tr>
+               </thead>
+               <tbody>
+                 {isLoading
+                   ? Array.from({ length: 8 }).map((_, i) => (
+                       <tr key={i} className="border-b border-border/50">
+                         <td className="p-3"><Skeleton className="h-5 w-6" /></td>
+                         <td className="p-3"><Skeleton className="h-5 w-24" /></td>
+                         <td className="p-3"><Skeleton className="h-5 w-16" /></td>
+                         <td className="p-3"><Skeleton className="h-5 w-16" /></td>
+                       </tr>
+                     ))
+                   : data?.map((state) => (
+                       <tr key={state.rank} className="border-b border-border/50 hover:bg-primary/5 transition-colors">
+                         <td className="p-3 text-muted-foreground">{state.rank}</td>
+                         <td className="p-3 text-foreground font-medium">{state.state}</td>
+                         <td className="p-3 text-right text-foreground">{formatDollars(state.amount)}</td>
+                         <td className="p-3 text-right text-muted-foreground">
+                           {state.population > 0 ? formatDollars(state.amount / state.population) : "—"}
+                         </td>
+                       </tr>
+                     ))}
               </tbody>
             </table>
           </div>
