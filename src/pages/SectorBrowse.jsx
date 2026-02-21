@@ -212,7 +212,7 @@ export default function SectorBrowse() {
                         color: "hsl(var(--foreground))",
                         fontSize: "0.8rem",
                       }}
-                      formatter={(value, name) => [`${value} contracts`, name]}
+                      formatter={(value, name) => [`${value} contracts — Click to view`, name]}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -251,7 +251,7 @@ export default function SectorBrowse() {
                         color: "hsl(var(--foreground))",
                         fontSize: "0.8rem",
                       }}
-                      formatter={(value) => [`${value} contracts`]}
+                      formatter={(value) => [`${value} contracts — Click to view`]}
                     />
                     <Bar dataKey="value" radius={[0, 4, 4, 0]} className="cursor-pointer" onClick={(data) => handleChartClick(data)}>
                       {chartData.slice(0, 10).map((entry, i) => (
