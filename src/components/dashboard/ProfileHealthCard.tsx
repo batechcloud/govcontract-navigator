@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,14 +13,14 @@ const priorityIcons = {
   low: <CheckCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />,
 };
 
-function ScoreRing({ score }: { score: number }) {
+const ScoreRing = forwardRef<HTMLDivElement, { score: number }>(({ score }, ref) => {
   const radius = 36;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
   const color = score >= 70 ? "text-success" : score >= 40 ? "text-accent" : "text-destructive";
 
   return (
-    <div className="relative w-24 h-24 shrink-0">
+    <div ref={ref} className="relative w-24 h-24 shrink-0">
       <svg className="w-24 h-24 -rotate-90" viewBox="0 0 80 80">
         <circle cx="40" cy="40" r={radius} fill="none" stroke="currentColor" strokeWidth="6" className="text-secondary" />
         <circle
@@ -35,8 +36,8 @@ function ScoreRing({ score }: { score: number }) {
       </div>
     </div>
   );
-}
-
+});
+ScoreRing.displayName = "ScoreRing";
 export function ProfileHealthCard() {
   const { data, isLoading, isError } = useAIProfileScore();
 
