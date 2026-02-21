@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { SpendingHeader } from "@/components/usaspending/SpendingHeader";
 import { SpendingSnapshot } from "@/components/usaspending/SpendingSnapshot";
@@ -11,8 +12,16 @@ import { GeographicSpending } from "@/components/usaspending/GeographicSpending"
 import { SmallBusinessIntel } from "@/components/usaspending/SmallBusinessIntel";
 import { USASpendingGuide } from "@/components/usaspending/USASpendingGuide";
 
+const getDefaultFY = () => {
+  const now = new Date();
+  // Federal FY starts Oct 1, so if we're in Oct-Dec, current FY = year+1
+  const currentFY = now.getMonth() >= 9 ? now.getFullYear() + 1 : now.getFullYear();
+  return `FY${currentFY - 1}`;
+};
+
 const USASpendingIntel = () => {
-  const [fy, setFy] = useState("FY2024");
+  const queryClient = useQueryClient();
+  const [fy, setFy] = useState(getDefaultFY());
   const [refreshKey, setRefreshKey] = useState(0);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(new Date());
   const [selectedAgency, setSelectedAgency] = useState<string | undefined>();
@@ -20,7 +29,16 @@ const USASpendingIntel = () => {
   const handleRefresh = useCallback(() => {
     setRefreshKey((k) => k + 1);
     setLastRefreshed(new Date());
-  }, []);
+    // Invalidate all USASpending queries to force refetch
+    queryClient.invalidateQueries({ queryKey: ["usa-snapshot"] });
+    queryClient.invalidateQueries({ queryKey: ["usa-top-agencies"] });
+    queryClient.invalidateQueries({ queryKey: ["usa-category"] });
+    queryClient.invalidateQueries({ queryKey: ["usa-awards"] });
+    queryClient.invalidateQueries({ queryKey: ["usa-recipients"] });
+    queryClient.invalidateQueries({ queryKey: ["usa-trends"] });
+    queryClient.invalidateQueries({ queryKey: ["usa-geo"] });
+    queryClient.invalidateQueries({ queryKey: ["usa-sb"] });
+  }, [queryClient]);
 
   const handleFyChange = useCallback((newFy: string) => {
     setFy(newFy);
