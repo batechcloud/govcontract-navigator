@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -51,6 +51,7 @@ import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useTrackContract, useTrackedContracts } from "@/hooks/useTrackedContracts";
 import { useSmartSearch, useSaveSearch, SearchFilters, SearchResult } from "@/hooks/useSearch";
 import { toast } from "sonner";
+import { SECTOR_NAICS, SECTOR_CONFIG } from "@/config/sectors";
 
 const RESULTS_PER_PAGE = 10;
 
@@ -65,12 +66,15 @@ const quickFilters = [
 
 const SearchHub = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [searchName, setSearchName] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [activeSector, setActiveSector] = useState<string | null>(null);
+  const sectorSearchDone = useRef(false);
 
   // Advanced filters
   const [advNaics, setAdvNaics] = useState("");
@@ -167,6 +171,35 @@ const SearchHub = () => {
     total,
     isParsing,
   } = useSmartSearch();
+
+  // Auto-search when arriving from sector browse
+  useEffect(() => {
+    const sectorKey = searchParams.get("sector");
+    if (!sectorKey || sectorSearchDone.current) return;
+    sectorSearchDone.current = true;
+
+    const config = SECTOR_CONFIG[sectorKey];
+    const naicsCodes = SECTOR_NAICS[sectorKey] || [];
+
+    if (config) {
+      setActiveSector(sectorKey);
+      setSearchQuery(`${config.label} contracts`);
+
+      const filters = {
+        keywords: [],
+        naics_codes: naicsCodes,
+        set_aside: [] as string[],
+        agencies: [] as string[],
+        min_value: null,
+        max_value: null,
+        location: null,
+        opportunity_type: null,
+      };
+
+      searchWithFilters(filters, 0);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams]);
 
   const trackContract = useTrackContract();
   const { data: trackedContracts } = useTrackedContracts();
@@ -316,6 +349,24 @@ const SearchHub = () => {
           <div className="bg-accent/10 border border-accent/30 rounded-lg px-4 py-2 flex items-center gap-2 text-sm">
             <span className="font-semibold text-accent">Demo Mode:</span>
             <span className="text-muted-foreground">Showing sample contracts. Add a SAM.gov API key to search live opportunities.</span>
+          </div>
+        )}
+
+        {/* Active Sector Banner */}
+        {activeSector && SECTOR_CONFIG[activeSector] && (
+          <div className="bg-primary/10 border border-primary/30 rounded-lg px-4 py-2 flex items-center gap-2 text-sm">
+            <span className="text-lg">{SECTOR_CONFIG[activeSector].icon}</span>
+            <span className="text-foreground font-medium">
+              Showing results for <span className="text-primary">{SECTOR_CONFIG[activeSector].label}</span>
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-auto h-7 text-xs"
+              onClick={() => setActiveSector(null)}
+            >
+              <X className="w-3 h-3 mr-1" /> Clear
+            </Button>
           </div>
         )}
 
