@@ -35,6 +35,7 @@ import {
   Eye,
 } from "lucide-react";
 import { NaicsCodeSelector } from "@/components/company/NaicsCodeSelector";
+import { PscCodeSelector } from "@/components/company/PscCodeSelector";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useCompanyProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
@@ -83,6 +84,7 @@ const CompanyProfile = () => {
     employee_count: "",
     annual_revenue: "",
     naics_codes: [] as string[],
+    psc_codes: [] as string[],
     certifications: [] as string[],
     capabilities: [] as string[],
   });
@@ -202,6 +204,7 @@ const CompanyProfile = () => {
         employee_count: companyProfile.employee_count || "",
         annual_revenue: companyProfile.annual_revenue || "",
         naics_codes: companyProfile.naics_codes || [],
+        psc_codes: (companyProfile as any).psc_codes || [],
         certifications: companyProfile.certifications || [],
         capabilities: companyProfile.capabilities || [],
       });
@@ -254,9 +257,10 @@ const CompanyProfile = () => {
           employee_count: formData.employee_count || null,
           annual_revenue: formData.annual_revenue || null,
           naics_codes: formData.naics_codes,
+          psc_codes: formData.psc_codes,
           certifications: formData.certifications,
           capabilities: formData.capabilities,
-        }, { onConflict: "user_id" });
+        } as any, { onConflict: "user_id" });
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["company-profile"] });
       toast({ title: "Saved!", description: "Your business profile has been updated." });
@@ -456,6 +460,13 @@ const CompanyProfile = () => {
                   <NaicsCodeSelector
                     selected={formData.naics_codes}
                     onChange={(codes) => setFormData(prev => ({ ...prev, naics_codes: codes }))}
+                  />
+                </div>
+                <div className="space-y-2 pt-2">
+                  <Label>Product & Service Codes (PSC)</Label>
+                  <PscCodeSelector
+                    selected={formData.psc_codes}
+                    onChange={(codes) => setFormData(prev => ({ ...prev, psc_codes: codes }))}
                   />
                 </div>
               </CardContent>

@@ -31,6 +31,7 @@ export type Database = {
           naics_codes: string[] | null
           past_performance: Json | null
           preferred_agencies: string[] | null
+          psc_codes: string[] | null
           sam_uei: string | null
           updated_at: string
           user_id: string
@@ -52,6 +53,7 @@ export type Database = {
           naics_codes?: string[] | null
           past_performance?: Json | null
           preferred_agencies?: string[] | null
+          psc_codes?: string[] | null
           sam_uei?: string | null
           updated_at?: string
           user_id: string
@@ -73,6 +75,7 @@ export type Database = {
           naics_codes?: string[] | null
           past_performance?: Json | null
           preferred_agencies?: string[] | null
+          psc_codes?: string[] | null
           sam_uei?: string | null
           updated_at?: string
           user_id?: string
