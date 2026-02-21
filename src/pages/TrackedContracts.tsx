@@ -58,8 +58,8 @@ const TrackedContracts = () => {
     setNotesOpen(true);
   };
 
-  const handleSaveNotes = (id: string, notes: string) => {
-    updateNotes.mutate({ id, notes }, { onSuccess: () => setNotesOpen(false) });
+  const handleSaveNotes = (id: string, notes: string, priority: string) => {
+    updateNotes.mutate({ id, notes, priority }, { onSuccess: () => setNotesOpen(false) });
   };
 
   return (

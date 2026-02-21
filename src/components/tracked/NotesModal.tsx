@@ -3,15 +3,22 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Clock, StickyNote } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Building2, Clock, StickyNote, Flag } from "lucide-react";
 import { TrackedContract } from "@/hooks/useTrackedContracts";
 import { PIPELINE_STATUSES } from "./KanbanBoard";
+
+const PRIORITIES = [
+  { value: "high", label: "High", cls: "text-destructive" },
+  { value: "medium", label: "Medium", cls: "text-accent" },
+  { value: "low", label: "Low", cls: "text-muted-foreground" },
+];
 
 interface Props {
   contract: TrackedContract | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (id: string, notes: string) => void;
+  onSave: (id: string, notes: string, priority: string) => void;
   saving?: boolean;
 }
 
@@ -26,12 +33,14 @@ function getDaysLeft(deadline: string | null) {
 
 export function NotesModal({ contract, open, onOpenChange, onSave, saving }: Props) {
   const [notes, setNotes] = useState(contract?.notes || "");
+  const [priority, setPriority] = useState(contract?.priority || "medium");
 
   // Sync when contract changes
   const [prevId, setPrevId] = useState<string | null>(null);
   if (contract && contract.id !== prevId) {
     setPrevId(contract.id);
     setNotes(contract.notes || "");
+    setPriority(contract.priority || "medium");
   }
 
   if (!contract) return null;
@@ -63,7 +72,28 @@ export function NotesModal({ contract, open, onOpenChange, onSave, saving }: Pro
           <Badge variant="outline" className="text-[10px]">{statusLabel}</Badge>
         </div>
 
-        <div className="space-y-2">
+        {/* Priority selector */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-foreground flex items-center gap-1.5">
+            <Flag className="w-3.5 h-3.5 text-muted-foreground" />
+            Priority
+          </label>
+          <Select value={priority} onValueChange={setPriority}>
+            <SelectTrigger className="w-[140px] h-8 text-xs bg-card border-border">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-card border-border z-50">
+              {PRIORITIES.map(p => (
+                <SelectItem key={p.value} value={p.value} className="text-xs">
+                  <span className={p.cls}>{p.label}</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Notes */}
+        <div className="space-y-1.5">
           <label className="text-xs font-medium text-foreground flex items-center gap-1.5">
             <StickyNote className="w-3.5 h-3.5 text-muted-foreground" />
             Notes
@@ -78,8 +108,8 @@ export function NotesModal({ contract, open, onOpenChange, onSave, saving }: Pro
 
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button size="sm" disabled={saving} onClick={() => onSave(contract.id, notes)}>
-            {saving ? "Saving..." : "Save Notes"}
+          <Button size="sm" disabled={saving} onClick={() => onSave(contract.id, notes, priority)}>
+            {saving ? "Saving..." : "Save"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -144,10 +144,12 @@ export const useUpdateContractNotes = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ id, notes }: { id: string; notes: string }) => {
+    mutationFn: async ({ id, notes, priority }: { id: string; notes: string; priority?: string }) => {
+      const updates: Record<string, string> = { notes, updated_at: new Date().toISOString() };
+      if (priority) updates.priority = priority;
       const { data, error } = await supabase
         .from("tracked_contracts")
-        .update({ notes, updated_at: new Date().toISOString() })
+        .update(updates)
         .eq("id", id)
         .select()
         .single();
@@ -157,7 +159,7 @@ export const useUpdateContractNotes = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tracked-contracts"] });
-      toast({ title: "Notes saved", description: "Your notes have been updated." });
+      toast({ title: "Saved", description: "Contract details have been updated." });
     },
     onError: (error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
