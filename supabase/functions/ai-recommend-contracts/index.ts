@@ -97,7 +97,7 @@ serve(async (req) => {
     if (opportunities.length === 0) {
       return new Response(JSON.stringify({
         recommendations: [],
-        message: "No live opportunities found matching your NAICS codes right now. Check back later or broaden your profile.",
+        message: "No live opportunities found matching your NAICS/PSC codes right now. Check back later or broaden your profile.",
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -105,6 +105,7 @@ serve(async (req) => {
 
     const profileContext = `Company: ${profile.company_name}
 NAICS: ${profile.naics_codes?.join(", ") || "None"}
+PSC Codes: ${profile.psc_codes?.join(", ") || "None"}
 Certifications: ${profile.certifications?.join(", ") || "None"}
 Capabilities: ${profile.capabilities?.join("; ") || "None"}
 Employees: ${profile.employee_count || "N/A"}
@@ -118,7 +119,7 @@ Preferred Agencies: ${profile.preferred_agencies?.join(", ") || "Any"}`;
       messages: [
         {
           role: "system",
-          content: `You are a government contracting advisor. Given a company profile and a list of opportunities, pick the top 5 best matches and explain why each is a fit. Be specific about NAICS alignment, set-aside eligibility, and capability match.\n\n${profileContext}`,
+          content: `You are a government contracting advisor. Given a company profile and a list of opportunities, pick the top 5 best matches and explain why each is a fit. Be specific about NAICS alignment, PSC code relevance, set-aside eligibility, and capability match.\n\n${profileContext}`,
         },
         {
           role: "user",
