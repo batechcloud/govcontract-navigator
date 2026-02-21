@@ -22,23 +22,33 @@ export interface ContractScoreResult {
   tips: string[];
 }
 
+async function invokeWithRetry(contract: ContractScoreInput, maxRetries = 4): Promise<ContractScoreResult> {
+  let delay = 1500;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const { data, error } = await supabase.functions.invoke("ai-contract-score", {
+      body: { contract },
+    });
+
+    const is429 = error?.message?.includes("429") || data?.error?.includes("busy");
+
+    if (is429 && attempt < maxRetries) {
+      await new Promise(r => setTimeout(r, delay));
+      delay *= 2;
+      continue;
+    }
+
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    return data as ContractScoreResult;
+  }
+
+  throw new Error("AI service is temporarily unavailable. Please try again shortly.");
+}
+
 export function useWinProbability() {
   return useMutation({
-    mutationFn: async (contract: ContractScoreInput): Promise<ContractScoreResult> => {
-      const { data, error } = await supabase.functions.invoke("ai-contract-score", {
-        body: { contract },
-      });
-
-      if (error) {
-        if (error.message?.includes("429")) {
-          throw new Error("AI is busy, please try again in a moment.");
-        }
-        throw error;
-      }
-
-      if (data?.error) throw new Error(data.error);
-      return data as ContractScoreResult;
-    },
+    mutationFn: (contract: ContractScoreInput) => invokeWithRetry(contract),
     onError: (err: Error) => {
       toast.error(err.message || "Failed to score contract");
     },
