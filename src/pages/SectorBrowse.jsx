@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 
 const SECTOR_NAICS = {
   technology:    ["5415", "5182", "5191", "5112", "5179"],
@@ -242,6 +243,105 @@ export default function SectorBrowse() {
           </div>
         </button>
       </div>
+
+      {/* Sector Distribution Charts */}
+      {!isLoading && contracts.length > 0 && (() => {
+        const chartData = sectors
+          .map(([key, cfg]) => ({
+            name: cfg.label,
+            value: counts[key] || 0,
+            color: SECTOR_COLORS[key] || "hsl(var(--muted-foreground))",
+            icon: cfg.icon,
+          }))
+          .filter(d => d.value > 0)
+          .sort((a, b) => b.value - a.value);
+
+        return (
+          <div className="max-w-7xl mx-auto mb-10">
+            <h2 className="text-xl font-heading font-semibold text-foreground mb-4">Sector Distribution</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Pie Chart */}
+              <div className="bg-card border border-border rounded-xl p-5">
+                <p className="text-sm font-medium text-muted-foreground mb-3">Contract Share by Industry</p>
+                <ResponsiveContainer width="100%" height={280}>
+                  <PieChart>
+                    <Pie
+                      data={chartData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={100}
+                      innerRadius={50}
+                      paddingAngle={2}
+                      stroke="hsl(var(--card))"
+                      strokeWidth={2}
+                    >
+                      {chartData.map((entry, i) => (
+                        <Cell key={i} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "0.5rem",
+                        color: "hsl(var(--foreground))",
+                        fontSize: "0.8rem",
+                      }}
+                      formatter={(value, name) => [`${value} contracts`, name]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                {/* Legend */}
+                <div className="flex flex-wrap gap-2 mt-2 justify-center">
+                  {chartData.slice(0, 8).map((d, i) => (
+                    <span key={i} className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: d.color }} />
+                      {d.name}
+                    </span>
+                  ))}
+                  {chartData.length > 8 && (
+                    <span className="text-xs text-muted-foreground/60">+{chartData.length - 8} more</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Bar Chart */}
+              <div className="bg-card border border-border rounded-xl p-5">
+                <p className="text-sm font-medium text-muted-foreground mb-3">Top Industries by Opportunity Count</p>
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart data={chartData.slice(0, 10)} layout="vertical" margin={{ left: 10, right: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                    <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <YAxis
+                      dataKey="name"
+                      type="category"
+                      width={120}
+                      tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "0.5rem",
+                        color: "hsl(var(--foreground))",
+                        fontSize: "0.8rem",
+                      }}
+                      formatter={(value) => [`${value} contracts`]}
+                    />
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                      {chartData.slice(0, 10).map((entry, i) => (
+                        <Cell key={i} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {filtered.map(([key, cfg]) => {
