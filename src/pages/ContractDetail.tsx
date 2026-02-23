@@ -115,6 +115,37 @@ const ContractDetail = () => {
       ? trackedToContractData(tracked)
       : null;
 
+  // Fetch resourceLinks from SAM.gov if not already available
+  const [fetchedLinks, setFetchedLinks] = useState<string[] | null>(null);
+  const [fetchingLinks, setFetchingLinks] = useState(false);
+
+  useEffect(() => {
+    // Skip if we already have links from state or tracked data, or if already fetching/fetched
+    if (contract?.resourceLinks?.length || fetchedLinks !== null || fetchingLinks || !contractId) return;
+    
+    const fetchLinks = async () => {
+      setFetchingLinks(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('sam-search', {
+          body: { mode: 'detail', noticeId: contractId },
+        });
+        if (!error && data?.resourceLinks?.length) {
+          setFetchedLinks(data.resourceLinks);
+        } else {
+          setFetchedLinks([]);
+        }
+      } catch {
+        setFetchedLinks([]);
+      } finally {
+        setFetchingLinks(false);
+      }
+    };
+    fetchLinks();
+  }, [contractId, contract?.resourceLinks, fetchedLinks, fetchingLinks]);
+
+  // Merge: prefer existing links, fallback to fetched
+  const effectiveLinks = contract?.resourceLinks?.length ? contract.resourceLinks : (fetchedLinks || []);
+
   // Attachment summarization state
   const [summaries, setSummaries] = useState<Record<string, string>>({});
   const [summarizing, setSummarizing] = useState<Record<string, boolean>>({});
@@ -358,14 +389,15 @@ const ContractDetail = () => {
         </Card>
 
         {/* Attachments */}
-        {contract.resourceLinks && contract.resourceLinks.length > 0 && (
+        {(effectiveLinks.length > 0 || fetchingLinks) && (
           <Card variant="glass">
             <CardContent className="p-6 space-y-4">
               <h2 className="font-heading font-semibold text-foreground flex items-center gap-2">
-                <Paperclip className="w-4 h-4 text-primary" /> Attachments ({contract.resourceLinks.length})
+                <Paperclip className="w-4 h-4 text-primary" /> Attachments {effectiveLinks.length > 0 && `(${effectiveLinks.length})`}
+                {fetchingLinks && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
               </h2>
               <div className="space-y-3">
-                {contract.resourceLinks.map((url, idx) => {
+                {effectiveLinks.map((url, idx) => {
                   const filename = extractFilename(url, idx);
                   const isSummarizing = summarizing[url];
                   const summary = summaries[url];
