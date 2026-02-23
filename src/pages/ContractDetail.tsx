@@ -355,6 +355,64 @@ const ContractDetail = () => {
           </CardContent>
         </Card>
 
+        {/* Attachments */}
+        {contract.resourceLinks && contract.resourceLinks.length > 0 && (
+          <Card variant="glass">
+            <CardContent className="p-6 space-y-4">
+              <h2 className="font-heading font-semibold text-foreground flex items-center gap-2">
+                <Paperclip className="w-4 h-4 text-primary" /> Attachments ({contract.resourceLinks.length})
+              </h2>
+              <div className="space-y-3">
+                {contract.resourceLinks.map((url, idx) => {
+                  const filename = extractFilename(url, idx);
+                  const isSummarizing = summarizing[url];
+                  const summary = summaries[url];
+                  return (
+                    <div key={url} className="border border-border/50 rounded-lg p-3 space-y-2">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <span className="text-sm font-medium text-foreground flex-1 min-w-0 truncate">
+                          {filename}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => window.open(url, "_blank")}
+                            className="gap-1.5 text-xs"
+                          >
+                            <Download className="w-3.5 h-3.5" /> Download
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleSummarize(url)}
+                            disabled={isSummarizing || !!summary}
+                            className="gap-1.5 text-xs border-accent/40 text-accent hover:bg-accent/10"
+                          >
+                            {isSummarizing ? (
+                              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Summarizing...</>
+                            ) : summary ? (
+                              <><Brain className="w-3.5 h-3.5" /> Summarized</>
+                            ) : (
+                              <><Brain className="w-3.5 h-3.5" /> AI Summarize</>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                      {summary && (
+                        <div className="bg-muted/30 rounded-md p-3 text-sm text-muted-foreground whitespace-pre-wrap border border-border/30">
+                          {summary}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Action buttons */}
         <Card variant="glass">
           <CardContent className="p-6">
