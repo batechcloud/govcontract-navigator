@@ -69,6 +69,7 @@ function trackedToContractData(tc: TrackedContract): ContractData {
     naicsCode: tc.naics_code || undefined,
     setAside: tc.set_aside || undefined,
     matchScore: tc.match_score || undefined,
+    resourceLinks: tc.resource_links || undefined,
   };
 }
 
