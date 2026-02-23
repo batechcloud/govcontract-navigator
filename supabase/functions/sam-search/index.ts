@@ -366,6 +366,7 @@ function transformSamResults(opportunities: any[], filters: SearchFilters) {
       description,
       solicitationNumber: opp.solicitationNumber || "",
       link: opp.uiLink || (opp.noticeId ? `https://sam.gov/opp/${opp.noticeId}/view` : "https://sam.gov"),
+      resourceLinks: opp.resourceLinks || [],
       // Internal fields for post-filtering (stripped before sending to client)
       _rawPsc: opp.psc?.map((p: any) => p.code) || (opp.classificationCode ? [opp.classificationCode] : []),
       _rawAgencyPath: opp.fullParentPathName || "",
