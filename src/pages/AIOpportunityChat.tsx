@@ -78,6 +78,7 @@ export default function AIOpportunityChat() {
 
     let assistantSoFar = "";
 
+    try {
       const { supabase } = await import("@/integrations/supabase/client");
       const { data: { session } } = await supabase.auth.getSession();
       const authHeader = `Bearer ${session?.access_token || ""}`;
