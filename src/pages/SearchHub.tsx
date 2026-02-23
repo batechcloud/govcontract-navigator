@@ -858,53 +858,32 @@ const SearchHub = () => {
             )}
           </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && !isSearching && (
+          {/* Load New Batch */}
+          {results.length > 0 && hasMore && !isSearching && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="flex items-center justify-center gap-2 mt-8"
+              className="flex flex-col items-center gap-3 mt-8"
             >
               <Button
                 variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 0 || isSearching}
-                className="gap-1"
+                size="lg"
+                onClick={loadNextBatch}
+                disabled={isLoadingBatch}
+                className="gap-2"
               >
-                <ChevronLeft className="w-4 h-4" />
-                Previous
-              </Button>
-
-              <div className="flex items-center gap-1">
-                {getPageNumbers().map((page, idx) =>
-                  page === "…" ? (
-                    <span key={`ellipsis-${idx}`} className="px-2 text-muted-foreground text-sm select-none">…</span>
-                  ) : (
-                    <Button
-                      key={page}
-                      variant={page === currentPage ? "default" : "ghost"}
-                      size="sm"
-                      className={`w-9 h-9 p-0 ${page === currentPage ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                      onClick={() => handlePageChange(page as number)}
-                      disabled={isSearching}
-                    >
-                      {(page as number) + 1}
-                    </Button>
-                  )
+                {isLoadingBatch ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4" />
                 )}
-              </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage >= totalPages - 1 || isSearching}
-                className="gap-1"
-              >
-                Next
-                <ChevronRight className="w-4 h-4" />
+                {isLoadingBatch ? "Loading..." : "Load New Batch"}
               </Button>
+              <p className="text-xs text-muted-foreground">
+                {total - results.length > 0
+                  ? `${(total - results.length).toLocaleString()} more opportunities available`
+                  : "All opportunities loaded"}
+              </p>
             </motion.div>
           )}
         </div>
