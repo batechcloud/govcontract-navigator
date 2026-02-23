@@ -195,6 +195,7 @@ export function useSmartSearch() {
     parsedFilters,
     total,
     hasMore,
+    batchBoundaries,
     isParsing: parseQuery.isPending,
     isSearchingContracts: searchContracts.isPending
   };
