@@ -223,10 +223,13 @@ const SearchHub = () => {
   const {
     search,
     searchWithFilters,
+    loadNextBatch,
     isSearching,
+    isLoadingBatch,
     results,
     parsedFilters,
     total,
+    hasMore,
     isParsing,
   } = useSmartSearch();
 
