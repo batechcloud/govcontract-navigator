@@ -49,6 +49,7 @@ async function fetchFromSamGov(filters, signal) {
     contractType: r.type || "FFP",
     location: r.location || "National",
     description: r.description || "",
+    resourceLinks: r.resourceLinks || [],
   }));
 }
 
