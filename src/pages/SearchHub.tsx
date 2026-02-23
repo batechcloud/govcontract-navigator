@@ -58,7 +58,7 @@ import { PscCodeSelector } from "@/components/company/PscCodeSelector";
 import { WinScoreModal } from "@/components/search/WinScoreModal";
 import { useCompanyProfile } from "@/hooks/useProfile";
 
-const RESULTS_PER_PAGE = 10;
+
 
 const quickFilters = [
   { label: "Small Business", filter: { set_aside: ["Small Business"] } },
