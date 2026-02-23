@@ -706,10 +706,8 @@ const SearchHub = () => {
             <p className="text-sm text-muted-foreground">
               {results.length > 0 ? (
                 <>
-                  Found <span className="text-foreground font-semibold">{total.toLocaleString()}</span> contracts
-                  {totalPages > 1 && (
-                    <span> — page <span className="text-foreground font-semibold">{currentPage + 1}</span> of <span className="text-foreground font-semibold">{totalPages}</span></span>
-                  )}
+                  Showing <span className="text-foreground font-semibold">{results.length.toLocaleString()}</span> of{" "}
+                  <span className="text-foreground font-semibold">{total.toLocaleString()}</span> contracts
                 </>
               ) : (
                 "Search above to find government contracts"
