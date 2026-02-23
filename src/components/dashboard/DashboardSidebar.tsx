@@ -10,7 +10,6 @@ import {
   Settings,
   X,
   LogOut,
-  MessageSquare,
   Grid3X3,
   BarChart3,
 } from "lucide-react";
