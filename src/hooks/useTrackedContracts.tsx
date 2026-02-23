@@ -17,6 +17,7 @@ export interface TrackedContract {
   contract_value: string | null;
   set_aside: string | null;
   naics_code: string | null;
+  resource_links: string[] | null;
   created_at: string;
   updated_at: string;
 }

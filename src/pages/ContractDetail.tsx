@@ -69,6 +69,7 @@ function trackedToContractData(tc: TrackedContract): ContractData {
     naicsCode: tc.naics_code || undefined,
     setAside: tc.set_aside || undefined,
     matchScore: tc.match_score || undefined,
+    resourceLinks: tc.resource_links || undefined,
   };
 }
 
@@ -164,6 +165,7 @@ const ContractDetail = () => {
       contract_value: contract.value || null,
       set_aside: contract.setAside || null,
       naics_code: contract.naicsCode || null,
+      resource_links: contract.resourceLinks || null,
     });
   };
 

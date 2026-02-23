@@ -1,0 +1,1 @@
+ALTER TABLE public.tracked_contracts ADD COLUMN resource_links text[] DEFAULT '{}'::text[];
