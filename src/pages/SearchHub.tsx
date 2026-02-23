@@ -46,6 +46,7 @@ import {
   MessageSquare,
   RefreshCw,
   CheckCircle2,
+  ArrowUp,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useTrackContract, useTrackedContracts } from "@/hooks/useTrackedContracts";
