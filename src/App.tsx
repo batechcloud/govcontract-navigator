@@ -35,7 +35,6 @@ import CompanyProfile from "./pages/CompanyProfile";
 import Proposals from "./pages/Proposals";
 import ProposalGenerator from "./pages/ProposalGenerator";
 import ProposalEditor from "./pages/ProposalEditor";
-import AIAssistant from "./pages/AIAssistant";
 import AIOpportunityChat from "./pages/AIOpportunityChat";
 import USASpendingIntel from "./pages/USASpendingIntel";
 import Settings from "./pages/Settings";
