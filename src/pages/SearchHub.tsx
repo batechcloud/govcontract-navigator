@@ -391,22 +391,6 @@ const SearchHub = () => {
     return `${days} days left`;
   };
 
-  // Page number array for pagination display
-  const getPageNumbers = () => {
-    const pages: (number | "…")[] = [];
-    if (totalPages <= 7) {
-      for (let i = 0; i < totalPages; i++) pages.push(i);
-    } else {
-      pages.push(0);
-      if (currentPage > 3) pages.push("…");
-      for (let i = Math.max(1, currentPage - 1); i <= Math.min(totalPages - 2, currentPage + 1); i++) {
-        pages.push(i);
-      }
-      if (currentPage < totalPages - 4) pages.push("…");
-      pages.push(totalPages - 1);
-    }
-    return pages;
-  };
 
   return (
     <DashboardLayout title="Find Contracts">
