@@ -464,7 +464,8 @@ function getMockResults(filters: SearchFilters, page: number, limit: number) {
       matchScore: 88,
       description: "Cloud infrastructure migration, management, and optimization services.",
       solicitationNumber: "47QFCA24R0001",
-      link: "https://sam.gov/opp/sample3"
+      link: "https://sam.gov/opp/sample3",
+      resourceLinks: ["https://sam.gov/api/prod/opps/v3/opportunities/resources/files/cloud-migration-sow.pdf", "https://sam.gov/api/prod/opps/v3/opportunities/resources/files/pricing-template.xlsx", "https://sam.gov/api/prod/opps/v3/opportunities/resources/files/qa-responses.pdf"]
     },
     {
       id: "SAM-2024-004",

@@ -31,6 +31,7 @@ export interface SearchResult {
   description: string;
   solicitationNumber?: string;
   link?: string;
+  resourceLinks?: string[];
 }
 
 export interface ParsedQuery {

@@ -89,6 +89,7 @@ async function fetchFromUSASpending(filters, signal) {
     contractType: "Award",
     location: [r["Place of Performance City"], r["Place of Performance State Code"]].filter(Boolean).join(", ") || "National",
     description: r["Description"] || "",
+    resourceLinks: [],
   }));
 }
 
