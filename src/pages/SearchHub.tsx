@@ -335,15 +335,6 @@ const SearchHub = () => {
     }
   };
 
-  const handlePageChange = async (newPage: number) => {
-    setCurrentPage(newPage);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    if (parsedFilters) {
-      await searchWithFilters(parsedFilters, newPage);
-    } else {
-      await search(searchQuery, newPage);
-    }
-  };
 
   const handleTrack = (result: SearchResult) => {
     trackContract.mutate({
