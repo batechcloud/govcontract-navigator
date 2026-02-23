@@ -42,6 +42,19 @@ interface ContractData {
   solicitationNumber?: string;
   link?: string;
   matchScore?: number;
+  resourceLinks?: string[];
+}
+
+function extractFilename(url: string, index: number): string {
+  try {
+    const pathname = new URL(url).pathname;
+    const segments = pathname.split("/");
+    const last = segments[segments.length - 1];
+    if (last && last.length > 3 && /\.\w{2,5}$/.test(last)) {
+      return decodeURIComponent(last);
+    }
+  } catch { /* fallback */ }
+  return `Attachment ${index + 1}`;
 }
 
 function trackedToContractData(tc: TrackedContract): ContractData {
