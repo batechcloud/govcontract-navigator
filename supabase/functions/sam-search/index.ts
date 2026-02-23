@@ -430,7 +430,8 @@ function getMockResults(filters: SearchFilters, page: number, limit: number) {
       matchScore: 96,
       description: "IT infrastructure modernization and support services for DOD systems.",
       solicitationNumber: "W91CRB-24-R-0001",
-      link: "https://sam.gov/opp/sample1"
+      link: "https://sam.gov/opp/sample1",
+      resourceLinks: ["https://sam.gov/api/prod/opps/v3/opportunities/resources/files/sample-sow-it-modernization.pdf", "https://sam.gov/api/prod/opps/v3/opportunities/resources/files/amendment-001.pdf"]
     },
     {
       id: "SAM-2024-002",
