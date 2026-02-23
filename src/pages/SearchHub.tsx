@@ -233,6 +233,24 @@ const SearchHub = () => {
     isParsing,
   } = useSmartSearch();
 
+  // Track previous result count for scroll-to-new behavior
+  const prevResultCount = useRef(0);
+  const resultListRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (results.length > prevResultCount.current && prevResultCount.current > 0) {
+      // Scroll to the first new result after batch load
+      const newItemIndex = prevResultCount.current;
+      setTimeout(() => {
+        const items = resultListRef.current?.children;
+        if (items && items[newItemIndex]) {
+          items[newItemIndex].scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 100);
+    }
+    prevResultCount.current = results.length;
+  }, [results.length]);
+
   // Auto-search when arriving from sector browse
   useEffect(() => {
     const sectorKey = searchParams.get("sector");
