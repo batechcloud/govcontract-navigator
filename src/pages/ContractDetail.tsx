@@ -153,7 +153,7 @@ const ContractDetail = () => {
     if (!contract) return;
     const sol = contract.solicitationNumber ? ` (Solicitation: ${contract.solicitationNumber})` : "";
     const preload = encodeURIComponent(`I need help understanding this contract: "${contract.title}"${sol} from ${contract.agency}. Can you explain what they're looking for and whether it might be a good fit for a small business?`);
-    navigate(`/dashboard/ai/chat?q=${preload}`);
+    navigate(`/dashboard/ai?q=${preload}`);
   };
 
   if (!contract) {
