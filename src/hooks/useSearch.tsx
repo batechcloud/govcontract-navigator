@@ -127,6 +127,7 @@ export function useSmartSearch() {
 
       setResults(searchResults.results);
       setAllResults(searchResults.results);
+      setBatchBoundaries([]);
       setTotal(searchResults.total);
       return searchResults;
     } catch (error) {
