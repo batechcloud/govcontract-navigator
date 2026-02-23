@@ -173,9 +173,14 @@ export function useSmartSearch() {
         limit: 10
       });
 
-      setBatchBoundaries(prev => [...prev, allResults.length]);
-      setAllResults(prev => [...prev, ...searchResults.results]);
-      setResults(prev => [...prev, ...searchResults.results]);
+      const existingIds = new Set(allResults.map(r => r.id));
+      const uniqueNew = searchResults.results.filter(r => !existingIds.has(r.id));
+
+      if (uniqueNew.length > 0) {
+        setBatchBoundaries(prev => [...prev, allResults.length]);
+        setAllResults(prev => [...prev, ...uniqueNew]);
+        setResults(prev => [...prev, ...uniqueNew]);
+      }
       setCurrentBatchPage(nextPage);
       setTotal(searchResults.total);
     } catch (error) {
