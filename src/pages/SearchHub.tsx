@@ -378,7 +378,7 @@ const SearchHub = () => {
   const handleAskAI = (result: SearchResult) => {
     const solicitation = result.solicitationNumber ? ` (Solicitation: ${result.solicitationNumber})` : "";
     const preload = encodeURIComponent(`I need help understanding this contract: "${result.title}"${solicitation} from ${result.agency}. Can you explain what they're looking for and whether it might be a good fit for a small business?`);
-    navigate(`/dashboard/ai/chat?q=${preload}`);
+    navigate(`/dashboard/ai?q=${preload}`);
   };
 
   const handleSaveSearch = () => {
