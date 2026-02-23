@@ -94,9 +94,57 @@ serve(async (req) => {
   }
 
   try {
-    const { filters, page = 0, limit = 10 } = await req.json();
+    const body = await req.json();
+    const { mode, filters, page = 0, limit = 10 } = body;
     
     const SAM_API_KEY = Deno.env.get("SAM_API_KEY");
+
+    // --- Detail mode: fetch a single opportunity by noticeId ---
+    if (mode === "detail" && body.noticeId) {
+      if (!SAM_API_KEY) {
+        return new Response(
+          JSON.stringify({ error: "SAM API key not configured" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const detailParams = new URLSearchParams();
+      detailParams.append("api_key", SAM_API_KEY);
+      detailParams.append("noticeId", body.noticeId);
+      detailParams.append("limit", "1");
+      // SAM.gov requires date range even for noticeId lookups
+      detailParams.append("postedFrom", getDateMonthsAgo(24));
+      detailParams.append("postedTo", getTodayFormatted());
+
+      const detailUrl = `${SAM_API_BASE}?${detailParams.toString()}`;
+      console.log("Fetching SAM.gov detail for noticeId:", body.noticeId);
+
+      const detailResp = await fetch(detailUrl, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      });
+
+      if (!detailResp.ok) {
+        console.error("SAM.gov detail error:", detailResp.status);
+        return new Response(
+          JSON.stringify({ error: "SAM.gov API error", resourceLinks: [] }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const detailData = await detailResp.json();
+      const opps = detailData.opportunitiesData || detailData.data || [];
+      const opp = opps[0];
+
+      return new Response(
+        JSON.stringify({
+          resourceLinks: opp?.resourceLinks || [],
+          description: opp?.description || opp?.synopsis || null,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // --- Search mode (default) ---
     
     // If no SAM API key, return mock data for development
     if (!SAM_API_KEY) {

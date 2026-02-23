@@ -115,6 +115,37 @@ const ContractDetail = () => {
       ? trackedToContractData(tracked)
       : null;
 
+  // Fetch resourceLinks from SAM.gov if not already available
+  const [fetchedLinks, setFetchedLinks] = useState<string[] | null>(null);
+  const [fetchingLinks, setFetchingLinks] = useState(false);
+
+  useEffect(() => {
+    // Skip if we already have links from state or tracked data, or if already fetching/fetched
+    if (contract?.resourceLinks?.length || fetchedLinks !== null || fetchingLinks || !contractId) return;
+    
+    const fetchLinks = async () => {
+      setFetchingLinks(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('sam-search', {
+          body: { mode: 'detail', noticeId: contractId },
+        });
+        if (!error && data?.resourceLinks?.length) {
+          setFetchedLinks(data.resourceLinks);
+        } else {
+          setFetchedLinks([]);
+        }
+      } catch {
+        setFetchedLinks([]);
+      } finally {
+        setFetchingLinks(false);
+      }
+    };
+    fetchLinks();
+  }, [contractId, contract?.resourceLinks, fetchedLinks, fetchingLinks]);
+
+  // Merge: prefer existing links, fallback to fetched
+  const effectiveLinks = contract?.resourceLinks?.length ? contract.resourceLinks : (fetchedLinks || []);
+
   // Attachment summarization state
   const [summaries, setSummaries] = useState<Record<string, string>>({});
   const [summarizing, setSummarizing] = useState<Record<string, boolean>>({});
