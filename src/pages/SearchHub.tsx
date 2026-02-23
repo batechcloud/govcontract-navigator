@@ -850,6 +850,7 @@ const SearchHub = () => {
                       </CardContent>
                     </Card>
                   </motion.div>
+                  </div>
                 );
               })
             ) : (
