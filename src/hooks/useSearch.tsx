@@ -108,6 +108,7 @@ export function useSmartSearch() {
   const [parsedFilters, setParsedFilters] = useState<SearchFilters | null>(null);
   const [total, setTotal] = useState(0);
   const [currentBatchPage, setCurrentBatchPage] = useState(0);
+  const [batchBoundaries, setBatchBoundaries] = useState<number[]>([]);
 
   const hasMore = allResults.length < total;
 
@@ -126,6 +127,7 @@ export function useSmartSearch() {
 
       setResults(searchResults.results);
       setAllResults(searchResults.results);
+      setBatchBoundaries([]);
       setTotal(searchResults.total);
       return searchResults;
     } catch (error) {
@@ -149,6 +151,7 @@ export function useSmartSearch() {
 
       setResults(searchResults.results);
       setAllResults(searchResults.results);
+      setBatchBoundaries([]);
       setTotal(searchResults.total);
       return searchResults;
     } catch (error) {
@@ -170,6 +173,7 @@ export function useSmartSearch() {
         limit: 10
       });
 
+      setBatchBoundaries(prev => [...prev, allResults.length]);
       setAllResults(prev => [...prev, ...searchResults.results]);
       setResults(prev => [...prev, ...searchResults.results]);
       setCurrentBatchPage(nextPage);
@@ -191,6 +195,7 @@ export function useSmartSearch() {
     parsedFilters,
     total,
     hasMore,
+    batchBoundaries,
     isParsing: parseQuery.isPending,
     isSearchingContracts: searchContracts.isPending
   };
