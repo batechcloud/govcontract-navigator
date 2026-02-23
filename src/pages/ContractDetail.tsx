@@ -389,14 +389,15 @@ const ContractDetail = () => {
         </Card>
 
         {/* Attachments */}
-        {contract.resourceLinks && contract.resourceLinks.length > 0 && (
+        {(effectiveLinks.length > 0 || fetchingLinks) && (
           <Card variant="glass">
             <CardContent className="p-6 space-y-4">
               <h2 className="font-heading font-semibold text-foreground flex items-center gap-2">
-                <Paperclip className="w-4 h-4 text-primary" /> Attachments ({contract.resourceLinks.length})
+                <Paperclip className="w-4 h-4 text-primary" /> Attachments {effectiveLinks.length > 0 && `(${effectiveLinks.length})`}
+                {fetchingLinks && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
               </h2>
               <div className="space-y-3">
-                {contract.resourceLinks.map((url, idx) => {
+                {effectiveLinks.map((url, idx) => {
                   const filename = extractFilename(url, idx);
                   const isSummarizing = summarizing[url];
                   const summary = summaries[url];
