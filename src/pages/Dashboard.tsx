@@ -53,7 +53,11 @@ const Dashboard = () => {
           <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-primary/20 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
           <CardContent className="p-6 relative">
             {profileLoading ? (
-              <Skeleton className="h-8 w-64 mb-2" />
+              <div className="space-y-3">
+                <Skeleton className="h-8 w-64" />
+                <Skeleton className="h-4 w-96" />
+                <Skeleton className="h-11 w-44 mt-2 rounded-lg" />
+              </div>
             ) : (
               <>
                 <h2 className="text-2xl font-heading font-bold text-foreground mb-2">
@@ -75,30 +79,62 @@ const Dashboard = () => {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {quickActions.map((action, i) => (
-            <motion.div
-              key={action.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: i * 0.05 }}
-            >
-              <Link to={action.href}>
-                <Card variant="glass-hover" className="cursor-pointer h-full">
-                  <CardContent className="p-5">
-                    <action.icon className={`w-8 h-8 ${action.color} mb-3`} />
-                    <h3 className="font-heading font-semibold text-foreground mb-1">{action.label}</h3>
-                    <p className="text-sm text-muted-foreground">{action.description}</p>
-                  </CardContent>
-                </Card>
-              </Link>
-            </motion.div>
-          ))}
+          {contractsLoading ? (
+            [1, 2, 3, 4].map(i => (
+              <Card key={i} variant="glass" className="h-full">
+                <CardContent className="p-5 space-y-3">
+                  <Skeleton className="w-8 h-8 rounded-md" />
+                  <Skeleton className="h-5 w-28" />
+                  <Skeleton className="h-4 w-36" />
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            quickActions.map((action, i) => (
+              <motion.div
+                key={action.label}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: i * 0.05 }}
+              >
+                <Link to={action.href}>
+                  <Card variant="glass-hover" className="cursor-pointer h-full">
+                    <CardContent className="p-5">
+                      <action.icon className={`w-8 h-8 ${action.color} mb-3`} />
+                      <h3 className="font-heading font-semibold text-foreground mb-1">{action.label}</h3>
+                      <p className="text-sm text-muted-foreground">{action.description}</p>
+                    </CardContent>
+                  </Card>
+                </Link>
+              </motion.div>
+            ))
+          )}
         </div>
 
         {/* AI Recommendations + Profile Health */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <AIRecommendationsCard />
-          <ProfileHealthCard />
+          {profileLoading ? (
+            <>
+              <Card variant="glass">
+                <CardHeader className="pb-2"><Skeleton className="h-6 w-48" /></CardHeader>
+                <CardContent className="space-y-3">
+                  {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
+                </CardContent>
+              </Card>
+              <Card variant="glass">
+                <CardHeader className="pb-2"><Skeleton className="h-6 w-36" /></CardHeader>
+                <CardContent className="space-y-3">
+                  <Skeleton className="h-24 w-full rounded-lg" />
+                  <Skeleton className="h-4 w-3/4" />
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <>
+              <AIRecommendationsCard />
+              <ProfileHealthCard />
+            </>
+          )}
         </div>
 
         {/* Upcoming Deadlines */}
@@ -112,7 +148,15 @@ const Dashboard = () => {
           <CardContent>
             {contractsLoading ? (
               <div className="space-y-3">
-                {[1, 2, 3].map(i => <Skeleton key={i} className="h-14 w-full" />)}
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border/50">
+                    <div className="space-y-2 flex-1">
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-1/3" />
+                    </div>
+                    <Skeleton className="h-5 w-20 ml-3" />
+                  </div>
+                ))}
               </div>
             ) : upcomingDeadlines.length > 0 ? (
               <div className="space-y-3">
@@ -144,7 +188,7 @@ const Dashboard = () => {
         </Card>
 
         {/* Getting Started Tips */}
-        {(!trackedContracts || trackedContracts.length === 0) && (
+        {(!trackedContracts || trackedContracts.length === 0) && !contractsLoading && (
           <Card variant="glass">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg flex items-center gap-2">
