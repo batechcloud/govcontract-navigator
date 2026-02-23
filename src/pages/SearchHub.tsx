@@ -40,8 +40,6 @@ import {
   Bookmark,
   ExternalLink,
   Heart,
-  ChevronLeft,
-  ChevronRight,
   SlidersHorizontal,
   ChevronDown,
   RotateCcw,
