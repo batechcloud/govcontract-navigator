@@ -165,6 +165,7 @@ const ContractDetail = () => {
       contract_value: contract.value || null,
       set_aside: contract.setAside || null,
       naics_code: contract.naicsCode || null,
+      resource_links: contract.resourceLinks || null,
     });
   };
 
