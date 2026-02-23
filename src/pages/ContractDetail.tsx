@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useTrackedContracts, useTrackContract, useUpdateContractNotes, useUpdateContractStatus, TrackedContract } from "@/hooks/useTrackedContracts";
 import { SearchResult } from "@/hooks/useSearch";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { PIPELINE_STATUSES } from "@/components/tracked/KanbanBoard";
 
