@@ -726,13 +726,29 @@ const SearchHub = () => {
               results.map((result, index) => {
                 const isTracked = trackedIds.has(result.id);
                 const match = getMatchLabel(result.matchScore);
+                const isBatchStart = batchBoundaries.includes(index);
                 return (
-                  <motion.div
-                    key={result.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.5) }}
-                  >
+                  <div key={result.id}>
+                    {isBatchStart && (
+                      <motion.div
+                        initial={{ opacity: 0, scaleX: 0 }}
+                        animate={{ opacity: 1, scaleX: 1 }}
+                        transition={{ duration: 0.4 }}
+                        className="flex items-center gap-3 my-6"
+                      >
+                        <div className="flex-1 h-px bg-primary/30" />
+                        <span className="text-xs font-medium text-primary flex items-center gap-1.5 whitespace-nowrap">
+                          <Sparkles className="w-3 h-3" />
+                          New Results
+                        </span>
+                        <div className="flex-1 h-px bg-primary/30" />
+                      </motion.div>
+                    )}
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.5) }}
+                    >
                     <Card variant="glass-hover">
                       <CardContent className="p-4 sm:p-6">
                         <div className="flex flex-col gap-3">
