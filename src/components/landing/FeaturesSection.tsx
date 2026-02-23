@@ -51,8 +51,8 @@ const features = [
   },
   {
     icon: HelpCircle,
-    title: "AI Helper Always Available",
-    description: "Not sure about something? Ask our AI Helper in plain English. It explains contracts, terms, and the bidding process.",
+    title: "AI Assistant Always Available",
+    description: "Not sure about something? Ask our AI Assistant in plain English. It explains contracts, terms, and the bidding process.",
   },
 ];
 

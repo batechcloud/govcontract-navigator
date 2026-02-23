@@ -25,8 +25,7 @@ const sidebarItems = [
   { icon: BarChart3, label: "USASpending Intel", href: "/dashboard/usaspending" },
   { icon: Heart, label: "My Opportunities", href: "/dashboard/tracked" },
   { icon: FileText, label: "My Proposals", href: "/dashboard/proposals" },
-  { icon: Sparkles, label: "AI Helper", href: "/dashboard/ai" },
-  { icon: MessageSquare, label: "AI Chat", href: "/dashboard/ai/chat" },
+  { icon: Sparkles, label: "AI Assistant", href: "/dashboard/ai" },
   { icon: Building2, label: "My Business", href: "/dashboard/company" },
 ];
 

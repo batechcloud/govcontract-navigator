@@ -48,7 +48,7 @@ const plans = [
       { text: "AI proposal writing", tooltip: "Let AI draft your proposals" },
       { text: "5 AI proposals/month", tooltip: "Full AI-generated proposal drafts" },
       { text: "Unlimited saves & tracking", tooltip: "Save as many contracts as you want" },
-      { text: "AI Helper chat", tooltip: "Ask questions about any contract" },
+      { text: "AI Assistant chat", tooltip: "Ask questions about any contract" },
       { text: "Priority support", tooltip: "Fast responses when you need help" },
       { text: "5 users", tooltip: null },
     ],
