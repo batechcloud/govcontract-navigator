@@ -270,7 +270,6 @@ const SearchHub = () => {
   const saveSearch = useSaveSearch();
 
   const trackedIds = new Set(trackedContracts?.map(c => c.contract_id) || []);
-  const totalPages = Math.ceil(total / RESULTS_PER_PAGE);
 
   const handleSearch = async (page = 0) => {
     if (!searchQuery.trim() && !hasAdvancedFilters && activeFilters.length === 0) {
