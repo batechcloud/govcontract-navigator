@@ -368,6 +368,7 @@ const SearchHub = () => {
       contract_value: result.value,
       set_aside: result.setAside,
       naics_code: result.naicsCode,
+      resource_links: result.resourceLinks || null,
     });
   };
 
