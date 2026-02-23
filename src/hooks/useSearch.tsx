@@ -173,6 +173,7 @@ export function useSmartSearch() {
         limit: 10
       });
 
+      setBatchBoundaries(prev => [...prev, allResults.length]);
       setAllResults(prev => [...prev, ...searchResults.results]);
       setResults(prev => [...prev, ...searchResults.results]);
       setCurrentBatchPage(nextPage);
