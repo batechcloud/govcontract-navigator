@@ -40,12 +40,12 @@ import {
   Bookmark,
   ExternalLink,
   Heart,
-  ChevronLeft,
-  ChevronRight,
   SlidersHorizontal,
   ChevronDown,
   RotateCcw,
   MessageSquare,
+  RefreshCw,
+  CheckCircle2,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useTrackContract, useTrackedContracts } from "@/hooks/useTrackedContracts";
@@ -58,7 +58,7 @@ import { PscCodeSelector } from "@/components/company/PscCodeSelector";
 import { WinScoreModal } from "@/components/search/WinScoreModal";
 import { useCompanyProfile } from "@/hooks/useProfile";
 
-const RESULTS_PER_PAGE = 10;
+
 
 const quickFilters = [
   { label: "Small Business", filter: { set_aside: ["Small Business"] } },
@@ -223,10 +223,13 @@ const SearchHub = () => {
   const {
     search,
     searchWithFilters,
+    loadNextBatch,
     isSearching,
+    isLoadingBatch,
     results,
     parsedFilters,
     total,
+    hasMore,
     isParsing,
   } = useSmartSearch();
 
@@ -265,7 +268,6 @@ const SearchHub = () => {
   const saveSearch = useSaveSearch();
 
   const trackedIds = new Set(trackedContracts?.map(c => c.contract_id) || []);
-  const totalPages = Math.ceil(total / RESULTS_PER_PAGE);
 
   const handleSearch = async (page = 0) => {
     if (!searchQuery.trim() && !hasAdvancedFilters && activeFilters.length === 0) {
@@ -331,15 +333,6 @@ const SearchHub = () => {
     }
   };
 
-  const handlePageChange = async (newPage: number) => {
-    setCurrentPage(newPage);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    if (parsedFilters) {
-      await searchWithFilters(parsedFilters, newPage);
-    } else {
-      await search(searchQuery, newPage);
-    }
-  };
 
   const handleTrack = (result: SearchResult) => {
     trackContract.mutate({
@@ -396,22 +389,6 @@ const SearchHub = () => {
     return `${days} days left`;
   };
 
-  // Page number array for pagination display
-  const getPageNumbers = () => {
-    const pages: (number | "…")[] = [];
-    if (totalPages <= 7) {
-      for (let i = 0; i < totalPages; i++) pages.push(i);
-    } else {
-      pages.push(0);
-      if (currentPage > 3) pages.push("…");
-      for (let i = Math.max(1, currentPage - 1); i <= Math.min(totalPages - 2, currentPage + 1); i++) {
-        pages.push(i);
-      }
-      if (currentPage < totalPages - 4) pages.push("…");
-      pages.push(totalPages - 1);
-    }
-    return pages;
-  };
 
   return (
     <DashboardLayout title="Find Contracts">
@@ -701,10 +678,8 @@ const SearchHub = () => {
             <p className="text-sm text-muted-foreground">
               {results.length > 0 ? (
                 <>
-                  Found <span className="text-foreground font-semibold">{total.toLocaleString()}</span> contracts
-                  {totalPages > 1 && (
-                    <span> — page <span className="text-foreground font-semibold">{currentPage + 1}</span> of <span className="text-foreground font-semibold">{totalPages}</span></span>
-                  )}
+                  Showing <span className="text-foreground font-semibold">{results.length.toLocaleString()}</span> of{" "}
+                  <span className="text-foreground font-semibold">{total.toLocaleString()}</span> contracts
                 </>
               ) : (
                 "Search above to find government contracts"
@@ -748,6 +723,12 @@ const SearchHub = () => {
                             <Badge variant="outline">{result.type}</Badge>
                             {result.setAside && result.setAside !== "None" && (
                               <Badge variant="glass">{result.setAside}</Badge>
+                            )}
+                            {isTracked && (
+                              <Badge variant="success" className="gap-1">
+                                <CheckCircle2 className="w-3 h-3" />
+                                Already Tracked
+                              </Badge>
                             )}
                           </div>
 
@@ -849,53 +830,32 @@ const SearchHub = () => {
             )}
           </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && !isSearching && (
+          {/* Load New Batch */}
+          {results.length > 0 && hasMore && !isSearching && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="flex items-center justify-center gap-2 mt-8"
+              className="flex flex-col items-center gap-3 mt-8"
             >
               <Button
                 variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 0 || isSearching}
-                className="gap-1"
+                size="lg"
+                onClick={loadNextBatch}
+                disabled={isLoadingBatch}
+                className="gap-2"
               >
-                <ChevronLeft className="w-4 h-4" />
-                Previous
-              </Button>
-
-              <div className="flex items-center gap-1">
-                {getPageNumbers().map((page, idx) =>
-                  page === "…" ? (
-                    <span key={`ellipsis-${idx}`} className="px-2 text-muted-foreground text-sm select-none">…</span>
-                  ) : (
-                    <Button
-                      key={page}
-                      variant={page === currentPage ? "default" : "ghost"}
-                      size="sm"
-                      className={`w-9 h-9 p-0 ${page === currentPage ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                      onClick={() => handlePageChange(page as number)}
-                      disabled={isSearching}
-                    >
-                      {(page as number) + 1}
-                    </Button>
-                  )
+                {isLoadingBatch ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4" />
                 )}
-              </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage >= totalPages - 1 || isSearching}
-                className="gap-1"
-              >
-                Next
-                <ChevronRight className="w-4 h-4" />
+                {isLoadingBatch ? "Loading..." : "Load New Batch"}
               </Button>
+              <p className="text-xs text-muted-foreground">
+                {total - results.length > 0
+                  ? `${(total - results.length).toLocaleString()} more opportunities available`
+                  : "All opportunities loaded"}
+              </p>
             </motion.div>
           )}
         </div>

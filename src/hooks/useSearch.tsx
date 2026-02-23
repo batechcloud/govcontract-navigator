@@ -102,18 +102,22 @@ export function useSmartSearch() {
   const parseQuery = useParseSearchQuery();
   const searchContracts = useSearchContracts();
   const [isSearching, setIsSearching] = useState(false);
+  const [isLoadingBatch, setIsLoadingBatch] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [allResults, setAllResults] = useState<SearchResult[]>([]);
   const [parsedFilters, setParsedFilters] = useState<SearchFilters | null>(null);
   const [total, setTotal] = useState(0);
+  const [currentBatchPage, setCurrentBatchPage] = useState(0);
+
+  const hasMore = allResults.length < total;
 
   const search = async (query: string, page = 0) => {
     setIsSearching(true);
+    setCurrentBatchPage(0);
     try {
-      // Parse the natural language query
       const parsed = await parseQuery.mutateAsync(query);
       setParsedFilters(parsed.filters);
 
-      // Search with parsed filters
       const searchResults = await searchContracts.mutateAsync({
         filters: parsed.filters,
         page,
@@ -121,6 +125,7 @@ export function useSmartSearch() {
       });
 
       setResults(searchResults.results);
+      setAllResults(searchResults.results);
       setTotal(searchResults.total);
       return searchResults;
     } catch (error) {
@@ -133,6 +138,7 @@ export function useSmartSearch() {
 
   const searchWithFilters = async (filters: SearchFilters, page = 0) => {
     setIsSearching(true);
+    setCurrentBatchPage(0);
     try {
       setParsedFilters(filters);
       const searchResults = await searchContracts.mutateAsync({
@@ -142,6 +148,7 @@ export function useSmartSearch() {
       });
 
       setResults(searchResults.results);
+      setAllResults(searchResults.results);
       setTotal(searchResults.total);
       return searchResults;
     } catch (error) {
@@ -152,13 +159,38 @@ export function useSmartSearch() {
     }
   };
 
+  const loadNextBatch = async () => {
+    if (!parsedFilters || !hasMore) return;
+    setIsLoadingBatch(true);
+    try {
+      const nextPage = currentBatchPage + 1;
+      const searchResults = await searchContracts.mutateAsync({
+        filters: parsedFilters,
+        page: nextPage,
+        limit: 10
+      });
+
+      setAllResults(prev => [...prev, ...searchResults.results]);
+      setResults(prev => [...prev, ...searchResults.results]);
+      setCurrentBatchPage(nextPage);
+      setTotal(searchResults.total);
+    } catch (error) {
+      console.error("Load next batch error:", error);
+    } finally {
+      setIsLoadingBatch(false);
+    }
+  };
+
   return {
     search,
     searchWithFilters,
+    loadNextBatch,
     isSearching,
+    isLoadingBatch,
     results,
     parsedFilters,
     total,
+    hasMore,
     isParsing: parseQuery.isPending,
     isSearchingContracts: searchContracts.isPending
   };
