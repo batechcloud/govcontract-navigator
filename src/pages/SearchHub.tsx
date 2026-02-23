@@ -233,6 +233,24 @@ const SearchHub = () => {
     isParsing,
   } = useSmartSearch();
 
+  // Track previous result count for scroll-to-new behavior
+  const prevResultCount = useRef(0);
+  const resultListRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (results.length > prevResultCount.current && prevResultCount.current > 0) {
+      // Scroll to the first new result after batch load
+      const newItemIndex = prevResultCount.current;
+      setTimeout(() => {
+        const items = resultListRef.current?.children;
+        if (items && items[newItemIndex]) {
+          items[newItemIndex].scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 100);
+    }
+    prevResultCount.current = results.length;
+  }, [results.length]);
+
   // Auto-search when arriving from sector browse
   useEffect(() => {
     const sectorKey = searchParams.get("sector");
@@ -687,7 +705,7 @@ const SearchHub = () => {
             </p>
           </div>
 
-          <div className="space-y-4">
+          <div ref={resultListRef} className="space-y-4">
             {isSearching ? (
               Array.from({ length: 3 }).map((_, i) => (
                 <Card key={i} variant="glass">
@@ -712,7 +730,7 @@ const SearchHub = () => {
                     key={result.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.05 }}
+                    transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.5) }}
                   >
                     <Card variant="glass-hover">
                       <CardContent className="p-4 sm:p-6">
