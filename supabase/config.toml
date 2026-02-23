@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.ai-profile-optimizer]
 verify_jwt = false
+
+[functions.ai-document-summary]
+verify_jwt = false

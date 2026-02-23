@@ -49,6 +49,7 @@ async function fetchFromSamGov(filters, signal) {
     contractType: r.type || "FFP",
     location: r.location || "National",
     description: r.description || "",
+    resourceLinks: r.resourceLinks || [],
   }));
 }
 
@@ -88,6 +89,7 @@ async function fetchFromUSASpending(filters, signal) {
     contractType: "Award",
     location: [r["Place of Performance City"], r["Place of Performance State Code"]].filter(Boolean).join(", ") || "National",
     description: r["Description"] || "",
+    resourceLinks: [],
   }));
 }
 

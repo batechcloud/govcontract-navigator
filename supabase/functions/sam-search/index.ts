@@ -366,6 +366,7 @@ function transformSamResults(opportunities: any[], filters: SearchFilters) {
       description,
       solicitationNumber: opp.solicitationNumber || "",
       link: opp.uiLink || (opp.noticeId ? `https://sam.gov/opp/${opp.noticeId}/view` : "https://sam.gov"),
+      resourceLinks: opp.resourceLinks || [],
       // Internal fields for post-filtering (stripped before sending to client)
       _rawPsc: opp.psc?.map((p: any) => p.code) || (opp.classificationCode ? [opp.classificationCode] : []),
       _rawAgencyPath: opp.fullParentPathName || "",
@@ -429,7 +430,8 @@ function getMockResults(filters: SearchFilters, page: number, limit: number) {
       matchScore: 96,
       description: "IT infrastructure modernization and support services for DOD systems.",
       solicitationNumber: "W91CRB-24-R-0001",
-      link: "https://sam.gov/opp/sample1"
+      link: "https://sam.gov/opp/sample1",
+      resourceLinks: ["https://sam.gov/api/prod/opps/v3/opportunities/resources/files/sample-sow-it-modernization.pdf", "https://sam.gov/api/prod/opps/v3/opportunities/resources/files/amendment-001.pdf"]
     },
     {
       id: "SAM-2024-002",
@@ -445,7 +447,8 @@ function getMockResults(filters: SearchFilters, page: number, limit: number) {
       matchScore: 92,
       description: "Comprehensive cybersecurity risk assessment and monitoring services.",
       solicitationNumber: "70CMSD24R00000001",
-      link: "https://sam.gov/opp/sample2"
+      link: "https://sam.gov/opp/sample2",
+      resourceLinks: ["https://sam.gov/api/prod/opps/v3/opportunities/resources/files/rfp-cybersecurity-assessment.pdf"]
     },
     {
       id: "SAM-2024-003",
@@ -461,7 +464,8 @@ function getMockResults(filters: SearchFilters, page: number, limit: number) {
       matchScore: 88,
       description: "Cloud infrastructure migration, management, and optimization services.",
       solicitationNumber: "47QFCA24R0001",
-      link: "https://sam.gov/opp/sample3"
+      link: "https://sam.gov/opp/sample3",
+      resourceLinks: ["https://sam.gov/api/prod/opps/v3/opportunities/resources/files/cloud-migration-sow.pdf", "https://sam.gov/api/prod/opps/v3/opportunities/resources/files/pricing-template.xlsx", "https://sam.gov/api/prod/opps/v3/opportunities/resources/files/qa-responses.pdf"]
     },
     {
       id: "SAM-2024-004",

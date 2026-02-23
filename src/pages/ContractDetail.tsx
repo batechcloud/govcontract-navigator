@@ -10,10 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   ArrowLeft, Building2, Clock, DollarSign, MapPin, FileText, Heart,
   ExternalLink, MessageSquare, Sparkles, Hash, Calendar, Globe, Tag,
-  StickyNote, Shield, Save,
+  StickyNote, Shield, Save, Paperclip, Download, Brain, Loader2,
 } from "lucide-react";
 import { useTrackedContracts, useTrackContract, useUpdateContractNotes, useUpdateContractStatus, TrackedContract } from "@/hooks/useTrackedContracts";
 import { SearchResult } from "@/hooks/useSearch";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { PIPELINE_STATUSES } from "@/components/tracked/KanbanBoard";
 
@@ -42,6 +43,19 @@ interface ContractData {
   solicitationNumber?: string;
   link?: string;
   matchScore?: number;
+  resourceLinks?: string[];
+}
+
+function extractFilename(url: string, index: number): string {
+  try {
+    const pathname = new URL(url).pathname;
+    const segments = pathname.split("/");
+    const last = segments[segments.length - 1];
+    if (last && last.length > 3 && /\.\w{2,5}$/.test(last)) {
+      return decodeURIComponent(last);
+    }
+  } catch { /* fallback */ }
+  return `Attachment ${index + 1}`;
 }
 
 function trackedToContractData(tc: TrackedContract): ContractData {
@@ -94,10 +108,30 @@ const ContractDetail = () => {
         solicitationNumber: stateData.solicitationNumber,
         link: stateData.link,
         matchScore: stateData.matchScore,
+        resourceLinks: stateData.resourceLinks,
       }
     : tracked
       ? trackedToContractData(tracked)
       : null;
+
+  // Attachment summarization state
+  const [summaries, setSummaries] = useState<Record<string, string>>({});
+  const [summarizing, setSummarizing] = useState<Record<string, boolean>>({});
+
+  const handleSummarize = async (url: string) => {
+    setSummarizing(prev => ({ ...prev, [url]: true }));
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-document-summary', {
+        body: { documentUrl: url },
+      });
+      if (error) throw error;
+      setSummaries(prev => ({ ...prev, [url]: data.summary }));
+    } catch (err: any) {
+      toast.error(err.message || "Failed to summarize document");
+    } finally {
+      setSummarizing(prev => ({ ...prev, [url]: false }));
+    }
+  };
 
   // Local editable fields for tracked contracts
   const [notes, setNotes] = useState(tracked?.notes || "");
@@ -320,6 +354,64 @@ const ContractDetail = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Attachments */}
+        {contract.resourceLinks && contract.resourceLinks.length > 0 && (
+          <Card variant="glass">
+            <CardContent className="p-6 space-y-4">
+              <h2 className="font-heading font-semibold text-foreground flex items-center gap-2">
+                <Paperclip className="w-4 h-4 text-primary" /> Attachments ({contract.resourceLinks.length})
+              </h2>
+              <div className="space-y-3">
+                {contract.resourceLinks.map((url, idx) => {
+                  const filename = extractFilename(url, idx);
+                  const isSummarizing = summarizing[url];
+                  const summary = summaries[url];
+                  return (
+                    <div key={url} className="border border-border/50 rounded-lg p-3 space-y-2">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <span className="text-sm font-medium text-foreground flex-1 min-w-0 truncate">
+                          {filename}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => window.open(url, "_blank")}
+                            className="gap-1.5 text-xs"
+                          >
+                            <Download className="w-3.5 h-3.5" /> Download
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleSummarize(url)}
+                            disabled={isSummarizing || !!summary}
+                            className="gap-1.5 text-xs border-accent/40 text-accent hover:bg-accent/10"
+                          >
+                            {isSummarizing ? (
+                              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Summarizing...</>
+                            ) : summary ? (
+                              <><Brain className="w-3.5 h-3.5" /> Summarized</>
+                            ) : (
+                              <><Brain className="w-3.5 h-3.5" /> AI Summarize</>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                      {summary && (
+                        <div className="bg-muted/30 rounded-md p-3 text-sm text-muted-foreground whitespace-pre-wrap border border-border/30">
+                          {summary}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Action buttons */}
         <Card variant="glass">
