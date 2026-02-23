@@ -230,6 +230,7 @@ const SearchHub = () => {
     parsedFilters,
     total,
     hasMore,
+    batchBoundaries,
     isParsing,
   } = useSmartSearch();
 
