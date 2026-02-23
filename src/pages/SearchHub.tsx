@@ -705,7 +705,7 @@ const SearchHub = () => {
             </p>
           </div>
 
-          <div className="space-y-4">
+          <div ref={resultListRef} className="space-y-4">
             {isSearching ? (
               Array.from({ length: 3 }).map((_, i) => (
                 <Card key={i} variant="glass">
