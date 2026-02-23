@@ -537,6 +537,7 @@ export type Database = {
           notes: string | null
           posted_date: string | null
           priority: string | null
+          resource_links: string[] | null
           response_deadline: string | null
           set_aside: string | null
           status: string | null
@@ -555,6 +556,7 @@ export type Database = {
           notes?: string | null
           posted_date?: string | null
           priority?: string | null
+          resource_links?: string[] | null
           response_deadline?: string | null
           set_aside?: string | null
           status?: string | null
@@ -573,6 +575,7 @@ export type Database = {
           notes?: string | null
           posted_date?: string | null
           priority?: string | null
+          resource_links?: string[] | null
           response_deadline?: string | null
           set_aside?: string | null
           status?: string | null
