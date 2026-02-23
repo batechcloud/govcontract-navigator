@@ -66,7 +66,7 @@ const testimonials = [
     company: "Precision Builders",
     avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=100&h=100&fit=crop&crop=face",
     initials: "RK",
-    content: "I'm not tech-savvy at all, but GC Navigator is incredibly easy to use. The AI Helper answers my questions about contracts in plain English. It's like having a consultant on call.",
+    content: "I'm not tech-savvy at all, but GC Navigator is incredibly easy to use. The AI Assistant answers my questions about contracts in plain English. It's like having a consultant on call.",
     rating: 5,
     metric: "No learning curve",
     accentColor: "from-rose-500/20 to-red-500/20",

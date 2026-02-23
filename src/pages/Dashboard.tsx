@@ -37,7 +37,7 @@ const Dashboard = () => {
     { icon: Search, label: "Find Contracts", description: "Search federal & state opportunities", href: "/dashboard/search", color: "text-primary" },
     { icon: Heart, label: "My Opportunities", description: `${savedCount} saved, ${inProgressCount} in progress`, href: "/dashboard/tracked", color: "text-rose-400" },
     { icon: FileText, label: "My Proposals", description: "Create & manage your bids", href: "/dashboard/proposals", color: "text-accent" },
-    { icon: Sparkles, label: "Ask AI Helper", description: "Get help with contracts", href: "/dashboard/ai", color: "text-purple-400" },
+    { icon: Sparkles, label: "AI Assistant", description: "Get help with contracts", href: "/dashboard/ai", color: "text-purple-400" },
   ];
 
   return (
