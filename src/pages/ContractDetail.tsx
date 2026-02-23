@@ -107,10 +107,30 @@ const ContractDetail = () => {
         solicitationNumber: stateData.solicitationNumber,
         link: stateData.link,
         matchScore: stateData.matchScore,
+        resourceLinks: stateData.resourceLinks,
       }
     : tracked
       ? trackedToContractData(tracked)
       : null;
+
+  // Attachment summarization state
+  const [summaries, setSummaries] = useState<Record<string, string>>({});
+  const [summarizing, setSummarizing] = useState<Record<string, boolean>>({});
+
+  const handleSummarize = async (url: string) => {
+    setSummarizing(prev => ({ ...prev, [url]: true }));
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-document-summary', {
+        body: { documentUrl: url },
+      });
+      if (error) throw error;
+      setSummaries(prev => ({ ...prev, [url]: data.summary }));
+    } catch (err: any) {
+      toast.error(err.message || "Failed to summarize document");
+    } finally {
+      setSummarizing(prev => ({ ...prev, [url]: false }));
+    }
+  };
 
   // Local editable fields for tracked contracts
   const [notes, setNotes] = useState(tracked?.notes || "");
