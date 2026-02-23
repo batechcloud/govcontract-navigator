@@ -447,7 +447,8 @@ function getMockResults(filters: SearchFilters, page: number, limit: number) {
       matchScore: 92,
       description: "Comprehensive cybersecurity risk assessment and monitoring services.",
       solicitationNumber: "70CMSD24R00000001",
-      link: "https://sam.gov/opp/sample2"
+      link: "https://sam.gov/opp/sample2",
+      resourceLinks: ["https://sam.gov/api/prod/opps/v3/opportunities/resources/files/rfp-cybersecurity-assessment.pdf"]
     },
     {
       id: "SAM-2024-003",
