@@ -752,6 +752,12 @@ const SearchHub = () => {
                             {result.setAside && result.setAside !== "None" && (
                               <Badge variant="glass">{result.setAside}</Badge>
                             )}
+                            {isTracked && (
+                              <Badge variant="success" className="gap-1">
+                                <CheckCircle2 className="w-3 h-3" />
+                                Already Tracked
+                              </Badge>
+                            )}
                           </div>
 
                           {/* Title & Agency */}
