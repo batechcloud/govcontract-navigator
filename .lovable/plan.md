@@ -1,81 +1,54 @@
-# Contract Detail Page
+
+
+# Load New Batch of SAM.gov Opportunities
 
 ## Overview
+Add a "Load New Batch" button to the Search Hub that fetches the next set of SAM.gov results (leveraging the API's offset parameter), and visually flag any result that is already saved in the user's tracked contracts.
 
-Add a dedicated in-app contract detail page so that clicking any contract title -- in Search results, My Opportunities (Kanban/List), Dashboard, or anywhere else -- opens a rich detail view within the app instead of redirecting to SAM.gov. The SAM.gov link will remain available as a secondary action on the detail page.
+## What Changes
 
-## What You'll Get
+### 1. Edge Function: `sam-search/index.ts`
+- Currently the `limit` parameter sent to SAM.gov caps at around 200 (or 10 without post-filter). The SAM.gov API supports up to 1000 per call via its `limit` and `offset` parameters.
+- Increase the default fetch limit to allow larger batches (e.g., 25 per page in the UI) and ensure the `offset` parameter properly maps so that requesting page 0, 1, 2... returns different result sets.
+- No major structural change needed -- the existing `page` and `limit` params already flow through. We just need to make sure higher page numbers work correctly for the non-post-filtered path.
 
-- A new `/dashboard/contract/:contractId` page with full contract details
-- Clickable contract titles everywhere in the app (search results, Kanban cards, list view, dashboard)
-- Contract detail page showing: title, agency, value, deadline countdown, set-aside type, document and attachment for that contract (if any), NAICS code, description, solicitation number, status, priority, notes, and a link to SAM.gov
-- Action buttons on the detail page: Start Bid, Save/Track, Ask AI, Score This, View on SAM.gov
-- For tracked contracts: editable notes, priority, and status directly on the detail page
+### 2. Search Hook: `useSearch.tsx`
+- Add a `loadNextBatch` function that increments the page and fetches the next set of results while **appending** them to the existing results (rather than replacing).
+- Track a `currentBatchPage` counter so each "Load New Batch" click fetches the next offset.
+- Expose `loadNextBatch`, `hasMore` (based on total vs loaded count), and `batchLoading` state.
 
-## Pages and Components Affected
+### 3. Search Hub UI: `SearchHub.tsx`
+- Add a prominent "Load New Batch" button (with a refresh icon) below the results list, visible when there are more results available from SAM.gov.
+- Show a count like "Showing 25 of 1000 opportunities" to communicate progress.
+- For each result card, cross-reference the `trackedIds` Set (already computed from `useTrackedContracts`) against `result.id`. If the contract is already tracked, display an "Already Tracked" badge on the card and disable/change the Track button to say "Already Tracked".
 
-### New Files
-
-1. `**src/pages/ContractDetail.tsx**` -- Full-page contract detail view with:
-  - Contract header (title, agency, badges for type/set-aside)
-  - Key metrics row (value, deadline with countdown, location, NAICS, solicitation number)
-  - Full description section
-  - Action buttons (Start Bid, Save, Ask AI, Score, View on SAM.gov)
-  - For tracked contracts: inline notes editor, priority selector, status selector
-  - Data source indicator
-
-### Modified Files
-
-2. `**src/App.tsx**` -- Add route: `/dashboard/contract/:contractId`
-3. `**src/pages/SearchHub.tsx**` -- Make contract titles clickable links to `/dashboard/contract/:id`, passing result data via router state
-4. `**src/components/tracked/KanbanCard.tsx**` -- Make title a clickable link to the detail page
-5. `**src/components/tracked/ListView.tsx**` -- Make title a clickable link to the detail page
-6. `**src/components/dashboard/OpportunityCard.tsx**` -- Make title a clickable link
-7. `**src/pages/Dashboard.tsx**` -- Make deadline contract titles clickable if they appear
+### 4. "Already Tracked" Indicator
+- The `trackedIds` Set already exists in SearchHub (line 267: `const trackedIds = new Set(trackedContracts?.map(c => c.contract_id) || [])`).
+- Currently the Track button is only shown when `!trackedIds.has(result.id)`. We will instead always show the button area but render "Already Tracked" with a checkmark icon and muted styling when the contract is already in the pipeline.
 
 ## Technical Details
 
-### Data Flow
+**useSearch.tsx changes:**
+- Add `allResults` state that accumulates across batches
+- `loadNextBatch()` calls `searchContracts.mutateAsync` with incremented page, appends to `allResults`
+- `search()` and `searchWithFilters()` reset `allResults` and batch counter
+- Expose `loadNextBatch`, `hasMore`, `isLoadingBatch`
 
-- **From Search results**: Contract data is passed via React Router's `state` prop (since search results aren't persisted in the database). The detail page reads `location.state` to display the contract.
-- **From Tracked Contracts**: The page fetches the contract from the `tracked_contracts` table using the contract ID from the URL. This provides persisted notes, priority, and status.
-- **Fallback**: If no state and no tracked contract found, show a "Contract not found" message with a link back to search.
+**SearchHub.tsx changes:**
+- Replace the existing pagination with a "Load More Results" button approach (or keep pagination but add "Load New Batch" as an additional action)
+- Add `Already Tracked` badge with green checkmark icon on tracked cards
+- Change the Track button to show "Tracked" with disabled state for already-tracked items
 
-### URL Structure
+**sam-search edge function:**
+- Ensure offset calculation `page * limit` works correctly for pages beyond 0 when not post-filtering
+- The current code already does this at line 121: `params.append("offset", needsPostFilter ? "0" : (page * limit).toString())`
+- For post-filtered results, increase the fetch window proportionally when requesting later pages
 
-```text
-/dashboard/contract/:contractId
-```
+## User Experience
+- User searches for contracts as usual
+- Results load (first batch of ~10-25)
+- At the bottom of results, a "Load New Batch" button appears showing how many more are available
+- Clicking it fetches the next set and appends below existing results
+- Any contract already in the user's tracked pipeline shows a green "Already Tracked" badge
+- The Track button for those items changes to a muted "Already Tracked" state with a checkmark
 
-Where `contractId` is the SAM.gov notice ID (e.g., `abc123def...`) or the tracked_contracts table `id`.
-
-### Contract Detail Page Layout
-
-```text
-+------------------------------------------+
-| < Back to Search / My Opportunities      |
-+------------------------------------------+
-| [Solicitation] [Full & Open] [SDVOSB]    |
-|                                          |
-| Contract Title (large heading)           |
-| Agency Name                              |
-+------------------------------------------+
-| $4.2M  |  12 days left  |  VA  |  5415  |
-+------------------------------------------+
-| Description                              |
-| (full text, not truncated)               |
-+------------------------------------------+
-| Solicitation #: W912AB-24-R-0001         |
-| Posted: Jan 15, 2026                     |
-| Source: SAM.gov                          |
-+------------------------------------------+
-| [Start Bid] [Save] [Ask AI] [Score]      |
-|                    [View on SAM.gov ->]   |
-+------------------------------------------+
-| Notes & Tracking (if saved)              |
-| Priority: [High/Med/Low]                 |
-| Status: [Watching/Qualifying/...]        |
-| Notes: [editable textarea]              |
-| [Save Changes]                           |
-+------------------------------------------+
-```
