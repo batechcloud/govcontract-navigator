@@ -726,7 +726,8 @@ const SearchHub = () => {
               results.map((result, index) => {
                 const isTracked = trackedIds.has(result.id);
                 const match = getMatchLabel(result.matchScore);
-                const isBatchStart = batchBoundaries.includes(index);
+                const batchIndex = batchBoundaries.indexOf(index);
+                const isBatchStart = batchIndex !== -1;
                 return (
                   <div key={result.id}>
                     {isBatchStart && (
@@ -739,7 +740,7 @@ const SearchHub = () => {
                         <div className="flex-1 h-px bg-primary/30" />
                         <span className="text-xs font-medium text-primary flex items-center gap-1.5 whitespace-nowrap">
                           <Sparkles className="w-3 h-3" />
-                          New Results
+                          Batch {batchIndex + 2} — New Results
                         </span>
                         <div className="flex-1 h-px bg-primary/30" />
                       </motion.div>
