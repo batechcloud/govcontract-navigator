@@ -53,7 +53,15 @@ export function PublicOnlyRoute({ children }: { children: ReactNode }) {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+        <div className="flex flex-col items-center gap-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center">
+              <span className="text-primary font-bold text-lg font-heading">GC</span>
+            </div>
+            <span className="text-xl font-bold font-heading text-foreground tracking-tight">GC Navigator</span>
+          </div>
+          <Loader2 className="w-6 h-6 text-primary animate-spin" />
+        </div>
       </div>
     );
   }
