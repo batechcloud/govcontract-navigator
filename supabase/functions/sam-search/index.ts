@@ -181,7 +181,10 @@ serve(async (req) => {
     if (!SAM_API_KEY) {
       console.log("No SAM_API_KEY configured, returning mock data");
       return new Response(
-        JSON.stringify(getMockResults(filters, page, limit)),
+        JSON.stringify({
+          ...getMockResults(filters, page, limit),
+          warning: "SAM.gov API key not configured. Showing sample data. Add your API key in Settings to see live opportunities.",
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -287,7 +290,11 @@ serve(async (req) => {
     if (!response.ok) {
       console.error("SAM.gov API error:", response.status, responseText);
       return new Response(
-        JSON.stringify(getMockResults(filters, page, limit)),
+        JSON.stringify({
+          ...getMockResults(filters, page, limit),
+          warning: "SAM.gov API returned an error. Showing cached sample data instead.",
+          api_status: response.status,
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -298,7 +305,10 @@ serve(async (req) => {
     } catch (e) {
       console.error("Failed to parse SAM.gov response as JSON:", responseText.substring(0, 300));
       return new Response(
-        JSON.stringify(getMockResults(filters, page, limit)),
+        JSON.stringify({
+          ...getMockResults(filters, page, limit),
+          warning: "SAM.gov returned an invalid response. Showing cached sample data instead.",
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

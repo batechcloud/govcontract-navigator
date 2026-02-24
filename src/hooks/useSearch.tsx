@@ -108,7 +108,13 @@ export function useSearchContracts() {
         total: number;
         page: number;
         limit: number;
+        warning?: string;
       };
+
+      // Show warning toast if the API returned fallback/sample data
+      if (result.warning) {
+        toast.warning(result.warning, { duration: 6000 });
+      }
 
       // Cache for 10 minutes to prevent duplicate API calls for identical searches
       queryClient.setQueryData(cacheKey, result);

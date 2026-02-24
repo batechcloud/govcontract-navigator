@@ -35,7 +35,11 @@ async function fetchFromSamGov(filters: LegacyFilters): Promise<Contract[]> {
 
   if (error) {
     console.warn("sam-search call failed:", error);
-    return [];
+    throw new Error("SAM.gov search unavailable. Please try again later.");
+  }
+
+  if (data?.warning) {
+    console.warn("SAM.gov warning:", data.warning);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
