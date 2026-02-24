@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_rate_limits: {
+        Row: {
+          api_name: string
+          created_at: string | null
+          id: string
+          request_count: number
+          request_date: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          api_name?: string
+          created_at?: string | null
+          id?: string
+          request_count?: number
+          request_date?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          api_name?: string
+          created_at?: string | null
+          id?: string
+          request_count?: number
+          request_date?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       chat_conversations: {
         Row: {
           created_at: string
@@ -785,6 +815,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_and_increment_rate_limit: {
+        Args: { _api_name: string; _daily_limit: number; _user_id: string }
+        Returns: {
+          allowed: boolean
+          current_count: number
+          daily_limit: number
+        }[]
+      }
       check_feature_access: {
         Args: { _feature_code: string; _user_id: string }
         Returns: {
