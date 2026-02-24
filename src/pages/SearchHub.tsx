@@ -89,7 +89,7 @@ const SearchHub = () => {
   const winScore = useWinProbability();
   const { data: companyProfile } = useCompanyProfile();
   const profilePscCodes = companyProfile?.psc_codes?.filter(Boolean) || [];
-
+  const { data: rateLimit } = useSearchRateLimit();
   const handleScoreContract = (result: SearchResult) => {
     const input: ContractScoreInput = {
       title: result.title,
