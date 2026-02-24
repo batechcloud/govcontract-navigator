@@ -1,112 +1,133 @@
 
 
-# Codebase Cleanup Plan
+# Enhanced Billing Tab with Stripe Integration
 
-## Summary
+## Current State
+The Settings Billing tab currently shows only:
+- Current plan name and price
+- A "View All Plans" link
+- A "contact support" message
 
-After a thorough review, I identified **dead code, orphaned files, a legacy `.jsx` file, unused hooks/components, and inconsistent patterns** that should be cleaned up to bring the codebase to a professional standard.
+It lacks payment management, history, and invoicing — all essential for a subscription product.
 
----
+## What Will Be Built
 
-## 1. Delete Orphaned Pages (not routed, not imported anywhere)
+### 1. Enable Stripe Integration
+Connect Stripe to handle real payments, subscriptions, and invoicing. This is a prerequisite for all billing features.
 
-These page files exist but have **no route in App.tsx** and are **never imported** by any other file. They are leftover from earlier iterations and contain only hardcoded mock data:
+### 2. Stripe Customer Portal Integration
+Rather than building payment forms from scratch, we'll use Stripe's hosted Customer Portal which provides:
+- **Update payment method** (credit card, bank account)
+- **View payment history** with all past charges
+- **Download invoices** as PDFs
+- **Cancel or change subscription**
+- **Update billing address**
 
-- `src/pages/Calendar.tsx` -- replaced by `/dashboard/tracked` redirect
-- `src/pages/Documents.tsx` -- replaced by `/dashboard/proposals` redirect
-- `src/pages/JourneyHub.tsx` -- replaced by `/dashboard/tracked` redirect
-- `src/pages/SavedSearches.tsx` -- replaced by `/dashboard/search` redirect
-- `src/pages/CompetitorAnalysis.tsx` -- replaced by `/dashboard/ai` redirect
-- `src/pages/MarketWatch.tsx` -- replaced by `/dashboard/ai` redirect
-- `src/pages/TeamingPartners.tsx` -- replaced by `/dashboard/ai` redirect
-- `src/pages/TrackedCompetitors.tsx` -- not routed, not imported
-- `src/pages/WinLossAnalysis.tsx` -- not routed, not imported
+This is the industry-standard approach — secure, PCI-compliant, and maintained by Stripe.
 
-**9 files deleted.**
+### 3. Checkout Flow for Plan Upgrades
+When a user clicks "Upgrade" or selects a new plan from the pricing page, they'll be redirected to a Stripe Checkout session to complete payment.
 
----
+### 4. Enhanced Billing Tab UI
+Redesign the billing section to include:
+- **Current Plan card** — plan name, price, renewal date, status badge
+- **Payment Method card** — last 4 digits of card, expiration, "Update" button (opens Stripe Portal)
+- **Billing History section** — table of recent invoices with date, amount, status, and download link
+- **"Manage Billing" button** — opens Stripe Customer Portal for full control
+- **"Upgrade Plan" button** — triggers Stripe Checkout for plan changes
 
-## 2. Delete Unused Component
+### 5. Backend (Edge Functions)
 
-- `src/components/NavLink.tsx` -- not imported anywhere in the project
+**`create-checkout-session`** — Creates a Stripe Checkout session for new subscriptions or upgrades:
+- Accepts plan ID and billing interval (monthly/yearly)
+- Creates or retrieves the Stripe customer for the authenticated user
+- Returns checkout URL for redirect
 
----
+**`create-portal-session`** — Creates a Stripe Customer Portal session:
+- Looks up the user's Stripe customer ID
+- Returns portal URL where users manage payment methods, view invoices, cancel, etc.
 
-## 3. Delete Unused Hook
+**`stripe-webhook`** — Handles Stripe events to keep the database in sync:
+- `checkout.session.completed` — Activates subscription in `user_subscriptions`
+- `invoice.paid` — Records successful payment
+- `customer.subscription.updated` — Syncs plan changes
+- `customer.subscription.deleted` — Marks subscription as cancelled
 
-- `src/hooks/useCompetitorIntelligence.tsx` -- only imported by the orphaned pages being deleted (`CompetitorAnalysis.tsx`, `TrackedCompetitors.tsx`, `WinLossAnalysis.tsx`)
-
----
-
-## 4. Convert `.jsx` to `.tsx`
-
-The project is TypeScript throughout except for three legacy `.js/.jsx` files:
-
-- `src/pages/SectorBrowse.jsx` -- rename to `.tsx` and add minimal type annotations
-- `src/hooks/useContracts.js` -- rename to `.tsx` and add type annotations
-- `src/services/contractsApi.js` -- rename to `.ts` and add type annotations
-- `src/store/contractStore.js` -- rename to `.ts` and add type annotations
-
-Update all import references in `App.tsx` and other consumers accordingly.
-
----
-
-## 5. Clean Up Stale Redirect Routes
-
-The redirect routes in App.tsx reference paths for the deleted pages. These are fine to keep (they protect bookmarked URLs), but I will add a brief comment grouping them and remove the one for `/sectors` since it is already handled. No functional change.
-
----
-
-## 6. Remove Duplicate Toaster
-
-The app renders **two** toast systems simultaneously: `@/components/ui/toaster` (Radix-based) and `sonner`. Throughout the codebase, **both** `toast()` from `use-toast.ts` and `toast()` from `sonner` are used inconsistently. I will:
-
-- Audit which toast system is dominant (sonner appears more widely used)
-- Standardize on **sonner** for all toast calls
-- Remove the Radix `<Toaster />` from `App.tsx` and the `useToast` / `toaster` files if fully migrated, OR leave both if migration is too large for this pass and note it for future cleanup
-
-Given the scope, I will **leave both for now** but add a `// TODO: consolidate on sonner` comment to flag it.
-
----
-
-## 7. Minor Code Quality Fixes
-
-- Remove unused imports in files touched during cleanup
-- Ensure consistent spacing in `App.tsx` route definitions (fix the extra space on line 90)
-- Add `"use client"` or similar annotations where appropriate (not needed for Vite, skip)
-
----
+### 6. Database Changes
+- Add `stripe_customer_id` column to `profiles` table (to link Supabase users to Stripe customers)
+- Add `stripe_subscription_id` column to `user_subscriptions` table
+- Create `payment_history` table to cache invoice data for quick display without hitting Stripe API every time
 
 ## Technical Details
 
-### Files to Delete (12 total)
+### New Edge Functions
+| Function | Purpose |
+|---|---|
+| `create-checkout-session` | Generate Stripe Checkout URL for plan purchase |
+| `create-portal-session` | Generate Stripe Customer Portal URL |
+| `stripe-webhook` | Sync Stripe events to database |
+
+### Database Migration
 ```text
-src/pages/Calendar.tsx
-src/pages/Documents.tsx
-src/pages/JourneyHub.tsx
-src/pages/SavedSearches.tsx
-src/pages/CompetitorAnalysis.tsx
-src/pages/MarketWatch.tsx
-src/pages/TeamingPartners.tsx
-src/pages/TrackedCompetitors.tsx
-src/pages/WinLossAnalysis.tsx
-src/components/NavLink.tsx
-src/hooks/useCompetitorIntelligence.tsx
+profiles
+  + stripe_customer_id (text, nullable)
+
+user_subscriptions
+  + stripe_subscription_id (text, nullable)
+  + stripe_price_id (text, nullable)
+
+NEW TABLE: payment_history
+  - id (uuid, PK)
+  - user_id (uuid, FK)
+  - stripe_invoice_id (text)
+  - amount (integer, cents)
+  - currency (text, default 'usd')
+  - status (text: paid, failed, pending)
+  - invoice_url (text, Stripe-hosted invoice PDF)
+  - period_start (timestamptz)
+  - period_end (timestamptz)
+  - created_at (timestamptz)
 ```
 
-### Files to Rename (JS to TS)
+### Updated Settings Billing Tab Layout
 ```text
-src/pages/SectorBrowse.jsx       -> SectorBrowse.tsx
-src/hooks/useContracts.js        -> useContracts.ts
-src/services/contractsApi.js     -> contractsApi.ts
-src/store/contractStore.js       -> contractStore.ts
++------------------------------------------+
+| Current Plan                             |
+| [Professional]  $149/month               |
+| Renews: March 24, 2026    [Upgrade]      |
++------------------------------------------+
+| Payment Method                           |
+| Visa ending in 4242  Exp 12/27           |
+| [Update Payment Method]                  |
++------------------------------------------+
+| Recent Invoices                          |
+| Date       | Amount | Status | Invoice   |
+| Feb 24     | $149   | Paid   | Download  |
+| Jan 24     | $149   | Paid   | Download  |
+| Dec 24     | $149   | Paid   | Download  |
++------------------------------------------+
+| [Manage Billing]  (opens Stripe Portal)  |
++------------------------------------------+
 ```
 
-### Files to Edit
-- `src/App.tsx` -- update SectorBrowse import extension, fix spacing, add TODO comment on dual toasters
-- `src/components/usaspending/AwardExplorer.tsx` -- update contractStore import if path changes
+### New Secret Required
+- `STRIPE_SECRET_KEY` — Stripe secret API key (collected via Stripe integration tool)
+- `STRIPE_WEBHOOK_SECRET` — For verifying webhook signatures
 
-### Risk Assessment
-- **Low risk**: All deleted files are confirmed unreachable (no imports, no routes)
-- **The `.js` to `.ts` conversion** will use minimal type annotations (`any` where needed) to avoid breaking changes -- a deeper typing pass can follow later
+### Files Created/Modified
+| File | Action |
+|---|---|
+| `supabase/functions/create-checkout-session/index.ts` | Create |
+| `supabase/functions/create-portal-session/index.ts` | Create |
+| `supabase/functions/stripe-webhook/index.ts` | Create |
+| `src/pages/Settings.tsx` | Modify billing tab |
+| `src/hooks/usePaymentHistory.tsx` | Create |
+| Database migration | Add columns + new table |
+
+## Implementation Order
+1. Enable Stripe integration (collects API key)
+2. Run database migration (add columns + payment_history table)
+3. Create edge functions (checkout, portal, webhook)
+4. Update Settings billing tab UI
+5. Test end-to-end flow
 
