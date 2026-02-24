@@ -111,7 +111,9 @@ export function useContracts() {
       setResults(paginate(data, page, 25));
     } catch (err: unknown) {
       if (err instanceof Error && err.name !== "AbortError") {
-        setError("Failed to load contracts. Showing demo data.");
+        const msg = err.message || "Failed to load contracts.";
+        setError(msg);
+        toast.error(msg, { duration: 6000 });
         setResults(getMockData(activeFilters));
       }
     } finally {
