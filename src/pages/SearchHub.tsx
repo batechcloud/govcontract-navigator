@@ -485,8 +485,8 @@ const SearchHub = () => {
                     className={`text-xs font-medium tabular-nums ${
                       rateLimit.remaining <= 5
                         ? "text-destructive"
-                        : "text-accent"
-                        ? "text-warning"
+                        : rateLimit.remaining <= 15
+                        ? "text-accent"
                         : "text-muted-foreground"
                     }`}
                     title={`${rateLimit.used} of ${rateLimit.limit} daily searches used. Resets at midnight UTC.`}
