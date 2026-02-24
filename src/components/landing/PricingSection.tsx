@@ -104,7 +104,7 @@ export function PricingSection() {
             >
               <Card
                 variant={plan.popular ? "glass-hover" : "glass"}
-                className={`h-full relative ${plan.popular ? "border-primary/50 glow-primary" : ""}`}
+                className={`h-full relative overflow-visible ${plan.popular ? "border-primary/50 glow-primary mt-4" : ""}`}
               >
                 {plan.badge && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
