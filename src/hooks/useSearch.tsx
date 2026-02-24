@@ -113,6 +113,9 @@ export function useSearchContracts() {
       // Cache for 10 minutes to prevent duplicate API calls for identical searches
       queryClient.setQueryData(cacheKey, result);
 
+      // Refresh the rate limit counter so the UI updates
+      queryClient.invalidateQueries({ queryKey: ['rate-limit'] });
+
       return result;
     },
     onError: (error: Error) => {

@@ -51,6 +51,7 @@ import {
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useTrackContract, useTrackedContracts } from "@/hooks/useTrackedContracts";
 import { useSmartSearch, useSaveSearch, SearchFilters, SearchResult } from "@/hooks/useSearch";
+import { useSearchRateLimit } from "@/hooks/useRateLimit";
 import { toast } from "sonner";
 import { SECTOR_NAICS, SECTOR_CONFIG } from "@/config/sectors";
 import { useWinProbability, ContractScoreInput, ContractScoreResult } from "@/hooks/useWinProbability";
@@ -88,7 +89,7 @@ const SearchHub = () => {
   const winScore = useWinProbability();
   const { data: companyProfile } = useCompanyProfile();
   const profilePscCodes = companyProfile?.psc_codes?.filter(Boolean) || [];
-
+  const { data: rateLimit } = useSearchRateLimit();
   const handleScoreContract = (result: SearchResult) => {
     const input: ContractScoreInput = {
       title: result.title,
@@ -478,12 +479,28 @@ const SearchHub = () => {
                 <Sparkles className="w-5 h-5 text-accent" />
                 <span className="font-heading font-semibold text-foreground">Search in Plain English</span>
               </div>
-              {parsedFilters && (
-                <Button variant="ghost" size="sm" onClick={() => setSaveDialogOpen(true)}>
-                  <Bookmark className="w-4 h-4 mr-2" />
-                  Save Search
-                </Button>
-              )}
+              <div className="flex items-center gap-3">
+                {rateLimit && (
+                  <span
+                    className={`text-xs font-medium tabular-nums ${
+                      rateLimit.remaining <= 5
+                        ? "text-destructive"
+                        : rateLimit.remaining <= 15
+                        ? "text-accent"
+                        : "text-muted-foreground"
+                    }`}
+                    title={`${rateLimit.used} of ${rateLimit.limit} daily searches used. Resets at midnight UTC.`}
+                  >
+                    {rateLimit.remaining}/{rateLimit.limit} searches left
+                  </span>
+                )}
+                {parsedFilters && (
+                  <Button variant="ghost" size="sm" onClick={() => setSaveDialogOpen(true)}>
+                    <Bookmark className="w-4 h-4 mr-2" />
+                    Save Search
+                  </Button>
+                )}
+              </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="flex-1 relative">
