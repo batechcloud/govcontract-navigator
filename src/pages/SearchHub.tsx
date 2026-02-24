@@ -563,6 +563,55 @@ const SearchHub = () => {
               {filter.label}
             </Badge>
           ))}
+
+          {/* Price Range Quick Filter */}
+          <Select
+            value={advMinValue || advMaxValue ? `${advMinValue}|${advMaxValue}` : "any"}
+            onValueChange={(val) => {
+              if (val === "any") {
+                setAdvMinValue("");
+                setAdvMaxValue("");
+              } else {
+                const [mn, mx] = val.split("|");
+                setAdvMinValue(mn || "");
+                setAdvMaxValue(mx || "");
+              }
+              // Trigger search after state update
+              setTimeout(() => {
+                const filters = buildCombinedFilters();
+                if (val === "any") {
+                  (filters as any).min_value = null;
+                  (filters as any).max_value = null;
+                } else {
+                  const [mn, mx] = val.split("|");
+                  (filters as any).min_value = mn ? parseInt(mn) : null;
+                  (filters as any).max_value = mx ? parseInt(mx) : null;
+                }
+                setCurrentPage(0);
+                searchWithFilters(filters as any, 0);
+              }, 0);
+            }}
+          >
+            <SelectTrigger
+              className={`w-auto min-w-[140px] h-8 text-xs rounded-full gap-1.5 ${
+                advMinValue || advMaxValue
+                  ? "border-accent text-accent bg-accent/10"
+                  : "border-border/50 bg-secondary/50"
+              }`}
+            >
+              <DollarSign className="w-3.5 h-3.5" />
+              <SelectValue placeholder="Price Range" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="any">Any Price</SelectItem>
+              {valueRanges.map((range) => (
+                <SelectItem key={range.label} value={`${range.min}|${range.max}`}>
+                  {range.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <Button
             variant="outline"
             size="sm"
