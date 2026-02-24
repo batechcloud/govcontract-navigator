@@ -1,7 +1,8 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, AlertTriangle, Lightbulb, Target } from "lucide-react";
+import { CheckCircle, AlertTriangle, Lightbulb, Target, Info } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ContractScoreResult } from "@/hooks/useWinProbability";
 
 function ScoreRing({ score }: { score: number }) {
@@ -11,21 +12,39 @@ function ScoreRing({ score }: { score: number }) {
   const color = score >= 70 ? "text-success" : score >= 40 ? "text-accent" : "text-destructive";
 
   return (
-    <div className="relative w-28 h-28 mx-auto">
-      <svg className="w-28 h-28 -rotate-90" viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r={radius} fill="none" stroke="currentColor" strokeWidth="6" className="text-secondary" />
-        <circle
-          cx="50" cy="50" r={radius} fill="none" stroke="currentColor" strokeWidth="6"
-          strokeDasharray={circumference} strokeDashoffset={offset}
-          strokeLinecap="round" className={color}
-          style={{ transition: "stroke-dashoffset 0.8s ease" }}
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className={`text-2xl font-bold ${color}`}>{score}</span>
-        <span className="text-xs text-muted-foreground">Win %</span>
-      </div>
-    </div>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="relative w-28 h-28 mx-auto cursor-help">
+            <svg className="w-28 h-28 -rotate-90" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r={radius} fill="none" stroke="currentColor" strokeWidth="6" className="text-secondary" />
+              <circle
+                cx="50" cy="50" r={radius} fill="none" stroke="currentColor" strokeWidth="6"
+                strokeDasharray={circumference} strokeDashoffset={offset}
+                strokeLinecap="round" className={color}
+                style={{ transition: "stroke-dashoffset 0.8s ease" }}
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className={`text-2xl font-bold ${color}`}>{score}</span>
+              <span className="text-xs text-muted-foreground">Win %</span>
+            </div>
+            <Info className="w-3.5 h-3.5 text-muted-foreground absolute top-0 right-0" />
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="max-w-[260px] text-xs space-y-1 p-3">
+          <p className="font-semibold text-foreground">How is this scored?</p>
+          <ul className="space-y-0.5 text-muted-foreground">
+            <li>• <strong>Set-aside match:</strong> +15–25 pts</li>
+            <li>• <strong>NAICS alignment:</strong> +10–20 pts</li>
+            <li>• <strong>Past performance:</strong> +10–15 pts</li>
+            <li>• <strong>Contract value fit:</strong> +5–15 pts</li>
+            <li>• <strong>Deadline buffer:</strong> +5–10 pts</li>
+          </ul>
+          <p className="text-muted-foreground pt-1">Score is AI-analyzed against your company profile and win/loss history.</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
