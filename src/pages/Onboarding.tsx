@@ -57,7 +57,7 @@ const steps = [
 
 const Onboarding = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  
   const [currentStep, setCurrentStep] = useState(1);
   const [data, setData] = useState<OnboardingData>(initialData);
   const [direction, setDirection] = useState(1);

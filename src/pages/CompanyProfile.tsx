@@ -66,7 +66,7 @@ const DOCUMENT_CATEGORIES = [
 const CompanyProfile = () => {
   const { user } = useAuth();
   const { data: companyProfile, isLoading } = useCompanyProfile();
-  const { toast } = useToast();
+  
   const queryClient = useQueryClient();
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);

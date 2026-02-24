@@ -19,7 +19,7 @@ export default function Settings() {
   const { user, signOut } = useAuth();
   const { data: profile } = useProfile();
   const { data: subscription } = useSubscription();
-  const { toast } = useToast();
+  
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
