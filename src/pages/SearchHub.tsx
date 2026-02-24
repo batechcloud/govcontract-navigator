@@ -283,6 +283,30 @@ const SearchHub = () => {
     }
   }, [searchParams]);
 
+  // Auto-search when arriving with ?q= param (e.g. from AI Picks)
+  const qSearchDone = useRef(false);
+
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (!q || qSearchDone.current) return;
+    qSearchDone.current = true;
+
+    setSearchQuery(q);
+    const filters = {
+      keywords: q.split(/\s+/).filter(Boolean),
+      naics_codes: [] as string[],
+      psc_codes: [] as string[],
+      set_aside: [] as string[],
+      agencies: [] as string[],
+      min_value: null,
+      max_value: null,
+      location: null,
+      opportunity_type: null,
+    };
+    searchWithFilters(filters, 0);
+    setSearchParams({}, { replace: true });
+  }, [searchParams]);
+
   const trackContract = useTrackContract();
   const { data: trackedContracts } = useTrackedContracts();
   const saveSearch = useSaveSearch();
