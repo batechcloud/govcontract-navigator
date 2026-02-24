@@ -85,9 +85,9 @@ export function UsageLimitBanner({
         </div>
         {(isNearLimit || isAtLimit) && (
           <Button variant="outline" size="sm" asChild>
-            <Link to="/pricing">
+            <Link to="/contact">
               <Sparkles className="w-3 h-3 mr-1" />
-              Upgrade
+              Book a Demo
             </Link>
           </Button>
         )}

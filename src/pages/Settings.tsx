@@ -438,7 +438,7 @@ export default function Settings() {
                     <div className="space-y-3">
                       <p className="text-muted-foreground">No active subscription.</p>
                       <Button variant="hero" size="sm" asChild>
-                        <a href="/pricing">View Plans</a>
+                        <a href="/contact">Book a Demo</a>
                       </Button>
                     </div>
                   )}
