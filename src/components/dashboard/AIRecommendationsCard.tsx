@@ -54,7 +54,26 @@ export function AIRecommendationsCard() {
       <CardContent>
         {isLoading ? (
           <div className="space-y-3">
-            {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full" />)}
+            {[1, 2, 3].map(i => (
+              <div key={i} className="p-3 rounded-lg bg-secondary/30 border border-border/50 animate-pulse">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="h-4 w-3/4 rounded bg-muted" />
+                    <div className="h-3 w-1/2 rounded bg-muted/70" />
+                    <div className="h-3 w-2/3 rounded bg-muted/50" />
+                  </div>
+                  <div className="h-5 w-14 rounded-full bg-muted/60 shrink-0" />
+                </div>
+                <div className="flex items-center gap-3 mt-2">
+                  <div className="h-3 w-16 rounded bg-muted/40" />
+                  <div className="h-3 w-20 rounded bg-muted/40" />
+                </div>
+              </div>
+            ))}
+            <p className="text-xs text-center text-muted-foreground animate-fade-in">
+              <Sparkles className="w-3 h-3 inline mr-1 animate-spin" />
+              Generating personalized picks…
+            </p>
           </div>
         ) : data?.message && recs.length === 0 ? (
           <div className="text-center py-6 text-muted-foreground">
