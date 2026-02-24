@@ -85,16 +85,30 @@ export function AIRecommendationsCard() {
           </div>
         ) : recs.length > 0 ? (
           <div className="space-y-3">
-            {recs.slice(0, 5).map((rec: AIRecommendation) => {
-              const searchQuery = (rec as any).search_tip || rec.title;
-              const linkTo = isAIGenerated
-                ? `/dashboard/search?q=${encodeURIComponent(searchQuery)}`
-                : `/dashboard/search?q=${encodeURIComponent(rec.title)}`;
+          {recs.slice(0, 5).map((rec: AIRecommendation) => {
+              const isRealContract = !isAIGenerated && rec.id && !rec.id.startsWith("ai-pick-");
+              const linkTo = isRealContract
+                ? `/dashboard/contract/${rec.id}`
+                : `/dashboard/search?q=${encodeURIComponent((rec as any).search_tip || rec.title)}`;
+
+              const linkState = isRealContract
+                ? {
+                    title: rec.title,
+                    agency: rec.agency,
+                    value: rec.value,
+                    deadline: rec.deadline,
+                    setAside: (rec as any).setAside,
+                    naicsCode: (rec as any).naicsCode,
+                    type: (rec as any).type,
+                    link: (rec as any).link,
+                  }
+                : undefined;
 
               return (
                 <Link
                   key={rec.id}
                   to={linkTo}
+                  state={linkState}
                   className="block p-3 rounded-lg bg-secondary/30 border border-border/50 hover:border-primary/30 transition-colors group"
                 >
                   <div className="flex items-start justify-between gap-2">
