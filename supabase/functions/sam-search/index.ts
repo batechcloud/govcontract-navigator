@@ -181,7 +181,10 @@ serve(async (req) => {
     if (!SAM_API_KEY) {
       console.log("No SAM_API_KEY configured, returning mock data");
       return new Response(
-        JSON.stringify(getMockResults(filters, page, limit)),
+        JSON.stringify({
+          ...getMockResults(filters, page, limit),
+          warning: "SAM.gov API key not configured. Showing sample data. Add your API key in Settings to see live opportunities.",
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
