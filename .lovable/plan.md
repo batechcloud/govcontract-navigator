@@ -1,50 +1,42 @@
 
 
-## Fix: AI Picks Navigation
+## Add Price Range Quick Filter to Search
 
 ### Problem
-When you click on AI-generated picks, they link to `/dashboard/search?q=...`, but the Search Hub page only reads the `sector` query parameter — it completely ignores the `q` parameter. So the page loads blank with no search triggered.
+The price range filter currently exists but is hidden inside the collapsible "Advanced Filters" panel. You want it more accessible without having to open advanced filters.
 
 ### Solution
-Add support for the `q` query parameter in SearchHub so that when you arrive from an AI pick, the search query is pre-filled and automatically executed.
+Add a "Price Range" dropdown directly in the quick filters row (next to Small Business, Veteran-Owned, etc.) so you can filter by contract value with one click.
+
+### Design
+A Select dropdown will appear at the end of the quick filter badges, styled consistently with the existing UI. It will show predefined ranges:
+- Any Price (default)
+- Under $25K
+- $25K - $100K
+- $100K - $500K
+- $500K - $1M
+- $1M - $5M
+- $5M - $25M
+- Over $25M
+
+Selecting a range immediately triggers a search (same behavior as clicking a quick filter badge). The dropdown shows a DollarSign icon and highlights when a range is active.
 
 ### Changes
 
 **File: `src/pages/SearchHub.tsx`**
 
-Add a new `useEffect` (similar to the existing sector auto-search) that:
-1. Reads `searchParams.get("q")`
-2. If present, sets `searchQuery` to that value
-3. Triggers `handleSearch()` automatically with the query as keywords
-4. Clears the param from the URL to prevent re-triggering
+1. In the quick filters row (around line 553-579), add a price range Select dropdown between the quick filter badges and the "Advanced Filters" button
+2. When a price range is selected, update `advMinValue` and `advMaxValue` (reusing the existing state) and auto-trigger the search
+3. The dropdown will be styled compactly to match the badge row aesthetic
+4. When a price range is active via the quick dropdown, it syncs with the advanced filter value so they stay consistent
 
-This will be placed right after the existing sector auto-search effect (~line 284), using a similar ref guard pattern to prevent double-execution.
+### Technical Details
 
-```typescript
-// Auto-search when arriving with ?q= param (e.g. from AI Picks)
-const qSearchDone = useRef(false);
+The new dropdown will:
+- Use the existing `valueRanges` array (already defined at line 136)
+- Set `advMinValue` / `advMaxValue` state (already wired into `buildCombinedFilters`)
+- Call `searchWithFilters(buildCombinedFilters(), 0)` on change to immediately apply
+- Show a DollarSign icon and accent border when a range is selected
+- Appear as a compact Select component in the quick filters row, before the "Advanced Filters" button
 
-useEffect(() => {
-  const q = searchParams.get("q");
-  if (!q || qSearchDone.current) return;
-  qSearchDone.current = true;
-
-  setSearchQuery(q);
-  const filters = {
-    keywords: q.split(/\s+/).filter(Boolean),
-    naics_codes: [],
-    psc_codes: [],
-    set_aside: [],
-    agencies: [],
-    min_value: null,
-    max_value: null,
-    location: null,
-    opportunity_type: null,
-  };
-  searchWithFilters(filters, 0);
-  setSearchParams({}, { replace: true });
-}, [searchParams]);
-```
-
-No changes needed to `AIRecommendationsCard.tsx` — the links it generates are already correct; they just need the Search Hub to actually handle the `q` parameter.
-
+No backend changes needed -- the edge function already handles `min_value` and `max_value` post-filtering.
