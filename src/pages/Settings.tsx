@@ -427,9 +427,9 @@ export default function Settings() {
                       </div>
                       <div className="flex flex-wrap gap-3 pt-2">
                         <Button variant="outline" size="sm" asChild>
-                          <a href="/pricing">
+                          <a href="/contact">
                             <ChevronRight className="w-4 h-4 mr-1" />
-                            Change Plan
+                            Book a Demo
                           </a>
                         </Button>
                       </div>
