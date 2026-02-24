@@ -43,7 +43,9 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
-      staleTime: 30_000,
+      staleTime: 5 * 60 * 1000, // 5 minutes — reduces redundant API calls
+      gcTime: 30 * 60 * 1000,   // 30 minutes — keep cache in memory longer
+      refetchOnWindowFocus: false,
     },
   },
 });

@@ -66,6 +66,8 @@ export function useParseSearchQuery() {
 
 // Search contracts using filters
 export function useSearchContracts() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async ({ 
       filters, 
@@ -76,6 +78,22 @@ export function useSearchContracts() {
       page?: number; 
       limit?: number;
     }) => {
+      // Build a stable cache key from the search params
+      const cacheKey = ['sam-search', JSON.stringify(filters), page, limit];
+
+      // Return cached result if available (avoids burning a rate-limited API call)
+      const cached = queryClient.getQueryData<{
+        results: SearchResult[];
+        total: number;
+        page: number;
+        limit: number;
+      }>(cacheKey);
+
+      if (cached) {
+        console.log('Using cached SAM search results');
+        return cached;
+      }
+
       const { data, error } = await supabase.functions.invoke('sam-search', {
         body: { filters, page, limit }
       });
@@ -85,12 +103,17 @@ export function useSearchContracts() {
         throw new Error(error.message || "Failed to search contracts");
       }
 
-      return data as {
+      const result = data as {
         results: SearchResult[];
         total: number;
         page: number;
         limit: number;
       };
+
+      // Cache for 10 minutes to prevent duplicate API calls for identical searches
+      queryClient.setQueryData(cacheKey, result);
+
+      return result;
     },
     onError: (error: Error) => {
       if (error.message?.includes('Rate limit exceeded') || error.message?.includes('daily limit')) {
