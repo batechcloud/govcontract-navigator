@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sparkles, ArrowRight, Clock, Building2, RefreshCw } from "lucide-react";
+import { Sparkles, ArrowRight, Clock, Building2, RefreshCw, Search, Lightbulb } from "lucide-react";
 import { useAIRecommendations, AIRecommendation } from "@/hooks/useAIRecommendations";
 
 const priorityColors = {
@@ -18,6 +18,7 @@ export function AIRecommendationsCard() {
   if (isError) return null;
 
   const recs = data?.recommendations || [];
+  const isAIGenerated = data?.source === "ai_generated";
 
   return (
     <Card variant="glass">
@@ -26,6 +27,12 @@ export function AIRecommendationsCard() {
           <CardTitle className="text-lg flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-purple-400" />
             AI Picks For You
+            {isAIGenerated && (
+              <Badge className="bg-purple-500/20 text-purple-300 text-[10px] ml-1">
+                <Lightbulb className="w-3 h-3 mr-0.5" />
+                Suggested
+              </Badge>
+            )}
           </CardTitle>
           <Button
             variant="ghost"
@@ -38,6 +45,11 @@ export function AIRecommendationsCard() {
             Refresh
           </Button>
         </div>
+        {isAIGenerated && (
+          <p className="text-xs text-muted-foreground mt-1">
+            Based on your NAICS codes — click to search for similar opportunities on SAM.gov
+          </p>
+        )}
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -54,38 +66,51 @@ export function AIRecommendationsCard() {
           </div>
         ) : recs.length > 0 ? (
           <div className="space-y-3">
-            {recs.slice(0, 5).map((rec: AIRecommendation) => (
-              <Link
-                key={rec.id}
-                to={`/dashboard/search?q=${encodeURIComponent(rec.title)}`}
-                className="block p-3 rounded-lg bg-secondary/30 border border-border/50 hover:border-primary/30 transition-colors group"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
-                      {rec.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                      <Building2 className="w-3 h-3" />
-                      {rec.agency}
-                    </p>
-                    <p className="text-xs text-accent mt-1 italic">{rec.match_reason}</p>
+            {recs.slice(0, 5).map((rec: AIRecommendation) => {
+              const searchQuery = (rec as any).search_tip || rec.title;
+              const linkTo = isAIGenerated
+                ? `/dashboard/search?q=${encodeURIComponent(searchQuery)}`
+                : `/dashboard/search?q=${encodeURIComponent(rec.title)}`;
+
+              return (
+                <Link
+                  key={rec.id}
+                  to={linkTo}
+                  className="block p-3 rounded-lg bg-secondary/30 border border-border/50 hover:border-primary/30 transition-colors group"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                        {rec.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                        <Building2 className="w-3 h-3" />
+                        {rec.agency}
+                      </p>
+                      <p className="text-xs text-accent mt-1 italic">{rec.match_reason}</p>
+                    </div>
+                    <Badge className={`${priorityColors[rec.priority]} text-[10px] shrink-0`}>
+                      {rec.priority}
+                    </Badge>
                   </div>
-                  <Badge className={`${priorityColors[rec.priority]} text-[10px] shrink-0`}>
-                    {rec.priority}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                  <span>{rec.value}</span>
-                  {rec.deadline && (
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {new Date(rec.deadline).toLocaleDateString()}
-                    </span>
-                  )}
-                </div>
-              </Link>
-            ))}
+                  <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                    <span>{rec.value}</span>
+                    {rec.deadline && (
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {new Date(rec.deadline).toLocaleDateString()}
+                      </span>
+                    )}
+                    {isAIGenerated && (rec as any).search_tip && (
+                      <span className="flex items-center gap-1 text-primary/70">
+                        <Search className="w-3 h-3" />
+                        Search: {(rec as any).search_tip}
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-6 text-muted-foreground">

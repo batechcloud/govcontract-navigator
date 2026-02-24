@@ -17,7 +17,7 @@ export interface AIRecommendation {
   priority: "high" | "medium" | "low";
 }
 
-async function invokeWithRetry(maxRetries = 4): Promise<{ recommendations: AIRecommendation[]; message?: string; error?: string }> {
+async function invokeWithRetry(maxRetries = 4): Promise<{ recommendations: AIRecommendation[]; message?: string; error?: string; source?: string }> {
   let delay = 1500;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
