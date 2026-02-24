@@ -54,11 +54,11 @@ export default function Proposals() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["proposals"] });
-      toast({ title: "Proposal deleted", description: "The proposal has been removed." });
+      toast.success("Proposal deleted", { description: "The proposal has been removed." });
       setDeletingId(null);
     },
     onError: (error: any) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast.error("Error", { description: error.message });
       setDeletingId(null);
     },
   });

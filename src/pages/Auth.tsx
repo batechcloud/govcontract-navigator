@@ -22,7 +22,6 @@ const Auth = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   
-  
   const [mode, setMode] = useState<"login" | "signup">(
     searchParams.get("mode") === "signup" ? "signup" : "login"
   );
@@ -45,13 +44,8 @@ const Auth = () => {
 
     try {
       if (mode === "signup") {
-        // Validate password
         if (!isPasswordValid) {
-          toast({
-            title: "Weak password",
-            description: "Please meet all password requirements.",
-            variant: "destructive",
-          });
+          toast.error("Weak password", { description: "Please meet all password requirements." });
           setIsLoading(false);
           return;
         }
@@ -72,10 +66,8 @@ const Auth = () => {
 
         if (error) {
           if (error.message.includes("already registered")) {
-            toast({
-              title: "Email already registered",
+            toast.error("Email already registered", {
               description: "Please sign in instead or use a different email.",
-              variant: "destructive",
             });
           } else {
             throw error;
@@ -85,14 +77,12 @@ const Auth = () => {
         }
 
         if (data.user) {
-          toast({
-            title: "Account created!",
+          toast.success("Account created!", {
             description: "Welcome to GC Navigator. Let's set up your profile.",
           });
           navigate("/onboarding");
         }
       } else {
-        // Login
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -100,10 +90,8 @@ const Auth = () => {
 
         if (error) {
           if (error.message.includes("Invalid login")) {
-            toast({
-              title: "Invalid credentials",
+            toast.error("Invalid credentials", {
               description: "Please check your email and password.",
-              variant: "destructive",
             });
           } else {
             throw error;
@@ -113,7 +101,6 @@ const Auth = () => {
         }
 
         if (data.user) {
-          // Check if onboarding is completed
           const { data: profile } = await supabase
             .from("profiles")
             .select("onboarding_completed")
@@ -129,10 +116,8 @@ const Auth = () => {
       }
     } catch (error: any) {
       console.error("Auth error:", error);
-      toast({
-        title: "Authentication error",
+      toast.error("Authentication error", {
         description: error.message || "Please try again.",
-        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
