@@ -1,57 +1,109 @@
 
 
-## Fix: AI Picks Click Navigation
+## Redesign Pricing: 2 Tiers (Pro + Enterprise), No Prices, "Book a Demo" CTA
 
-### Problem
-Clicking any recommendation in the "AI Picks For You" card navigates to `/dashboard/search?q=...`, which can cause errors. Real SAM.gov recommendations (Branch A) should navigate directly to the contract detail page, while AI-generated suggestions (Branch B) should navigate to a pre-filled search.
+### Overview
+Replace the current 3-tier pricing with a 2-tier layout (Pro + Enterprise) matching the reference image structure. Remove all dollar prices and billing toggles. Replace CTA buttons with "Book a Demo" links pointing to `/contact`. Update all references across the app.
 
-### Solution
+### Design
 
-**1. Update the AI Recommendations Card link logic** (`src/components/dashboard/AIRecommendationsCard.tsx`)
+**Pro** (marked "Most Popular"):
+- Description: "Unlock advanced AI tools and expanded search capabilities to win more contracts."
+- CTA: "Book a Demo" button (gradient/primary style)
+- Features:
+  - Everything in Starter
+  - AI-Powered State, Local and Education Search
+  - AI-Powered DIBBS and Forecasts (New)
+  - AI-Powered Prime and Subcontractor Search (New)
+  - AI-Powered Partnership Search (New)
+  - Federal Award Search (New)
+  - Market Watch (New)
+  - Small Business Specialists Directory (New)
+  - AI-Powered Grants Search
+  - AI-Powered SBIR/STTR Search
+  - AI-Powered Proposal Generator
+  - AI-Powered Proposal Editor
+  - Project Management Journey
+  - Deep-AI Opportunity Match Analysis
 
-- For **real SAM.gov recommendations** (`source !== "ai_generated"`): Navigate to `/dashboard/contract/:contractId` and pass the full contract data via React Router's `state` prop, matching the format the ContractDetail page expects.
-- For **AI-generated suggestions** (`source === "ai_generated"`): Keep the current behavior of linking to `/dashboard/search?q=...` since these are not real contracts. But also add a visual indicator (e.g., a small search icon) to make it clear that these will trigger a search.
+**Enterprise**:
+- Description: "Full platform access with dedicated onboarding, custom templates, and scalable team seats."
+- CTA: "Book a Demo" button
+- Features:
+  - Everything in Professional
+  - Dedicated Support (priority chat + video)
+  - Custom Proposal Templates
+  - Team 1:1 Onboarding
+  - Custom Training for Your Team
 
-**2. Pass contract data via router state**
+### Files to Change
 
-The ContractDetail page already reads `location.state` to populate contract info. The card will pass the recommendation fields (`title`, `agency`, `value`, `deadline`, `setAside`, `naicsCode`, `link`, `matchScore`) as state when linking to a real contract.
+**1. `src/components/landing/PricingSection.tsx`** (major rewrite)
+- Replace the plans array with 2 plans using the descriptions above
+- Remove monthly/yearly price fields and billing toggle
+- Change all CTAs to "Book a Demo" linking to `/contact`
+- Add "New" badges on specific Pro features
+- Update grid from `md:grid-cols-3` to `md:grid-cols-2` with `max-w-4xl` centering
+- Keep FAQ section as-is
+
+**2. `src/pages/Pricing.tsx`** (minor)
+- Update subtitle to remove price-related wording
+
+**3. `src/pages/Settings.tsx`**
+- Update "Change Plan" / "View Plans" buttons to say "Book a Demo" linking to `/contact`
+
+**4. `src/components/subscription/FeatureGate.tsx`**
+- Change "Upgrade Plan" to "Book a Demo", link to `/contact`
+
+**5. `src/components/subscription/UsageLimitBanner.tsx`**
+- Change "Upgrade" to "Book a Demo", link to `/contact`
 
 ### Technical Details
 
-**File: `src/components/dashboard/AIRecommendationsCard.tsx`**
+**PricingSection.tsx -- new plans array:**
 
-Update the link generation block (~lines 88-97):
-
-```tsx
-{recs.slice(0, 5).map((rec: AIRecommendation) => {
-  // Real SAM.gov results go directly to the contract detail page
-  // AI-generated picks go to search with the search_tip as query
-  const isRealContract = !isAIGenerated && rec.id && !rec.id.startsWith("ai-pick-");
-  const linkTo = isRealContract
-    ? `/dashboard/contract/${rec.id}`
-    : `/dashboard/search?q=${encodeURIComponent((rec as any).search_tip || rec.title)}`;
-
-  const linkState = isRealContract
-    ? {
-        title: rec.title,
-        agency: rec.agency,
-        value: rec.value,
-        deadline: rec.deadline,
-        setAside: rec.setAside,
-        naicsCode: rec.naicsCode,
-        type: rec.type,
-        link: rec.link,
-      }
-    : undefined;
-
-  return (
-    <Link
-      key={rec.id}
-      to={linkTo}
-      state={linkState}
-      ...
-    >
+```typescript
+const plans = [
+  {
+    name: "Pro",
+    description: "Unlock advanced AI tools and expanded search capabilities to win more contracts.",
+    badge: "Most Popular",
+    popular: true,
+    features: [
+      { text: "Everything in Starter", isNew: false },
+      { text: "AI-Powered State, Local and Education Search", isNew: false },
+      { text: "AI-Powered DIBBS & Forecasts", isNew: true },
+      { text: "AI-Powered Prime & Subcontractor Search", isNew: true },
+      { text: "AI-Powered Partnership Search", isNew: true },
+      { text: "Federal Award Search", isNew: true },
+      { text: "Market Watch", isNew: true },
+      { text: "Small Business Specialists Directory", isNew: true },
+      { text: "AI-Powered Grants Search", isNew: false },
+      { text: "AI-Powered SBIR/STTR Search", isNew: false },
+      { text: "AI-Powered Proposal Generator", isNew: false },
+      { text: "AI-Powered Proposal Editor", isNew: false },
+      { text: "Project Management Journey", isNew: false },
+      { text: "Deep-AI Opportunity Match Analysis", isNew: false },
+    ],
+  },
+  {
+    name: "Enterprise",
+    description: "Full platform access with dedicated onboarding, custom templates, and scalable team seats.",
+    badge: null,
+    popular: false,
+    features: [
+      { text: "Everything in Professional", isNew: false },
+      { text: "Dedicated Support (priority chat + video)", isNew: false },
+      { text: "Custom Proposal Templates", isNew: false },
+      { text: "Team 1:1 Onboarding", isNew: false },
+      { text: "Custom Training for Your Team", isNew: false },
+    ],
+  },
+];
 ```
 
-This is a minimal, targeted change -- only the link destination and state passing are updated. No backend changes needed.
+- All "Book a Demo" buttons link to `/contact`
+- "New" badges rendered as small accent-colored Badge components inline
+- Monthly/yearly toggle removed entirely
+- Grid centered with `max-w-4xl mx-auto`
 
