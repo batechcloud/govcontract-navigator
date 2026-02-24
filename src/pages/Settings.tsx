@@ -394,54 +394,17 @@ export default function Settings() {
             {/* Billing Tab */}
             <TabsContent value="billing">
               <div className="space-y-6">
-                {/* Current Plan Card */}
+                {/* Account Status Card */}
                 <div className="bg-card/50 backdrop-blur-xl border border-border/50 rounded-xl p-6">
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center justify-between">
                     <h3 className="font-semibold text-foreground flex items-center gap-2">
                       <Crown className="w-5 h-5 text-accent" />
-                      Current Plan
+                      Account Status
                     </h3>
                     <span className="px-3 py-1 rounded-full text-xs font-medium bg-success/20 text-success border border-success/30">
                       Active
                     </span>
                   </div>
-
-                  {subscription ? (
-                    <div className="space-y-4">
-                      <div className="flex items-baseline gap-3">
-                        <span className="text-2xl font-bold text-foreground">{subscription.plan.display_name}</span>
-                        <span className="text-lg text-muted-foreground">
-                          {subscription.plan.monthly_price === 0
-                            ? "Free"
-                            : `$${subscription.plan.monthly_price}/mo`}
-                        </span>
-                      </div>
-                      {subscription.plan.description && (
-                        <p className="text-sm text-muted-foreground">{subscription.plan.description}</p>
-                      )}
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Calendar className="w-4 h-4" />
-                        {subscription.current_period_end
-                          ? `Renews ${new Date(subscription.current_period_end).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`
-                          : "No renewal date"}
-                      </div>
-                      <div className="flex flex-wrap gap-3 pt-2">
-                        <Button variant="outline" size="sm" asChild>
-                          <a href="/contact">
-                            <ChevronRight className="w-4 h-4 mr-1" />
-                            Book a Demo
-                          </a>
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <p className="text-muted-foreground">No active subscription.</p>
-                      <Button variant="hero" size="sm" asChild>
-                        <a href="/contact">Book a Demo</a>
-                      </Button>
-                    </div>
-                  )}
                 </div>
 
                 {/* Payment Method Card */}
