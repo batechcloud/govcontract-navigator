@@ -8,7 +8,7 @@ import { formatDollars } from "@/lib/usaspending-utils";
 import { useAwardSearch, AwardSearchFilters } from "@/hooks/useUSASpending";
 import { useContractStore } from "@/store/contractStore";
 import { AlertCircle } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface Props {
   fy: string;
@@ -61,7 +61,7 @@ export const AwardExplorer = ({ fy, refreshKey, prefilledAgency }: Props) => {
       source: "USASpending",
       url: `https://www.usaspending.gov/award/${award["Award ID"]}`,
     });
-    toast({ title: "Award saved!", description: "Added to your tracked contracts." });
+    toast.success("Award saved!", { description: "Added to your tracked contracts." });
   };
 
   const results = data?.results || [];

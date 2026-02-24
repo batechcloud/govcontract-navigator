@@ -12,14 +12,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
 export default function Settings() {
   const { user, signOut } = useAuth();
   const { data: profile } = useProfile();
   const { data: subscription } = useSubscription();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -61,7 +60,7 @@ export default function Settings() {
     if (!file || !user) return;
 
     if (file.size > 2 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Please choose an image under 2MB.", variant: "destructive" });
+      toast.error("File too large", { description: "Please choose an image under 2MB." });
       return;
     }
 
@@ -80,7 +79,6 @@ export default function Settings() {
         .from("avatars")
         .getPublicUrl(filePath);
 
-      // Append cache-buster
       const url = `${publicUrl}?t=${Date.now()}`;
 
       const { error: updateError } = await supabase
@@ -92,9 +90,9 @@ export default function Settings() {
 
       setAvatarUrl(url);
       queryClient.invalidateQueries({ queryKey: ["profile"] });
-      toast({ title: "Avatar updated!", description: "Your profile picture has been changed." });
+      toast.success("Avatar updated!", { description: "Your profile picture has been changed." });
     } catch (error: any) {
-      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+      toast.error("Upload failed", { description: error.message });
     } finally {
       setUploading(false);
     }
@@ -114,9 +112,9 @@ export default function Settings() {
 
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["profile"] });
-      toast({ title: "Profile saved!", description: "Your information has been updated." });
+      toast.success("Profile saved!", { description: "Your information has been updated." });
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast.error("Error", { description: error.message });
     } finally {
       setSavingProfile(false);
     }
@@ -124,11 +122,11 @@ export default function Settings() {
 
   const handleChangePassword = async () => {
     if (newPassword.length < 8) {
-      toast({ title: "Too short", description: "Password must be at least 8 characters.", variant: "destructive" });
+      toast.error("Too short", { description: "Password must be at least 8 characters." });
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast({ title: "Mismatch", description: "Passwords do not match.", variant: "destructive" });
+      toast.error("Mismatch", { description: "Passwords do not match." });
       return;
     }
 
@@ -138,9 +136,9 @@ export default function Settings() {
       if (error) throw error;
       setNewPassword("");
       setConfirmPassword("");
-      toast({ title: "Password updated!", description: "Your password has been changed successfully." });
+      toast.success("Password updated!", { description: "Your password has been changed successfully." });
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast.error("Error", { description: error.message });
     } finally {
       setChangingPassword(false);
     }
@@ -163,9 +161,9 @@ export default function Settings() {
         .eq("id", user.id);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["profile"] });
-      toast({ title: "Preferences saved!", description: "Your notification settings have been updated." });
+      toast.success("Preferences saved!", { description: "Your notification settings have been updated." });
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast.error("Error", { description: error.message });
     } finally {
       setSavingNotifs(false);
     }
@@ -435,4 +433,3 @@ export default function Settings() {
     </DashboardLayout>
   );
 }
-

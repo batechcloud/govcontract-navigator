@@ -40,7 +40,7 @@ import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useCompanyProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 
 const CERTIFICATION_OPTIONS = [
@@ -66,7 +66,6 @@ const DOCUMENT_CATEGORIES = [
 const CompanyProfile = () => {
   const { user } = useAuth();
   const { data: companyProfile, isLoading } = useCompanyProfile();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -112,7 +111,7 @@ const CompanyProfile = () => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
     if (file.size > 10 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Maximum file size is 10MB.", variant: "destructive" });
+      toast.error("File too large", { description: "Maximum file size is 10MB." });
       return;
     }
     setIsUploading(true);
@@ -133,9 +132,9 @@ const CompanyProfile = () => {
       if (dbError) throw dbError;
 
       queryClient.invalidateQueries({ queryKey: ["user-documents"] });
-      toast({ title: "Uploaded!", description: `${file.name} has been saved.` });
+      toast.success("Uploaded!", { description: `${file.name} has been saved.` });
     } catch (err: any) {
-      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+      toast.error("Upload failed", { description: err.message });
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -147,16 +146,16 @@ const CompanyProfile = () => {
       await supabase.storage.from("documents").remove([doc.storage_path]);
       await supabase.from("user_documents").delete().eq("id", doc.id);
       queryClient.invalidateQueries({ queryKey: ["user-documents"] });
-      toast({ title: "Deleted", description: `${doc.file_name} removed.` });
+      toast.success("Deleted", { description: `${doc.file_name} removed.` });
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast.error("Error", { description: err.message });
     }
   };
 
   const handleDownloadDoc = async (doc: any) => {
     const { data, error } = await supabase.storage.from("documents").download(doc.storage_path);
     if (error || !data) {
-      toast({ title: "Error", description: "Could not download file.", variant: "destructive" });
+      toast.error("Error", { description: "Could not download file." });
       return;
     }
     const url = URL.createObjectURL(data);
@@ -170,12 +169,12 @@ const CompanyProfile = () => {
   const handlePreviewDoc = async (doc: any) => {
     const isPreviewable = /\.(pdf|png|jpg|jpeg|gif|webp|txt|svg)$/i.test(doc.file_name);
     if (!isPreviewable) {
-      toast({ title: "Preview not available", description: "This file type can't be previewed. Try downloading instead." });
+      toast("Preview not available", { description: "This file type can't be previewed. Try downloading instead." });
       return;
     }
     const { data, error } = await supabase.storage.from("documents").download(doc.storage_path);
     if (error || !data) {
-      toast({ title: "Error", description: "Could not load preview.", variant: "destructive" });
+      toast.error("Error", { description: "Could not load preview." });
       return;
     }
     const url = URL.createObjectURL(data);
@@ -263,9 +262,9 @@ const CompanyProfile = () => {
         } as any, { onConflict: "user_id" });
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["company-profile"] });
-      toast({ title: "Saved!", description: "Your business profile has been updated." });
+      toast.success("Saved!", { description: "Your business profile has been updated." });
     } catch (error: any) {
-      toast({ title: "Error", description: error.message || "Please try again.", variant: "destructive" });
+      toast.error("Error", { description: error.message || "Please try again." });
     } finally {
       setIsSaving(false);
     }

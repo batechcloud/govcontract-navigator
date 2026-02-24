@@ -26,10 +26,10 @@ import {
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 export default function Proposals() {
-  const { toast } = useToast();
+  
   const queryClient = useQueryClient();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -54,11 +54,11 @@ export default function Proposals() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["proposals"] });
-      toast({ title: "Proposal deleted", description: "The proposal has been removed." });
+      toast.success("Proposal deleted", { description: "The proposal has been removed." });
       setDeletingId(null);
     },
     onError: (error: any) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast.error("Error", { description: error.message });
       setDeletingId(null);
     },
   });
