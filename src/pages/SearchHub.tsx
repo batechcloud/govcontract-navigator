@@ -485,7 +485,7 @@ const SearchHub = () => {
                     className={`text-xs font-medium tabular-nums ${
                       rateLimit.remaining <= 5
                         ? "text-destructive"
-                        : rateLimit.remaining <= 15
+                        : "text-accent"
                         ? "text-warning"
                         : "text-muted-foreground"
                     }`}
