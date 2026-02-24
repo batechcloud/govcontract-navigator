@@ -17,10 +17,10 @@ export default function Pricing() {
             transition={{ duration: 0.6 }}
           >
             <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
-              Simple, Transparent <span className="text-primary">Pricing</span>
+              Choose Your <span className="text-primary">Plan</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Choose the plan that fits your government contracting goals. No hidden fees, cancel anytime.
+              Get the tools you need to find and win government contracts. Book a demo to get started.
             </p>
           </motion.div>
         </div>

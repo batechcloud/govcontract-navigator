@@ -84,9 +84,9 @@ export function UpgradePrompt({
           {message}
         </p>
         <Button variant="hero" asChild>
-          <Link to="/pricing">
+          <Link to="/contact">
             <Sparkles className="w-4 h-4 mr-2" />
-            Upgrade Plan
+            Book a Demo
           </Link>
         </Button>
       </CardContent>
