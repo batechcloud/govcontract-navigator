@@ -302,7 +302,10 @@ serve(async (req) => {
     } catch (e) {
       console.error("Failed to parse SAM.gov response as JSON:", responseText.substring(0, 300));
       return new Response(
-        JSON.stringify(getMockResults(filters, page, limit)),
+        JSON.stringify({
+          ...getMockResults(filters, page, limit),
+          warning: "SAM.gov returned an invalid response. Showing cached sample data instead.",
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
