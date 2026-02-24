@@ -99,6 +99,37 @@ serve(async (req) => {
     
     const SAM_API_KEY = Deno.env.get("SAM_API_KEY");
 
+    // Per-user rate limiting — only when a real SAM.gov API call will be made
+    if (SAM_API_KEY && mode !== "detail") {
+      const serviceClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      );
+
+      const DAILY_LIMIT = 50;
+      const { data: rateData, error: rateError } = await serviceClient
+        .rpc('check_and_increment_rate_limit', {
+          _user_id: user.id,
+          _api_name: 'sam_search',
+          _daily_limit: DAILY_LIMIT,
+        });
+
+      if (rateError) {
+        console.error('Rate limit check failed:', rateError);
+        // Fail open — allow the request if rate limiting breaks
+      } else if (rateData?.[0] && !rateData[0].allowed) {
+        return new Response(JSON.stringify({
+          error: 'Rate limit exceeded',
+          message: `You've reached your daily limit of ${DAILY_LIMIT} searches. Your limit resets at midnight UTC.`,
+          current_count: rateData[0].current_count,
+          daily_limit: DAILY_LIMIT,
+        }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     // --- Detail mode: fetch a single opportunity by noticeId ---
     if (mode === "detail" && body.noticeId) {
       if (!SAM_API_KEY) {

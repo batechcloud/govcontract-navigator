@@ -93,7 +93,11 @@ export function useSearchContracts() {
       };
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Search failed. Please try again.");
+      if (error.message?.includes('Rate limit exceeded') || error.message?.includes('daily limit')) {
+        toast.error("Daily search limit reached. Your limit resets at midnight UTC.");
+      } else {
+        toast.error(error.message || "Search failed. Please try again.");
+      }
     }
   });
 }
