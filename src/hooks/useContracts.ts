@@ -159,8 +159,10 @@ export function useContracts() {
 
 function sortContracts(data: Contract[], sortBy: string, sortDir: "asc" | "desc"): Contract[] {
   return [...data].sort((a, b) => {
-    let aVal: unknown = (a as Record<string, unknown>)[sortBy] ?? 0;
-    let bVal: unknown = (b as Record<string, unknown>)[sortBy] ?? 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let aVal: unknown = (a as any)[sortBy] ?? 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let bVal: unknown = (b as any)[sortBy] ?? 0;
 
     if (sortBy === "value") { aVal = parseFloat(String(aVal)) || 0; bVal = parseFloat(String(bVal)) || 0; }
     if (sortBy === "deadline") { aVal = new Date(String(aVal) || 0); bVal = new Date(String(bVal) || 0); }
