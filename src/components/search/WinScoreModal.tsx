@@ -1,7 +1,8 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, AlertTriangle, Lightbulb, Target } from "lucide-react";
+import { CheckCircle, AlertTriangle, Lightbulb, Target, Info } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ContractScoreResult } from "@/hooks/useWinProbability";
 
 function ScoreRing({ score }: { score: number }) {
