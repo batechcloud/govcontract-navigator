@@ -393,37 +393,135 @@ export default function Settings() {
 
             {/* Billing Tab */}
             <TabsContent value="billing">
-              <div className="bg-card/50 backdrop-blur-xl border border-border/50 rounded-xl p-6 space-y-6">
-                <h3 className="font-semibold text-foreground">Subscription & Billing</h3>
+              <div className="space-y-6">
+                {/* Current Plan Card */}
+                <div className="bg-card/50 backdrop-blur-xl border border-border/50 rounded-xl p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold text-foreground flex items-center gap-2">
+                      <Crown className="w-5 h-5 text-accent" />
+                      Current Plan
+                    </h3>
+                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-success/20 text-success border border-success/30">
+                      Active
+                    </span>
+                  </div>
 
-                {subscription ? (
-                  <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-foreground">Current Plan</span>
-                      <span className="text-primary font-semibold">{subscription.plan.display_name}</span>
+                  {subscription ? (
+                    <div className="space-y-4">
+                      <div className="flex items-baseline gap-3">
+                        <span className="text-2xl font-bold text-foreground">{subscription.plan.display_name}</span>
+                        <span className="text-lg text-muted-foreground">
+                          {subscription.plan.monthly_price === 0
+                            ? "Free"
+                            : `$${subscription.plan.monthly_price}/mo`}
+                        </span>
+                      </div>
+                      {subscription.plan.description && (
+                        <p className="text-sm text-muted-foreground">{subscription.plan.description}</p>
+                      )}
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Calendar className="w-4 h-4" />
+                        {subscription.current_period_end
+                          ? `Renews ${new Date(subscription.current_period_end).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`
+                          : "No renewal date"}
+                      </div>
+                      <div className="flex flex-wrap gap-3 pt-2">
+                        <Button variant="outline" size="sm" asChild>
+                          <a href="/pricing">
+                            <ChevronRight className="w-4 h-4 mr-1" />
+                            Change Plan
+                          </a>
+                        </Button>
+                      </div>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {subscription.plan.monthly_price === 0
-                        ? "Free plan"
-                        : `$${subscription.plan.monthly_price}/month`}
-                      {subscription.current_period_end
-                        ? ` • Renews ${new Date(subscription.current_period_end).toLocaleDateString()}`
-                        : ""}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="bg-muted/30 border border-border/50 rounded-lg p-4">
-                    <p className="text-sm text-muted-foreground">No active subscription found.</p>
-                  </div>
-                )}
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-muted-foreground">No active subscription.</p>
+                      <Button variant="hero" size="sm" asChild>
+                        <a href="/pricing">View Plans</a>
+                      </Button>
+                    </div>
+                  )}
+                </div>
 
-                <div className="space-y-4">
-                  <Button variant="outline" className="w-full" asChild>
-                    <a href="/pricing">View All Plans</a>
+                {/* Payment Method Card */}
+                <div className="bg-card/50 backdrop-blur-xl border border-border/50 rounded-xl p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold text-foreground flex items-center gap-2">
+                      <CreditCard className="w-5 h-5 text-primary" />
+                      Payment Method
+                    </h3>
+                  </div>
+
+                  <div className="flex items-center gap-4 p-4 bg-muted/20 border border-border/30 rounded-lg">
+                    <div className="w-12 h-8 bg-gradient-to-br from-primary/30 to-primary/10 rounded flex items-center justify-center border border-primary/20">
+                      <CreditCard className="w-5 h-3.5 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-muted-foreground">No payment method on file</p>
+                      <p className="text-xs text-muted-foreground/70">Add a payment method to subscribe to a paid plan</p>
+                    </div>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-4"
+                    onClick={() => toast.info("Stripe integration required", { description: "Payment method management will be available once Stripe is connected." })}
+                  >
+                    <ExternalLink className="w-4 h-4 mr-1" />
+                    Update Payment Method
                   </Button>
-                  <p className="text-xs text-center text-muted-foreground">
-                    To manage billing, contact <a href="mailto:support@gcnavigator.com" className="text-primary hover:underline">support@gcnavigator.com</a>
-                  </p>
+                </div>
+
+                {/* Billing History / Invoices */}
+                <div className="bg-card/50 backdrop-blur-xl border border-border/50 rounded-xl p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold text-foreground flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-primary" />
+                      Billing History
+                    </h3>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => toast.info("Stripe integration required", { description: "Full billing portal will be available once Stripe is connected." })}
+                    >
+                      <ExternalLink className="w-4 h-4 mr-1" />
+                      Manage Billing
+                    </Button>
+                  </div>
+
+                  {/* Invoice Table */}
+                  <div className="border border-border/30 rounded-lg overflow-hidden">
+                    <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 px-4 py-3 bg-muted/10 border-b border-border/30 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      <span>Date</span>
+                      <span>Amount</span>
+                      <span>Status</span>
+                      <span>Invoice</span>
+                    </div>
+
+                    {/* Empty state */}
+                    <div className="px-4 py-10 text-center">
+                      <FileText className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
+                      <p className="text-sm text-muted-foreground">No invoices yet</p>
+                      <p className="text-xs text-muted-foreground/70 mt-1">
+                        Your payment history will appear here once you subscribe to a paid plan
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Billing Support */}
+                <div className="bg-muted/10 border border-border/30 rounded-lg p-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Need help with billing?</p>
+                    <p className="text-xs text-muted-foreground">Contact our support team for any billing questions</p>
+                  </div>
+                  <Button variant="ghost" size="sm" asChild>
+                    <a href="mailto:support@gcnavigator.com">
+                      Contact Support
+                    </a>
+                  </Button>
                 </div>
               </div>
             </TabsContent>
