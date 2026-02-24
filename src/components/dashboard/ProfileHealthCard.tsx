@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { ShieldCheck, ArrowRight, AlertTriangle, CheckCircle } from "lucide-react";
+import { ShieldCheck, ArrowRight, AlertTriangle, CheckCircle, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAIProfileScore } from "@/hooks/useAIProfileScore";
 
 const priorityIcons = {
@@ -20,21 +21,39 @@ const ScoreRing = forwardRef<HTMLDivElement, { score: number }>(({ score }, ref)
   const color = score >= 70 ? "text-success" : score >= 40 ? "text-accent" : "text-destructive";
 
   return (
-    <div ref={ref} className="relative w-24 h-24 shrink-0">
-      <svg className="w-24 h-24 -rotate-90" viewBox="0 0 80 80">
-        <circle cx="40" cy="40" r={radius} fill="none" stroke="currentColor" strokeWidth="6" className="text-secondary" />
-        <circle
-          cx="40" cy="40" r={radius} fill="none" stroke="currentColor" strokeWidth="6"
-          strokeDasharray={circumference} strokeDashoffset={offset}
-          strokeLinecap="round" className={color}
-          style={{ transition: "stroke-dashoffset 0.8s ease" }}
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className={`text-xl font-bold ${color}`}>{score}</span>
-        <span className="text-[10px] text-muted-foreground">/ 100</span>
-      </div>
-    </div>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div ref={ref} className="relative w-24 h-24 shrink-0 cursor-help">
+            <svg className="w-24 h-24 -rotate-90" viewBox="0 0 80 80">
+              <circle cx="40" cy="40" r={radius} fill="none" stroke="currentColor" strokeWidth="6" className="text-secondary" />
+              <circle
+                cx="40" cy="40" r={radius} fill="none" stroke="currentColor" strokeWidth="6"
+                strokeDasharray={circumference} strokeDashoffset={offset}
+                strokeLinecap="round" className={color}
+                style={{ transition: "stroke-dashoffset 0.8s ease" }}
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className={`text-xl font-bold ${color}`}>{score}</span>
+              <span className="text-[10px] text-muted-foreground">/ 100</span>
+            </div>
+            <Info className="w-3 h-3 text-muted-foreground absolute top-0 right-0" />
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="max-w-[240px] text-xs space-y-1 p-3">
+          <p className="font-semibold text-foreground">How is this scored?</p>
+          <ul className="space-y-0.5 text-muted-foreground">
+            <li>• <strong>SAM UEI / CAGE:</strong> registration completeness</li>
+            <li>• <strong>NAICS & PSC codes:</strong> targeting breadth</li>
+            <li>• <strong>Certifications:</strong> set-aside eligibility</li>
+            <li>• <strong>Capabilities:</strong> profile depth</li>
+            <li>• <strong>Past performance:</strong> win history</li>
+          </ul>
+          <p className="text-muted-foreground pt-1">AI-analyzed against federal readiness best practices.</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 });
 ScoreRing.displayName = "ScoreRing";
