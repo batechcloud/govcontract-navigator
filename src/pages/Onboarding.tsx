@@ -57,7 +57,6 @@ const steps = [
 
 const Onboarding = () => {
   const navigate = useNavigate();
-  
   const [currentStep, setCurrentStep] = useState(1);
   const [data, setData] = useState<OnboardingData>(initialData);
   const [direction, setDirection] = useState(1);
@@ -92,10 +91,8 @@ const Onboarding = () => {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        toast({
-          title: "Please sign in",
+        toast.error("Please sign in", {
           description: "You need to be signed in to complete onboarding.",
-          variant: "destructive",
         });
         navigate("/auth");
         return;
@@ -138,18 +135,15 @@ const Onboarding = () => {
 
       if (profileError) throw profileError;
 
-      toast({
-        title: "Welcome aboard!",
+      toast.success("Welcome aboard!", {
         description: "Your profile has been set up successfully.",
       });
 
       navigate("/dashboard");
     } catch (error: any) {
       console.error("Onboarding error:", error);
-      toast({
-        title: "Error saving profile",
+      toast.error("Error saving profile", {
         description: error.message || "Please try again.",
-        variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
