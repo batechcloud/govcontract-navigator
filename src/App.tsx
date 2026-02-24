@@ -53,6 +53,7 @@ const App = () => (
     <AuthProvider>
       <TooltipProvider>
         <Toaster />
+        <BrowserRouter>
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<Index />} />
