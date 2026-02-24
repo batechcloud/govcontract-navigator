@@ -52,7 +52,12 @@ export const AwardExplorer = ({ fy, refreshKey, prefilledAgency }: Props) => {
       id: award["Award ID"] || crypto.randomUUID(),
       title: award["Description"]?.slice(0, 100) || "USASpending Award",
       agency: award["awarding_agency_name"] || "",
-      value: formatDollars(award["Award Amount"] || 0),
+      sector: "technology",
+      value: typeof award["Award Amount"] === "number" ? award["Award Amount"] : 0,
+      deadline: null,
+      naicsCode: "",
+      setAside: "Any",
+      roiScore: 65,
       source: "USASpending",
       url: `https://www.usaspending.gov/award/${award["Award ID"]}`,
     });
