@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import WelcomeStep from "@/components/onboarding/WelcomeStep";
 import CompanyInfoStep from "@/components/onboarding/CompanyInfoStep";

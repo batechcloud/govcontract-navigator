@@ -8,7 +8,7 @@ import { formatDollars } from "@/lib/usaspending-utils";
 import { useAwardSearch, AwardSearchFilters } from "@/hooks/useUSASpending";
 import { useContractStore } from "@/store/contractStore";
 import { AlertCircle } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface Props {
   fy: string;

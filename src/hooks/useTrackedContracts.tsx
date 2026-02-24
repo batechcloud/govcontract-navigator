@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 export interface TrackedContract {
   id: string;
@@ -39,7 +39,6 @@ export const useTrackedContracts = () => {
 
 export const useTrackContract = () => {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (contract: Omit<TrackedContract, "id" | "user_id" | "created_at" | "updated_at">) => {
@@ -62,24 +61,18 @@ export const useTrackContract = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tracked-contracts"] });
-      toast({
-        title: "Contract tracked",
+      toast.success("Contract tracked", {
         description: "This opportunity has been added to your tracked contracts.",
       });
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error("Error", { description: error.message });
     },
   });
 };
 
 export const useUntrackContract = () => {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (contractId: string) => {
@@ -92,24 +85,18 @@ export const useUntrackContract = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tracked-contracts"] });
-      toast({
-        title: "Contract removed",
+      toast.success("Contract removed", {
         description: "This opportunity has been removed from tracking.",
       });
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error("Error", { description: error.message });
     },
   });
 };
 
 export const useUpdateContractStatus = () => {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
@@ -125,24 +112,18 @@ export const useUpdateContractStatus = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tracked-contracts"] });
-      toast({
-        title: "Status updated",
+      toast.success("Status updated", {
         description: "Contract status has been updated.",
       });
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error("Error", { description: error.message });
     },
   });
 };
 
 export const useUpdateContractNotes = () => {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async ({ id, notes, priority }: { id: string; notes: string; priority?: string }) => {
@@ -160,10 +141,10 @@ export const useUpdateContractNotes = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tracked-contracts"] });
-      toast({ title: "Saved", description: "Contract details have been updated." });
+      toast.success("Saved", { description: "Contract details have been updated." });
     },
     onError: (error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast.error("Error", { description: error.message });
     },
   });
 };

@@ -40,7 +40,7 @@ import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useCompanyProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 
 const CERTIFICATION_OPTIONS = [
