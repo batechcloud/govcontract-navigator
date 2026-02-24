@@ -323,7 +323,7 @@ serve(async (req) => {
     if (filters.min_value || filters.max_value) {
       filteredResults = filteredResults.filter((r: any) => {
         const amount = parseFloat(r.value.replace(/[$,KMB]/g, ''));
-        if (isNaN(amount)) return true;
+        if (isNaN(amount) || r.value === 'TBD' || r.value === 'N/A') return false;
         let rawAmount = amount;
         if (r.value.includes('K')) rawAmount = amount * 1000;
         if (r.value.includes('M')) rawAmount = amount * 1000000;
