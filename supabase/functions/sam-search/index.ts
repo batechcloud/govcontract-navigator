@@ -287,7 +287,11 @@ serve(async (req) => {
     if (!response.ok) {
       console.error("SAM.gov API error:", response.status, responseText);
       return new Response(
-        JSON.stringify(getMockResults(filters, page, limit)),
+        JSON.stringify({
+          ...getMockResults(filters, page, limit),
+          warning: "SAM.gov API returned an error. Showing cached sample data instead.",
+          api_status: response.status,
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
