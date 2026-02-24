@@ -1,79 +1,112 @@
 
 
-# Contract Attachments and AI Document Summarization
+# Codebase Cleanup Plan
 
-## Overview
-Add the ability to view all attachments (documents/files) associated with each SAM.gov contract and provide an "AI Summarize" button on each document that generates a concise summary using OpenAI.
+## Summary
 
-## How It Works
-
-The SAM.gov API v2 already returns a `resourceLinks` field -- an array of URLs pointing to downloadable attachments (PDFs, Word docs, etc.) for each opportunity. Currently, the edge function discards this data. This plan captures those links and surfaces them in the Contract Detail page.
+After a thorough review, I identified **dead code, orphaned files, a legacy `.jsx` file, unused hooks/components, and inconsistent patterns** that should be cleaned up to bring the codebase to a professional standard.
 
 ---
 
-## Changes
+## 1. Delete Orphaned Pages (not routed, not imported anywhere)
 
-### 1. Update `sam-search` Edge Function
-**File:** `supabase/functions/sam-search/index.ts`
+These page files exist but have **no route in App.tsx** and are **never imported** by any other file. They are leftover from earlier iterations and contain only hardcoded mock data:
 
-- In the `transformSamResults` function, include the `resourceLinks` array from each SAM.gov opportunity in the returned result object
-- Pass it through the `cleanResults` step (don't strip it)
-- For mock data, include sample `resourceLinks` arrays
+- `src/pages/Calendar.tsx` -- replaced by `/dashboard/tracked` redirect
+- `src/pages/Documents.tsx` -- replaced by `/dashboard/proposals` redirect
+- `src/pages/JourneyHub.tsx` -- replaced by `/dashboard/tracked` redirect
+- `src/pages/SavedSearches.tsx` -- replaced by `/dashboard/search` redirect
+- `src/pages/CompetitorAnalysis.tsx` -- replaced by `/dashboard/ai` redirect
+- `src/pages/MarketWatch.tsx` -- replaced by `/dashboard/ai` redirect
+- `src/pages/TeamingPartners.tsx` -- replaced by `/dashboard/ai` redirect
+- `src/pages/TrackedCompetitors.tsx` -- not routed, not imported
+- `src/pages/WinLossAnalysis.tsx` -- not routed, not imported
 
-### 2. Update the `SearchResult` Interface
-**File:** `src/hooks/useSearch.tsx`
+**9 files deleted.**
 
-- Add `resourceLinks?: string[]` to the `SearchResult` interface so it flows through the app
+---
 
-### 3. Update `contractsApi.js` Normalizer
-**File:** `src/services/contractsApi.js`
+## 2. Delete Unused Component
 
-- Map `resourceLinks` from SAM results into the normalized contract shape
-- Default to an empty array for USASpending results (they don't have attachments)
+- `src/components/NavLink.tsx` -- not imported anywhere in the project
 
-### 4. Update `ContractData` Interface and Detail Page
-**File:** `src/pages/ContractDetail.tsx`
+---
 
-- Add `resourceLinks?: string[]` to the `ContractData` interface
-- Pass resource links from router state and tracked contracts
-- Add a new "Attachments" card section that:
-  - Lists each attachment URL with a file icon and the filename (extracted from the URL)
-  - Provides a "Download" link (opens in new tab)
-  - Provides an "AI Summarize" button on each attachment
-  - Shows a loading spinner while summarizing
-  - Displays the AI-generated summary inline below the attachment when complete
+## 3. Delete Unused Hook
 
-### 5. Create `ai-document-summary` Edge Function
-**File:** `supabase/functions/ai-document-summary/index.ts`
+- `src/hooks/useCompetitorIntelligence.tsx` -- only imported by the orphaned pages being deleted (`CompetitorAnalysis.tsx`, `TrackedCompetitors.tsx`, `WinLossAnalysis.tsx`)
 
-- Accepts `{ documentUrl: string }` in the request body
-- Authenticates the user via JWT
-- Fetches the document content from the URL server-side (avoids CORS)
-- For text-based content: sends the text directly to OpenAI for summarization
-- For PDFs/binary files: extracts what text it can from the response and summarizes that; if the content is not readable, returns a message indicating the document format is not supported for summarization
-- Uses OpenAI `gpt-4o-mini` (consistent with the rest of the app) with a system prompt focused on government contract document summarization
-- Returns `{ summary: string }`
-- Handles rate limits (429) and payment errors (402)
+---
 
-### 6. Update `supabase/config.toml`
-- Add the new `ai-document-summary` function entry with `verify_jwt = false` (manual JWT check in code)
+## 4. Convert `.jsx` to `.tsx`
+
+The project is TypeScript throughout except for three legacy `.js/.jsx` files:
+
+- `src/pages/SectorBrowse.jsx` -- rename to `.tsx` and add minimal type annotations
+- `src/hooks/useContracts.js` -- rename to `.tsx` and add type annotations
+- `src/services/contractsApi.js` -- rename to `.ts` and add type annotations
+- `src/store/contractStore.js` -- rename to `.ts` and add type annotations
+
+Update all import references in `App.tsx` and other consumers accordingly.
+
+---
+
+## 5. Clean Up Stale Redirect Routes
+
+The redirect routes in App.tsx reference paths for the deleted pages. These are fine to keep (they protect bookmarked URLs), but I will add a brief comment grouping them and remove the one for `/sectors` since it is already handled. No functional change.
+
+---
+
+## 6. Remove Duplicate Toaster
+
+The app renders **two** toast systems simultaneously: `@/components/ui/toaster` (Radix-based) and `sonner`. Throughout the codebase, **both** `toast()` from `use-toast.ts` and `toast()` from `sonner` are used inconsistently. I will:
+
+- Audit which toast system is dominant (sonner appears more widely used)
+- Standardize on **sonner** for all toast calls
+- Remove the Radix `<Toaster />` from `App.tsx` and the `useToast` / `toaster` files if fully migrated, OR leave both if migration is too large for this pass and note it for future cleanup
+
+Given the scope, I will **leave both for now** but add a `// TODO: consolidate on sonner` comment to flag it.
+
+---
+
+## 7. Minor Code Quality Fixes
+
+- Remove unused imports in files touched during cleanup
+- Ensure consistent spacing in `App.tsx` route definitions (fix the extra space on line 90)
+- Add `"use client"` or similar annotations where appropriate (not needed for Vite, skip)
 
 ---
 
 ## Technical Details
 
-**SAM.gov `resourceLinks` format:**
-The API returns an array of direct download URLs, e.g.:
+### Files to Delete (12 total)
+```text
+src/pages/Calendar.tsx
+src/pages/Documents.tsx
+src/pages/JourneyHub.tsx
+src/pages/SavedSearches.tsx
+src/pages/CompetitorAnalysis.tsx
+src/pages/MarketWatch.tsx
+src/pages/TeamingPartners.tsx
+src/pages/TrackedCompetitors.tsx
+src/pages/WinLossAnalysis.tsx
+src/components/NavLink.tsx
+src/hooks/useCompetitorIntelligence.tsx
 ```
-["https://sam.gov/api/prod/opps/v3/opportunities/resources/files/...", ...]
+
+### Files to Rename (JS to TS)
+```text
+src/pages/SectorBrowse.jsx       -> SectorBrowse.tsx
+src/hooks/useContracts.js        -> useContracts.ts
+src/services/contractsApi.js     -> contractsApi.ts
+src/store/contractStore.js       -> contractStore.ts
 ```
 
-**Filename extraction:** Parse the URL to get the filename, or fall back to "Attachment 1", "Attachment 2", etc.
+### Files to Edit
+- `src/App.tsx` -- update SectorBrowse import extension, fix spacing, add TODO comment on dual toasters
+- `src/components/usaspending/AwardExplorer.tsx` -- update contractStore import if path changes
 
-**AI Summarization prompt:** The edge function will instruct the model to:
-- Identify the document type (SOW, RFP, amendment, etc.)
-- Summarize key requirements, deliverables, and deadlines
-- Highlight eligibility criteria and evaluation factors
-- Keep the summary concise (300-500 words)
+### Risk Assessment
+- **Low risk**: All deleted files are confirmed unreachable (no imports, no routes)
+- **The `.js` to `.ts` conversion** will use minimal type annotations (`any` where needed) to avoid breaking changes -- a deeper typing pass can follow later
 
-**Attachments UI:** A new card on the Contract Detail page between "Contract Details" and "Action buttons" sections, showing each attachment as a row with download and summarize actions.
