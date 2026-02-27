@@ -1036,6 +1036,79 @@ const SearchHub = () => {
 
           <TabsContent value="subcontracts">
             <div>
+              {/* Subcontract Filters */}
+              <Card variant="glass" className="mb-4 border-border/70">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-heading font-semibold text-sm text-foreground flex items-center gap-2">
+                      <SlidersHorizontal className="w-4 h-4 text-accent" />
+                      Subcontract Filters
+                    </h3>
+                    {hasSubFilters && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => { setSubPrimeContractor(""); setSubMinAmount(""); setSubMaxAmount(""); setSubAgency(""); }}
+                        className="text-muted-foreground hover:text-foreground gap-1 text-xs h-7"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Prime Contractor</Label>
+                      <Input
+                        placeholder="e.g., Lockheed Martin"
+                        value={subPrimeContractor}
+                        onChange={(e) => setSubPrimeContractor(e.target.value)}
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Min Amount</Label>
+                      <div className="relative">
+                        <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          value={subMinAmount}
+                          onChange={(e) => setSubMinAmount(e.target.value)}
+                          className="h-9 text-sm pl-7"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Max Amount</Label>
+                      <div className="relative">
+                        <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                        <Input
+                          type="number"
+                          placeholder="No max"
+                          value={subMaxAmount}
+                          onChange={(e) => setSubMaxAmount(e.target.value)}
+                          className="h-9 text-sm pl-7"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Awarding Agency</Label>
+                      <Select value={subAgency || "any"} onValueChange={(val) => setSubAgency(val === "any" ? "" : val)}>
+                        <SelectTrigger className="h-9 text-sm bg-card border-border">
+                          <SelectValue placeholder="Any agency" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border z-50">
+                          <SelectItem value="any">Any agency</SelectItem>
+                          {agencyOptions.map(a => (
+                            <SelectItem key={a} value={a}>{a}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
               <div className="flex items-center justify-between mb-4">
                 <p className="text-sm text-muted-foreground">
                   {subawardResults.length > 0 ? (
