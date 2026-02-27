@@ -806,211 +806,345 @@ const SearchHub = () => {
           )}
         </AnimatePresence>
 
-        {/* Results */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-muted-foreground">
-              {results.length > 0 ? (
-                <>
-                  Showing <span className="text-foreground font-semibold">{results.length.toLocaleString()}</span> of{" "}
-                  <span className="text-foreground font-semibold">{total.toLocaleString()}</span> contracts
-                </>
-              ) : (
-                "Search above to find government contracts"
-              )}
-            </p>
-          </div>
+        {/* Results with Tabs */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "prime" | "subcontracts")} className="w-full">
+          <TabsList className="mb-4">
+            <TabsTrigger value="prime">Prime Contracts</TabsTrigger>
+            <TabsTrigger value="subcontracts">Subcontracts</TabsTrigger>
+          </TabsList>
 
-          <div ref={resultListRef} className="space-y-4">
-            {isSearching ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <Card key={i} variant="glass">
-                  <CardContent className="p-6">
-                    <div className="flex gap-4">
-                      <Skeleton className="w-20 h-8 rounded-lg shrink-0" />
-                      <div className="flex-1">
-                        <Skeleton className="h-6 w-3/4 mb-2" />
-                        <Skeleton className="h-4 w-1/2 mb-3" />
-                        <Skeleton className="h-4 w-full" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            ) : results.length > 0 ? (
-              results.map((result, index) => {
-                const isTracked = trackedIds.has(result.id);
-                const match = getMatchLabel(result.matchScore);
-                const batchIndex = batchBoundaries.indexOf(index);
-                const isBatchStart = batchIndex !== -1;
-                return (
-                  <div key={result.id}>
-                    {isBatchStart && (
-                      <motion.div
-                        initial={{ opacity: 0, scaleX: 0 }}
-                        animate={{ opacity: 1, scaleX: 1 }}
-                        transition={{ duration: 0.4 }}
-                        className="flex items-center gap-3 my-6"
-                      >
-                        <div className="flex-1 h-px bg-primary/30" />
-                        <span className="text-xs font-medium text-primary flex items-center gap-1.5 whitespace-nowrap">
-                          <Sparkles className="w-3 h-3" />
-                          Batch {batchIndex + 2} — New Results
-                        </span>
-                        <div className="flex-1 h-px bg-primary/30" />
-                      </motion.div>
-                    )}
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.5) }}
-                    >
-                    <Card variant="glass-hover">
-                      <CardContent className="p-4 sm:p-6">
-                        <div className="flex flex-col gap-3">
-                          {/* Badges */}
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Badge className={match.className}>{match.text}</Badge>
-                            <Badge variant="outline">{result.type}</Badge>
-                            {result.setAside && result.setAside !== "None" && (
-                              <Badge variant="glass">{result.setAside}</Badge>
-                            )}
-                            {isTracked && (
-                              <Badge variant="success" className="gap-1">
-                                <CheckCircle2 className="w-3 h-3" />
-                                Already Tracked
-                              </Badge>
-                            )}
-                          </div>
+          <TabsContent value="prime">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm text-muted-foreground">
+                  {results.length > 0 ? (
+                    <>
+                      Showing <span className="text-foreground font-semibold">{results.length.toLocaleString()}</span> of{" "}
+                      <span className="text-foreground font-semibold">{total.toLocaleString()}</span> contracts
+                    </>
+                  ) : (
+                    "Search above to find government contracts"
+                  )}
+                </p>
+              </div>
 
-                          {/* Title & Agency */}
-                          <h3 className="font-heading font-semibold text-lg text-foreground">
-                            <Link
-                              to={`/dashboard/contract/${result.id}`}
-                              state={{ contractData: result }}
-                              className="hover:text-primary hover:underline transition-colors"
-                            >
-                              {result.title}
-                            </Link>
-                          </h3>
-                          <p className="text-sm text-muted-foreground flex items-center gap-2">
-                            <Building2 className="w-4 h-4" />
-                            {result.agency}
-                          </p>
-
-                          {/* Details */}
-                          <div className="flex flex-wrap gap-4 text-sm">
-                            <span className="flex items-center gap-1 text-accent">
-                              <DollarSign className="w-4 h-4" />
-                              {result.value}
-                            </span>
-                            {result.deadline && (
-                              <span className="flex items-center gap-1 text-muted-foreground">
-                                <Clock className="w-4 h-4" />
-                                {getDaysLeft(result.deadline)}
-                              </span>
-                            )}
-                            {result.location && (
-                              <span className="flex items-center gap-1 text-muted-foreground">
-                                <MapPin className="w-4 h-4" />
-                                {result.location}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Actions */}
-                          <div className="flex flex-wrap gap-2 pt-1">
-                            <Button variant="hero" size="sm" onClick={() => handleStartBid(result)}>
-                              <FileText className="w-4 h-4 mr-2" />
-                              Start Bid
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleTrack(result)}
-                              disabled={isTracked || trackContract.isPending}
-                            >
-                              {isTracked ? (
-                                <><Heart className="w-4 h-4 mr-2 fill-current" /> Saved</>
-                              ) : (
-                                <><Heart className="w-4 h-4 mr-2" /> Save</>
-                              )}
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleAskAI(result)}
-                              className="gap-2 border-accent/40 text-accent hover:bg-accent/10 hover:border-accent hover:text-accent"
-                            >
-                              <MessageSquare className="w-4 h-4" />
-                              Ask AI
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleScoreContract(result)}
-                              disabled={winScore.isPending}
-                              className="gap-2 border-purple-400/40 text-purple-400 hover:bg-purple-400/10 hover:border-purple-400 hover:text-purple-400"
-                            >
-                              <Sparkles className="w-4 h-4" />
-                              Score This
-                            </Button>
-                            {result.link && (
-                              <Button variant="ghost" size="sm" onClick={() => window.open(result.link, '_blank')}>
-                                <ExternalLink className="w-4 h-4 mr-2" />
-                                View on SAM.gov
-                              </Button>
-                            )}
+              <div ref={resultListRef} className="space-y-4">
+                {isSearching ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <Card key={i} variant="glass">
+                      <CardContent className="p-6">
+                        <div className="flex gap-4">
+                          <Skeleton className="w-20 h-8 rounded-lg shrink-0" />
+                          <div className="flex-1">
+                            <Skeleton className="h-6 w-3/4 mb-2" />
+                            <Skeleton className="h-4 w-1/2 mb-3" />
+                            <Skeleton className="h-4 w-full" />
                           </div>
                         </div>
                       </CardContent>
                     </Card>
-                  </motion.div>
-                  </div>
-                );
-              })
-            ) : (
-              <Card variant="glass" className="text-center py-12">
-                <CardContent>
-                  <Search className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="font-heading font-semibold text-lg mb-2">Ready to find contracts</h3>
-                  <p className="text-muted-foreground">
-                    Type what your business does and we'll find matching government opportunities.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-
-          {/* Load New Batch */}
-          {results.length > 0 && hasMore && !isSearching && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex flex-col items-center gap-3 mt-8"
-            >
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={loadNextBatch}
-                disabled={isLoadingBatch}
-                className="gap-2"
-              >
-                {isLoadingBatch ? (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  ))
+                ) : results.length > 0 ? (
+                  results.map((result, index) => {
+                    const isTracked = trackedIds.has(result.id);
+                    const match = getMatchLabel(result.matchScore);
+                    const batchIndex = batchBoundaries.indexOf(index);
+                    const isBatchStart = batchIndex !== -1;
+                    return (
+                      <div key={result.id}>
+                        {isBatchStart && (
+                          <motion.div
+                            initial={{ opacity: 0, scaleX: 0 }}
+                            animate={{ opacity: 1, scaleX: 1 }}
+                            transition={{ duration: 0.4 }}
+                            className="flex items-center gap-3 my-6"
+                          >
+                            <div className="flex-1 h-px bg-primary/30" />
+                            <span className="text-xs font-medium text-primary flex items-center gap-1.5 whitespace-nowrap">
+                              <Sparkles className="w-3 h-3" />
+                              Batch {batchIndex + 2} — New Results
+                            </span>
+                            <div className="flex-1 h-px bg-primary/30" />
+                          </motion.div>
+                        )}
+                        <motion.div
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.5) }}
+                        >
+                        <Card variant="glass-hover">
+                          <CardContent className="p-4 sm:p-6">
+                            <div className="flex flex-col gap-3">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Badge className={match.className}>{match.text}</Badge>
+                                <Badge variant="outline">{result.type}</Badge>
+                                {result.setAside && result.setAside !== "None" && (
+                                  <Badge variant="glass">{result.setAside}</Badge>
+                                )}
+                                {isTracked && (
+                                  <Badge variant="success" className="gap-1">
+                                    <CheckCircle2 className="w-3 h-3" />
+                                    Already Tracked
+                                  </Badge>
+                                )}
+                              </div>
+                              <h3 className="font-heading font-semibold text-lg text-foreground">
+                                <Link
+                                  to={`/dashboard/contract/${result.id}`}
+                                  state={{ contractData: result }}
+                                  className="hover:text-primary hover:underline transition-colors"
+                                >
+                                  {result.title}
+                                </Link>
+                              </h3>
+                              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                <Building2 className="w-4 h-4" />
+                                {result.agency}
+                              </p>
+                              <div className="flex flex-wrap gap-4 text-sm">
+                                <span className="flex items-center gap-1 text-accent">
+                                  <DollarSign className="w-4 h-4" />
+                                  {result.value}
+                                </span>
+                                {result.deadline && (
+                                  <span className="flex items-center gap-1 text-muted-foreground">
+                                    <Clock className="w-4 h-4" />
+                                    {getDaysLeft(result.deadline)}
+                                  </span>
+                                )}
+                                {result.location && (
+                                  <span className="flex items-center gap-1 text-muted-foreground">
+                                    <MapPin className="w-4 h-4" />
+                                    {result.location}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap gap-2 pt-1">
+                                <Button variant="hero" size="sm" onClick={() => handleStartBid(result)}>
+                                  <FileText className="w-4 h-4 mr-2" />
+                                  Start Bid
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleTrack(result)}
+                                  disabled={isTracked || trackContract.isPending}
+                                >
+                                  {isTracked ? (
+                                    <><Heart className="w-4 h-4 mr-2 fill-current" /> Saved</>
+                                  ) : (
+                                    <><Heart className="w-4 h-4 mr-2" /> Save</>
+                                  )}
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleAskAI(result)}
+                                  className="gap-2 border-accent/40 text-accent hover:bg-accent/10 hover:border-accent hover:text-accent"
+                                >
+                                  <MessageSquare className="w-4 h-4" />
+                                  Ask AI
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleScoreContract(result)}
+                                  disabled={winScore.isPending}
+                                  className="gap-2 border-primary/40 text-primary hover:bg-primary/10 hover:border-primary hover:text-primary"
+                                >
+                                  <Sparkles className="w-4 h-4" />
+                                  Score This
+                                </Button>
+                                {result.link && (
+                                  <Button variant="ghost" size="sm" onClick={() => window.open(result.link, '_blank')}>
+                                    <ExternalLink className="w-4 h-4 mr-2" />
+                                    View on SAM.gov
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                      </div>
+                    );
+                  })
                 ) : (
-                  <RefreshCw className="w-4 h-4" />
+                  <Card variant="glass" className="text-center py-12">
+                    <CardContent>
+                      <Search className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="font-heading font-semibold text-lg mb-2">Ready to find contracts</h3>
+                      <p className="text-muted-foreground">
+                        Type what your business does and we'll find matching government opportunities.
+                      </p>
+                    </CardContent>
+                  </Card>
                 )}
-                {isLoadingBatch ? "Loading..." : "Load New Batch"}
-              </Button>
-              <p className="text-xs text-muted-foreground">
-                {total - results.length > 0
-                  ? `${(total - results.length).toLocaleString()} more opportunities available`
-                  : "All opportunities loaded"}
-              </p>
-            </motion.div>
-          )}
-        </div>
+              </div>
+
+              {results.length > 0 && hasMore && !isSearching && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex flex-col items-center gap-3 mt-8"
+                >
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={loadNextBatch}
+                    disabled={isLoadingBatch}
+                    className="gap-2"
+                  >
+                    {isLoadingBatch ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4" />
+                    )}
+                    {isLoadingBatch ? "Loading..." : "Load New Batch"}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    {total - results.length > 0
+                      ? `${(total - results.length).toLocaleString()} more opportunities available`
+                      : "All opportunities loaded"}
+                  </p>
+                </motion.div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="subcontracts">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm text-muted-foreground">
+                  {subawardResults.length > 0 ? (
+                    <>
+                      Showing <span className="text-foreground font-semibold">{subawardResults.length.toLocaleString()}</span> subcontracts
+                    </>
+                  ) : (
+                    "Search above to find subcontracting opportunities from USASpending.gov"
+                  )}
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                {subawardSearch.isPending ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <Card key={i} variant="glass">
+                      <CardContent className="p-6">
+                        <div className="flex gap-4">
+                          <Skeleton className="w-20 h-8 rounded-lg shrink-0" />
+                          <div className="flex-1">
+                            <Skeleton className="h-6 w-3/4 mb-2" />
+                            <Skeleton className="h-4 w-1/2 mb-3" />
+                            <Skeleton className="h-4 w-full" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : subawardResults.length > 0 ? (
+                  subawardResults.map((sub, index) => (
+                    <motion.div
+                      key={sub.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.5) }}
+                    >
+                      <Card variant="glass-hover">
+                        <CardContent className="p-4 sm:p-6">
+                          <div className="flex flex-col gap-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="glass">Subcontract</Badge>
+                              {sub.agency && <Badge variant="outline">{sub.agency}</Badge>}
+                            </div>
+
+                            <h3 className="font-heading font-semibold text-lg text-foreground">
+                              {sub.description || `Subaward #${sub.subaward_number}`}
+                            </h3>
+
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-sm">
+                              <span className="text-muted-foreground flex items-center gap-2">
+                                <Building2 className="w-4 h-4" />
+                                <span className="font-medium text-foreground">{sub.subawardee}</span>
+                                <span className="text-muted-foreground">← sub from</span>
+                                <span className="text-muted-foreground">{sub.prime_recipient}</span>
+                              </span>
+                            </div>
+
+                            <div className="flex flex-wrap gap-4 text-sm">
+                              <span className="flex items-center gap-1 text-accent">
+                                <DollarSign className="w-4 h-4" />
+                                {sub.amount ? `$${sub.amount.toLocaleString()}` : "N/A"}
+                              </span>
+                              {sub.action_date && (
+                                <span className="flex items-center gap-1 text-muted-foreground">
+                                  <Clock className="w-4 h-4" />
+                                  {new Date(sub.action_date).toLocaleDateString()}
+                                </span>
+                              )}
+                              {sub.place_of_performance && sub.place_of_performance !== "N/A" && (
+                                <span className="flex items-center gap-1 text-muted-foreground">
+                                  <MapPin className="w-4 h-4" />
+                                  {sub.place_of_performance}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 pt-1">
+                              {sub.prime_award_id && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => window.open(`https://www.usaspending.gov/award/${sub.prime_award_id}`, '_blank')}
+                                >
+                                  <ExternalLink className="w-4 h-4 mr-2" />
+                                  View on USASpending
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))
+                ) : (
+                  <Card variant="glass" className="text-center py-12">
+                    <CardContent>
+                      <Search className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="font-heading font-semibold text-lg mb-2">Find subcontracting opportunities</h3>
+                      <p className="text-muted-foreground">
+                        Search for subcontracts awarded through federal prime contracts via USASpending.gov.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+
+              {subawardResults.length > 0 && subawardHasNext && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex flex-col items-center gap-3 mt-8"
+                >
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={handleLoadMoreSubawards}
+                    disabled={subawardSearch.isPending}
+                    className="gap-2"
+                  >
+                    {subawardSearch.isPending ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4" />
+                    )}
+                    {subawardSearch.isPending ? "Loading..." : "Load More Subcontracts"}
+                  </Button>
+                </motion.div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </motion.div>
 
       {/* Save Search Dialog */}
