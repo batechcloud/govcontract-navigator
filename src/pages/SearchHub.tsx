@@ -330,13 +330,27 @@ const SearchHub = () => {
     }
     try {
       setCurrentPage(page);
-      // If advanced or quick filters are active, use combined filters instead of AI parse
-      if (hasAdvancedFilters || activeFilters.length > 0) {
+      if (activeTab === "subcontracts") {
+        // Search subawards
+        const res = await subawardSearch.mutateAsync({ keyword: searchQuery.trim(), page: 1, limit: 25 });
+        setSubawardResults(res.results);
+        setSubawardPage(1);
+        setSubawardHasNext(res.page_metadata?.hasNext ?? false);
+        setSubawardTotal(res.page_metadata?.total ?? res.results.length);
+      } else if (hasAdvancedFilters || activeFilters.length > 0) {
         await searchWithFilters(buildCombinedFilters() as any, page);
       } else {
         await search(searchQuery, page);
       }
     } catch (error) {}
+  };
+
+  const handleLoadMoreSubawards = async () => {
+    const nextPage = subawardPage + 1;
+    const res = await subawardSearch.mutateAsync({ keyword: searchQuery.trim(), page: nextPage, limit: 25 });
+    setSubawardResults(prev => [...prev, ...res.results]);
+    setSubawardPage(nextPage);
+    setSubawardHasNext(res.page_metadata?.hasNext ?? false);
   };
 
   const handleQuickFilter = async (filter: typeof quickFilters[0]) => {
