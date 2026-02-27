@@ -24,10 +24,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Search,
   FileText,
@@ -42,12 +56,12 @@ import {
   ExternalLink,
   Heart,
   SlidersHorizontal,
-  ChevronDown,
   RotateCcw,
   MessageSquare,
   RefreshCw,
   CheckCircle2,
   ArrowUp,
+  MoreHorizontal,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useTrackContract, useTrackedContracts } from "@/hooks/useTrackedContracts";
@@ -60,8 +74,6 @@ import { NaicsCodeSelector } from "@/components/company/NaicsCodeSelector";
 import { PscCodeSelector } from "@/components/company/PscCodeSelector";
 import { WinScoreModal } from "@/components/search/WinScoreModal";
 import { useCompanyProfile } from "@/hooks/useProfile";
-
-
 
 const quickFilters = [
   { label: "Small Business", filter: { set_aside: ["Small Business"] } },
@@ -80,7 +92,7 @@ const SearchHub = () => {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [searchName, setSearchName] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [activeSector, setActiveSector] = useState<string | null>(null);
   const sectorSearchDone = useRef(false);
   const [activeTab, setActiveTab] = useState<"prime" | "subcontracts">("prime");
@@ -106,6 +118,7 @@ const SearchHub = () => {
   const { data: companyProfile } = useCompanyProfile();
   const profilePscCodes = companyProfile?.psc_codes?.filter(Boolean) || [];
   const { data: rateLimit } = useSearchRateLimit();
+
   const handleScoreContract = (result: SearchResult) => {
     const input: ContractScoreInput = {
       title: result.title,
@@ -133,8 +146,6 @@ const SearchHub = () => {
   const [advType, setAdvType] = useState("");
 
   const hasAdvancedFilters = !!(advNaics.length > 0 || advPsc.length > 0 || advMinValue || advMaxValue || advAgency || advDeadline || advState || advType);
-
-
 
   const agencyOptions = [
     "Department of Defense",
@@ -199,20 +210,27 @@ const SearchHub = () => {
     setAdvType("");
   };
 
-  // Unified filter builder — merges search bar keywords, quick filters, and advanced filters
+  const clearSubFilters = () => {
+    setSubPrimeContractor("");
+    setSubMinAmount("");
+    setSubMaxAmount("");
+    setSubAgency("");
+  };
+
+  const activeFilterCount = (hasAdvancedFilters ? 1 : 0) + (hasSubFilters && activeTab === "subcontracts" ? 1 : 0);
+
+  // Unified filter builder
   const buildCombinedFilters = (): SearchFilters & { deadline_before?: string } => {
     const deadlineDays = advDeadline ? parseInt(advDeadline) : null;
     const deadlineDate = deadlineDays
       ? new Date(Date.now() + deadlineDays * 24 * 60 * 60 * 1000).toISOString()
       : null;
 
-    // Collect set-aside values from active quick filters
     const quickSetAsides = activeFilters.flatMap(key => {
       const qf = quickFilters.find(f => f.label === key);
       return qf?.filter.set_aside || [];
     });
 
-    // Collect opportunity type from quick filters (last one wins)
     let quickOpportunityType: string | null = null;
     activeFilters.forEach(key => {
       const qf = quickFilters.find(f => f.label === key);
@@ -235,6 +253,7 @@ const SearchHub = () => {
 
   const handleApplyAdvancedFilters = async () => {
     setCurrentPage(0);
+    setFiltersOpen(false);
     await searchWithFilters(buildCombinedFilters() as any, 0);
   };
 
@@ -252,13 +271,11 @@ const SearchHub = () => {
     isParsing,
   } = useSmartSearch();
 
-  // Track previous result count for scroll-to-new behavior
   const prevResultCount = useRef(0);
   const resultListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (results.length > prevResultCount.current && prevResultCount.current > 0) {
-      // Scroll to the first new result after batch load
       const newItemIndex = prevResultCount.current;
       setTimeout(() => {
         const items = resultListRef.current?.children;
@@ -282,7 +299,6 @@ const SearchHub = () => {
     if (config) {
       setActiveSector(sectorKey);
       setSearchQuery(`${config.label} contracts`);
-
       const filters = {
         keywords: [],
         naics_codes: naicsCodes,
@@ -294,15 +310,13 @@ const SearchHub = () => {
         location: null,
         opportunity_type: null,
       };
-
       searchWithFilters(filters, 0);
       setSearchParams({}, { replace: true });
     }
   }, [searchParams]);
 
-  // Auto-search when arriving with ?q= param (e.g. from AI Picks)
+  // Auto-search when arriving with ?q= param
   const qSearchDone = useRef(false);
-
   useEffect(() => {
     const q = searchParams.get("q");
     if (!q || qSearchDone.current) return;
@@ -327,7 +341,6 @@ const SearchHub = () => {
   const trackContract = useTrackContract();
   const { data: trackedContracts } = useTrackedContracts();
   const saveSearch = useSaveSearch();
-
   const trackedIds = new Set(trackedContracts?.map(c => c.contract_id) || []);
 
   const handleSearch = async (page = 0) => {
@@ -378,18 +391,14 @@ const SearchHub = () => {
   const handleQuickFilter = async (filter: typeof quickFilters[0]) => {
     const filterKey = filter.label;
     let newActiveFilters: string[];
-
     if (activeFilters.includes(filterKey)) {
       newActiveFilters = activeFilters.filter(f => f !== filterKey);
     } else {
       newActiveFilters = [...activeFilters, filterKey];
     }
-
     setActiveFilters(newActiveFilters);
     setCurrentPage(0);
 
-    // Use buildCombinedFilters but with the new activeFilters (state hasn't updated yet)
-    // We need to temporarily compute what buildCombinedFilters would return with newActiveFilters
     const quickSetAsides = newActiveFilters.flatMap(key => {
       const qf = quickFilters.find(f => f.label === key);
       return qf?.filter.set_aside || [];
@@ -422,7 +431,6 @@ const SearchHub = () => {
       await searchWithFilters(combinedFilters as any, 0);
     }
   };
-
 
   const handleTrack = (result: SearchResult) => {
     trackContract.mutate({
@@ -480,16 +488,15 @@ const SearchHub = () => {
     return `${days} days left`;
   };
 
-
   return (
     <DashboardLayout title="Find Contracts">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="space-y-6"
+        className="space-y-4"
       >
-        {/* Demo Mode Banner — only shown when no SAM API key (mock data has SAM-20XX- prefix) */}
+        {/* Demo Mode Banner */}
         {results.length > 0 && /^SAM-20\d\d-/.test(results[0]?.id) && (
           <div className="bg-accent/10 border border-accent/30 rounded-lg px-4 py-2 flex items-center gap-2 text-sm">
             <span className="font-semibold text-accent">Demo Mode:</span>
@@ -504,340 +511,147 @@ const SearchHub = () => {
             <span className="text-foreground font-medium">
               Showing results for <span className="text-primary">{SECTOR_CONFIG[activeSector].label}</span>
             </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="ml-auto h-7 text-xs"
-              onClick={() => setActiveSector(null)}
-            >
+            <Button variant="ghost" size="sm" className="ml-auto h-7 text-xs" onClick={() => setActiveSector(null)}>
               <X className="w-3 h-3 mr-1" /> Clear
             </Button>
           </div>
         )}
 
-        {/* Search Bar */}
-        <Card variant="glass" className="overflow-hidden relative">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-accent/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-          <CardContent className="p-6 relative">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-accent" />
-                <span className="font-heading font-semibold text-foreground">Search in Plain English</span>
-              </div>
-              <div className="flex items-center gap-3">
-                {rateLimit && (
-                  <span
-                    className={`text-xs font-medium tabular-nums ${
-                      rateLimit.remaining <= 5
-                        ? "text-destructive"
-                        : rateLimit.remaining <= 15
-                        ? "text-accent"
-                        : "text-muted-foreground"
-                    }`}
-                    title={`${rateLimit.used} of ${rateLimit.limit} daily searches used. Resets at midnight UTC.`}
-                  >
-                    {rateLimit.remaining}/{rateLimit.limit} searches left
-                  </span>
-                )}
-                {parsedFilters && (
-                  <Button variant="ghost" size="sm" onClick={() => setSaveDialogOpen(true)}>
-                    <Bookmark className="w-4 h-4 mr-2" />
-                    Save Search
-                  </Button>
-                )}
-              </div>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1 relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Try: 'IT support contracts for small businesses' or 'construction projects in Texas'"
-                  className="pl-12 h-12 text-base"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSearch(0)}
-                />
-              </div>
-              <Button
-                variant="hero"
-                className="h-12"
-                onClick={() => handleSearch(0)}
-                disabled={isSearching}
-              >
-                {isParsing ? (
-                  <Sparkles className="w-4 h-4 sm:mr-2 animate-spin" />
-                ) : (
-                  <Search className="w-4 h-4 sm:mr-2" />
-                )}
-                <span className="hidden sm:inline">
-                  {isParsing ? "Understanding..." : isSearching ? "Searching..." : "Search"}
-                </span>
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground mt-3">
-              Just type what you're looking for — our AI will find the best matches for you.
-            </p>
-
-            {/* Parsed filters display */}
-            <AnimatePresence>
-              {parsedFilters && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="mt-4 pt-4 border-t border-border/50"
+        {/* Simple Search Bar */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1 relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="What does your business do? (e.g., IT support, construction, healthcare)"
+              className="pl-12 h-12 text-base"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch(0)}
+            />
+          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="hero"
+                  className="h-12"
+                  onClick={() => handleSearch(0)}
+                  disabled={isSearching}
                 >
-                  <p className="text-xs text-muted-foreground mb-2">We're searching for:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {parsedFilters.keywords.length > 0 && (
-                      <Badge variant="glass">{parsedFilters.keywords.join(", ")}</Badge>
-                    )}
-                    {parsedFilters.set_aside.length > 0 && (
-                      <Badge variant="gold">{parsedFilters.set_aside.join(", ")}</Badge>
-                    )}
-                    {parsedFilters.agencies.length > 0 && (
-                      <Badge variant="outline">{parsedFilters.agencies.join(", ")}</Badge>
-                    )}
-                    {parsedFilters.min_value && (
-                      <Badge variant="outline">From ${(parsedFilters.min_value / 1000000).toFixed(1)}M</Badge>
-                    )}
-                    {parsedFilters.psc_codes && parsedFilters.psc_codes.length > 0 && (
-                      <Badge variant="glass">PSC: {parsedFilters.psc_codes.join(", ")}</Badge>
-                    )}
-                  </div>
-                </motion.div>
+                  {isParsing ? (
+                    <Sparkles className="w-4 h-4 sm:mr-2 animate-spin" />
+                  ) : (
+                    <Search className="w-4 h-4 sm:mr-2" />
+                  )}
+                  <span className="hidden sm:inline">
+                    {isParsing ? "Understanding..." : isSearching ? "Searching..." : "Search"}
+                  </span>
+                </Button>
+              </TooltipTrigger>
+              {rateLimit && (
+                <TooltipContent>
+                  <p>{rateLimit.remaining} of {rateLimit.limit} searches left today</p>
+                </TooltipContent>
               )}
-            </AnimatePresence>
-          </CardContent>
-        </Card>
-
-        {/* Quick Filters + Advanced toggle row */}
-        <div className="flex flex-wrap items-center gap-2">
-          {quickFilters.map((filter) => (
-            <Badge
-              key={filter.label}
-              variant={activeFilters.includes(filter.label) ? "gold" : "glass"}
-              className="cursor-pointer hover:bg-primary/20 transition-colors px-3 py-1.5"
-              onClick={() => handleQuickFilter(filter)}
-            >
-              {activeFilters.includes(filter.label) && <X className="w-3 h-3 mr-1" />}
-              {filter.label}
-            </Badge>
-          ))}
-
-          {/* Price Range Quick Filter */}
-          <Select
-            value={advMinValue || advMaxValue ? `${advMinValue}|${advMaxValue}` : "any"}
-            onValueChange={(val) => {
-              if (val === "any") {
-                setAdvMinValue("");
-                setAdvMaxValue("");
-              } else {
-                const [mn, mx] = val.split("|");
-                setAdvMinValue(mn || "");
-                setAdvMaxValue(mx || "");
-              }
-              // Trigger search after state update
-              setTimeout(() => {
-                const filters = buildCombinedFilters();
-                if (val === "any") {
-                  (filters as any).min_value = null;
-                  (filters as any).max_value = null;
-                } else {
-                  const [mn, mx] = val.split("|");
-                  (filters as any).min_value = mn ? parseInt(mn) : null;
-                  (filters as any).max_value = mx ? parseInt(mx) : null;
-                }
-                setCurrentPage(0);
-                searchWithFilters(filters as any, 0);
-              }, 0);
-            }}
-          >
-            <SelectTrigger
-              className={`w-auto min-w-[140px] h-8 text-xs rounded-full gap-1.5 ${
-                advMinValue || advMaxValue
-                  ? "border-accent text-accent bg-accent/10"
-                  : "border-border/50 bg-secondary/50"
-              }`}
-            >
-              <DollarSign className="w-3.5 h-3.5" />
-              <SelectValue placeholder="Price Range" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="any">Any Price</SelectItem>
-              {valueRanges.map((range) => (
-                <SelectItem key={range.label} value={`${range.min}|${range.max}`}>
-                  {range.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setAdvancedOpen(o => !o)}
-            className={`ml-auto gap-2 ${hasAdvancedFilters ? "border-accent text-accent" : ""}`}
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-            Advanced Filters
-            {hasAdvancedFilters && (
-              <Badge className="bg-accent text-card text-[10px] px-1.5 py-0 h-4">ON</Badge>
-            )}
-            <ChevronDown className={`w-3 h-3 transition-transform ${advancedOpen ? "rotate-180" : ""}`} />
-          </Button>
+            </Tooltip>
+          </TooltipProvider>
+          {parsedFilters && (
+            <Button variant="outline" className="h-12" onClick={() => setSaveDialogOpen(true)}>
+              <Bookmark className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Save Search</span>
+            </Button>
+          )}
         </div>
 
-        {/* Advanced Filter Panel */}
+        {/* Parsed filters display */}
         <AnimatePresence>
-          {advancedOpen && (
+          {parsedFilters && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.25 }}
-              className="overflow-hidden"
             >
-              <Card variant="glass" className="border-border/70">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-heading font-semibold text-sm text-foreground flex items-center gap-2">
-                      <SlidersHorizontal className="w-4 h-4 text-accent" />
-                      Advanced Filters
-                    </h3>
-                    {hasAdvancedFilters && (
-                      <Button variant="ghost" size="sm" onClick={clearAdvancedFilters} className="text-muted-foreground hover:text-foreground gap-1 text-xs h-7">
-                        <RotateCcw className="w-3 h-3" />
-                        Clear all
-                      </Button>
-                    )}
-                    </div>
-
-                    {/* PSC Code */}
-                    <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
-                      <Label className="text-xs text-muted-foreground">PSC Code</Label>
-                      <PscCodeSelector selected={advPsc} onChange={setAdvPsc} />
-                    </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {/* NAICS Code */}
-                    <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
-                      <Label className="text-xs text-muted-foreground">NAICS Code</Label>
-                      <NaicsCodeSelector selected={advNaics} onChange={setAdvNaics} />
-                    </div>
-
-                    {/* Contract Value Range */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Contract Value</Label>
-                      <Select
-                        value={advMinValue || advMaxValue ? `${advMinValue}|${advMaxValue}` : "any"}
-                        onValueChange={(val) => {
-                          if (val === "any") { setAdvMinValue(""); setAdvMaxValue(""); return; }
-                          const [mn, mx] = val.split("|");
-                          setAdvMinValue(mn || "");
-                          setAdvMaxValue(mx || "");
-                        }}
-                      >
-                        <SelectTrigger className="h-9 text-sm bg-card border-border">
-                          <SelectValue placeholder="Any value" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-card border-border z-50">
-                          <SelectItem value="any">Any value</SelectItem>
-                          {valueRanges.map(r => (
-                            <SelectItem key={r.label} value={`${r.min}|${r.max}`}>{r.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Agency */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Agency</Label>
-                      <Select value={advAgency || "any"} onValueChange={(val) => setAdvAgency(val === "any" ? "" : val)}>
-                        <SelectTrigger className="h-9 text-sm bg-card border-border">
-                          <SelectValue placeholder="Any agency" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-card border-border z-50">
-                          <SelectItem value="any">Any agency</SelectItem>
-                          {agencyOptions.map(a => (
-                            <SelectItem key={a} value={a}>{a}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Opportunity Type */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Opportunity Type</Label>
-                      <Select value={advType || "any"} onValueChange={(val) => setAdvType(val === "any" ? "" : val)}>
-                        <SelectTrigger className="h-9 text-sm bg-card border-border">
-                          <SelectValue placeholder="Any type" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-card border-border z-50">
-                          <SelectItem value="any">Any type</SelectItem>
-                          {opportunityTypeOptions.map(t => (
-                            <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Response Deadline */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Deadline</Label>
-                      <Select value={advDeadline || "any"} onValueChange={(val) => setAdvDeadline(val === "any" ? "" : val)}>
-                        <SelectTrigger className="h-9 text-sm bg-card border-border">
-                          <SelectValue placeholder="Any deadline" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-card border-border z-50">
-                          <SelectItem value="any">Any deadline</SelectItem>
-                          {deadlineOptions.map(d => (
-                            <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Location / State */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Location</Label>
-                      <Select value={advState || "any"} onValueChange={(val) => setAdvState(val === "any" ? "" : val)}>
-                        <SelectTrigger className="h-9 text-sm bg-card border-border">
-                          <SelectValue placeholder="Any state" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-card border-border z-50 max-h-60">
-                          <SelectItem value="any">Any state</SelectItem>
-                          {stateOptions.map(s => (
-                            <SelectItem key={s} value={s}>{s}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end mt-4 pt-4 border-t border-border/50">
-                    <Button variant="hero" size="sm" onClick={handleApplyAdvancedFilters} disabled={isSearching} className="gap-2">
-                      <Search className="w-4 h-4" />
-                      Apply Filters
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="flex flex-wrap gap-2 items-center">
+                <span className="text-xs text-muted-foreground">Searching for:</span>
+                {parsedFilters.keywords.length > 0 && (
+                  <Badge variant="glass">{parsedFilters.keywords.join(", ")}</Badge>
+                )}
+                {parsedFilters.set_aside.length > 0 && (
+                  <Badge variant="gold">{parsedFilters.set_aside.join(", ")}</Badge>
+                )}
+                {parsedFilters.agencies.length > 0 && (
+                  <Badge variant="outline">{parsedFilters.agencies.join(", ")}</Badge>
+                )}
+                {parsedFilters.min_value && (
+                  <Badge variant="outline">From ${(parsedFilters.min_value / 1000000).toFixed(1)}M</Badge>
+                )}
+                {parsedFilters.psc_codes && parsedFilters.psc_codes.length > 0 && (
+                  <Badge variant="glass">PSC: {parsedFilters.psc_codes.join(", ")}</Badge>
+                )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Results with Tabs */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "prime" | "subcontracts")} className="w-full">
-          <TabsList className="mb-4">
-            <TabsTrigger value="prime">Prime Contracts</TabsTrigger>
-            <TabsTrigger value="subcontracts">Subcontracts</TabsTrigger>
-          </TabsList>
+        {/* Quick Filters Row */}
+        <div className="flex flex-wrap items-center gap-2">
+          {quickFilters.map((filter) => (
+            <button
+              key={filter.label}
+              onClick={() => handleQuickFilter(filter)}
+              className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium transition-all border ${
+                activeFilters.includes(filter.label)
+                  ? "bg-accent/20 border-accent/50 text-accent"
+                  : "bg-secondary/50 border-border/50 text-muted-foreground hover:text-foreground hover:border-border"
+              }`}
+            >
+              {activeFilters.includes(filter.label) && <X className="w-3 h-3" />}
+              {filter.label}
+            </button>
+          ))}
 
+          <button
+            onClick={() => setFiltersOpen(true)}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all border ml-auto ${
+              hasAdvancedFilters || (hasSubFilters && activeTab === "subcontracts")
+                ? "bg-accent/20 border-accent/50 text-accent"
+                : "bg-secondary/50 border-border/50 text-muted-foreground hover:text-foreground hover:border-border"
+            }`}
+          >
+            <SlidersHorizontal className="w-3 h-3" />
+            More Filters
+            {(hasAdvancedFilters || (hasSubFilters && activeTab === "subcontracts")) && (
+              <span className="bg-accent text-card rounded-full w-4 h-4 text-[10px] flex items-center justify-center font-bold">
+                !
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "prime" | "subcontracts")} className="w-full">
+          <div className="border-b border-border/50">
+            <TabsList className="bg-transparent border-none p-0 h-auto gap-4">
+              <TabsTrigger
+                value="prime"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 pb-2 text-sm"
+              >
+                Prime Contracts
+              </TabsTrigger>
+              <TabsTrigger
+                value="subcontracts"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 pb-2 text-sm"
+              >
+                Subcontracts
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          {/* Prime Contracts Tab */}
           <TabsContent value="prime">
             <div>
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-4 mt-4">
                 <p className="text-sm text-muted-foreground">
                   {results.length > 0 ? (
                     <>
@@ -850,19 +664,14 @@ const SearchHub = () => {
                 </p>
               </div>
 
-              <div ref={resultListRef} className="space-y-4">
+              <div ref={resultListRef} className="space-y-3">
                 {isSearching ? (
                   Array.from({ length: 3 }).map((_, i) => (
                     <Card key={i} variant="glass">
-                      <CardContent className="p-6">
-                        <div className="flex gap-4">
-                          <Skeleton className="w-20 h-8 rounded-lg shrink-0" />
-                          <div className="flex-1">
-                            <Skeleton className="h-6 w-3/4 mb-2" />
-                            <Skeleton className="h-4 w-1/2 mb-3" />
-                            <Skeleton className="h-4 w-full" />
-                          </div>
-                        </div>
+                      <CardContent className="p-5">
+                        <Skeleton className="h-5 w-3/4 mb-2" />
+                        <Skeleton className="h-4 w-1/2 mb-3" />
+                        <Skeleton className="h-4 w-full" />
                       </CardContent>
                     </Card>
                   ))
@@ -879,115 +688,132 @@ const SearchHub = () => {
                             initial={{ opacity: 0, scaleX: 0 }}
                             animate={{ opacity: 1, scaleX: 1 }}
                             transition={{ duration: 0.4 }}
-                            className="flex items-center gap-3 my-6"
+                            className="flex items-center gap-3 my-4"
                           >
                             <div className="flex-1 h-px bg-primary/30" />
                             <span className="text-xs font-medium text-primary flex items-center gap-1.5 whitespace-nowrap">
                               <Sparkles className="w-3 h-3" />
-                              Batch {batchIndex + 2} — New Results
+                              More Results
                             </span>
                             <div className="flex-1 h-px bg-primary/30" />
                           </motion.div>
                         )}
                         <motion.div
-                          initial={{ opacity: 0, y: 20 }}
+                          initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.5) }}
+                          transition={{ duration: 0.2, delay: Math.min(index * 0.03, 0.3) }}
                         >
-                        <Card variant="glass-hover">
-                          <CardContent className="p-4 sm:p-6">
-                            <div className="flex flex-col gap-3">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <Badge className={match.className}>{match.text}</Badge>
-                                <Badge variant="outline">{result.type}</Badge>
-                                {result.setAside && result.setAside !== "None" && (
-                                  <Badge variant="glass">{result.setAside}</Badge>
-                                )}
-                                {isTracked && (
-                                  <Badge variant="success" className="gap-1">
-                                    <CheckCircle2 className="w-3 h-3" />
-                                    Already Tracked
-                                  </Badge>
-                                )}
-                              </div>
-                              <h3 className="font-heading font-semibold text-lg text-foreground">
-                                <Link
-                                  to={`/dashboard/contract/${result.id}`}
-                                  state={{ contractData: result }}
-                                  className="hover:text-primary hover:underline transition-colors"
-                                >
-                                  {result.title}
-                                </Link>
-                              </h3>
-                              <p className="text-sm text-muted-foreground flex items-center gap-2">
-                                <Building2 className="w-4 h-4" />
-                                {result.agency}
-                              </p>
-                              <div className="flex flex-wrap gap-4 text-sm">
-                                <span className="flex items-center gap-1 text-accent">
-                                  <DollarSign className="w-4 h-4" />
-                                  {result.value}
-                                </span>
-                                {result.deadline && (
-                                  <span className="flex items-center gap-1 text-muted-foreground">
-                                    <Clock className="w-4 h-4" />
-                                    {getDaysLeft(result.deadline)}
-                                  </span>
-                                )}
-                                {result.location && (
-                                  <span className="flex items-center gap-1 text-muted-foreground">
-                                    <MapPin className="w-4 h-4" />
-                                    {result.location}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex flex-wrap gap-2 pt-1">
-                                <Button variant="hero" size="sm" onClick={() => handleStartBid(result)}>
-                                  <FileText className="w-4 h-4 mr-2" />
-                                  Start Bid
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleTrack(result)}
-                                  disabled={isTracked || trackContract.isPending}
-                                >
-                                  {isTracked ? (
-                                    <><Heart className="w-4 h-4 mr-2 fill-current" /> Saved</>
-                                  ) : (
-                                    <><Heart className="w-4 h-4 mr-2" /> Save</>
+                          <Card variant="glass-hover">
+                            <CardContent className="p-4">
+                              <div className="flex flex-col gap-2">
+                                {/* Top row: match + set-aside */}
+                                <div className="flex items-center gap-2">
+                                  <Badge className={`${match.className} text-xs`}>{match.text}</Badge>
+                                  {result.setAside && result.setAside !== "None" && (
+                                    <Badge variant="glass" className="text-xs">{result.setAside}</Badge>
                                   )}
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleAskAI(result)}
-                                  className="gap-2 border-accent/40 text-accent hover:bg-accent/10 hover:border-accent hover:text-accent"
-                                >
-                                  <MessageSquare className="w-4 h-4" />
-                                  Ask AI
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleScoreContract(result)}
-                                  disabled={winScore.isPending}
-                                  className="gap-2 border-primary/40 text-primary hover:bg-primary/10 hover:border-primary hover:text-primary"
-                                >
-                                  <Sparkles className="w-4 h-4" />
-                                  Score This
-                                </Button>
-                                {result.link && (
-                                  <Button variant="ghost" size="sm" onClick={() => window.open(result.link, '_blank')}>
-                                    <ExternalLink className="w-4 h-4 mr-2" />
-                                    View on SAM.gov
+                                  {isTracked && (
+                                    <Badge variant="success" className="gap-1 text-xs">
+                                      <CheckCircle2 className="w-3 h-3" /> Saved
+                                    </Badge>
+                                  )}
+                                </div>
+
+                                {/* Title */}
+                                <h3 className="font-heading font-semibold text-base text-foreground leading-snug">
+                                  <Link
+                                    to={`/dashboard/contract/${result.id}`}
+                                    state={{ contractData: result }}
+                                    className="hover:text-primary hover:underline transition-colors"
+                                  >
+                                    {result.title}
+                                  </Link>
+                                </h3>
+
+                                {/* Details row */}
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                                  <span className="flex items-center gap-1">
+                                    <Building2 className="w-3.5 h-3.5" />
+                                    {result.agency}
+                                  </span>
+                                  <span className="flex items-center gap-1 text-accent">
+                                    <DollarSign className="w-3.5 h-3.5" />
+                                    {result.value}
+                                  </span>
+                                  {result.deadline && (
+                                    <span className="flex items-center gap-1">
+                                      <Clock className="w-3.5 h-3.5" />
+                                      {getDaysLeft(result.deadline)}
+                                    </span>
+                                  )}
+                                  {result.location && (
+                                    <span className="flex items-center gap-1">
+                                      <MapPin className="w-3.5 h-3.5" />
+                                      {result.location}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Actions: Save + Start Bid + overflow menu */}
+                                <div className="flex items-center gap-2 pt-1">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleTrack(result)}
+                                    disabled={isTracked || trackContract.isPending}
+                                    className="h-8 text-xs"
+                                  >
+                                    {isTracked ? (
+                                      <><Heart className="w-3.5 h-3.5 mr-1.5 fill-current" /> Saved</>
+                                    ) : (
+                                      <><Heart className="w-3.5 h-3.5 mr-1.5" /> Save</>
+                                    )}
                                   </Button>
-                                )}
+                                  <Button
+                                    variant="hero"
+                                    size="sm"
+                                    onClick={() => handleStartBid(result)}
+                                    className="h-8 text-xs"
+                                  >
+                                    <FileText className="w-3.5 h-3.5 mr-1.5" />
+                                    Start Bid
+                                  </Button>
+
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                        <MoreHorizontal className="w-4 h-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="bg-card border-border">
+                                      <DropdownMenuItem onClick={() => handleAskAI(result)} className="gap-2 cursor-pointer">
+                                        <MessageSquare className="w-4 h-4 text-accent" />
+                                        Ask AI About This
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() => handleScoreContract(result)}
+                                        disabled={winScore.isPending}
+                                        className="gap-2 cursor-pointer"
+                                      >
+                                        <Sparkles className="w-4 h-4 text-primary" />
+                                        Score This Contract
+                                      </DropdownMenuItem>
+                                      {result.link && (
+                                        <DropdownMenuItem
+                                          onClick={() => window.open(result.link, '_blank')}
+                                          className="gap-2 cursor-pointer"
+                                        >
+                                          <ExternalLink className="w-4 h-4" />
+                                          View on SAM.gov
+                                        </DropdownMenuItem>
+                                      )}
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
                               </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </motion.div>
+                            </CardContent>
+                          </Card>
+                        </motion.div>
                       </div>
                     );
                   })
@@ -1008,132 +834,50 @@ const SearchHub = () => {
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="flex flex-col items-center gap-3 mt-8"
+                  className="flex flex-col items-center gap-2 mt-6"
                 >
                   <Button
                     variant="outline"
-                    size="lg"
                     onClick={loadNextBatch}
                     disabled={isLoadingBatch}
                     className="gap-2"
                   >
-                    {isLoadingBatch ? (
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="w-4 h-4" />
-                    )}
-                    {isLoadingBatch ? "Loading..." : "Load New Batch"}
+                    <RefreshCw className={`w-4 h-4 ${isLoadingBatch ? "animate-spin" : ""}`} />
+                    {isLoadingBatch ? "Loading..." : "Load More"}
                   </Button>
                   <p className="text-xs text-muted-foreground">
                     {total - results.length > 0
-                      ? `${(total - results.length).toLocaleString()} more opportunities available`
-                      : "All opportunities loaded"}
+                      ? `${(total - results.length).toLocaleString()} more available`
+                      : "All loaded"}
                   </p>
                 </motion.div>
               )}
             </div>
           </TabsContent>
 
+          {/* Subcontracts Tab */}
           <TabsContent value="subcontracts">
             <div>
-              {/* Subcontract Filters */}
-              <Card variant="glass" className="mb-4 border-border/70">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-heading font-semibold text-sm text-foreground flex items-center gap-2">
-                      <SlidersHorizontal className="w-4 h-4 text-accent" />
-                      Subcontract Filters
-                    </h3>
-                    {hasSubFilters && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => { setSubPrimeContractor(""); setSubMinAmount(""); setSubMaxAmount(""); setSubAgency(""); }}
-                        className="text-muted-foreground hover:text-foreground gap-1 text-xs h-7"
-                      >
-                        <RotateCcw className="w-3 h-3" />
-                        Clear
-                      </Button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Prime Contractor</Label>
-                      <Input
-                        placeholder="e.g., Lockheed Martin"
-                        value={subPrimeContractor}
-                        onChange={(e) => setSubPrimeContractor(e.target.value)}
-                        className="h-9 text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Min Amount</Label>
-                      <div className="relative">
-                        <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                        <Input
-                          type="number"
-                          placeholder="0"
-                          value={subMinAmount}
-                          onChange={(e) => setSubMinAmount(e.target.value)}
-                          className="h-9 text-sm pl-7"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Max Amount</Label>
-                      <div className="relative">
-                        <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                        <Input
-                          type="number"
-                          placeholder="No max"
-                          value={subMaxAmount}
-                          onChange={(e) => setSubMaxAmount(e.target.value)}
-                          className="h-9 text-sm pl-7"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Awarding Agency</Label>
-                      <Select value={subAgency || "any"} onValueChange={(val) => setSubAgency(val === "any" ? "" : val)}>
-                        <SelectTrigger className="h-9 text-sm bg-card border-border">
-                          <SelectValue placeholder="Any agency" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-card border-border z-50">
-                          <SelectItem value="any">Any agency</SelectItem>
-                          {agencyOptions.map(a => (
-                            <SelectItem key={a} value={a}>{a}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-4 mt-4">
                 <p className="text-sm text-muted-foreground">
                   {subawardResults.length > 0 ? (
                     <>
                       Showing <span className="text-foreground font-semibold">{subawardResults.length.toLocaleString()}</span> subcontracts
                     </>
                   ) : (
-                    "Search above to find subcontracting opportunities from USASpending.gov"
+                    "Search above to find subcontracting opportunities"
                   )}
                 </p>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {subawardSearch.isPending ? (
                   Array.from({ length: 3 }).map((_, i) => (
                     <Card key={i} variant="glass">
-                      <CardContent className="p-6">
-                        <div className="flex gap-4">
-                          <Skeleton className="w-20 h-8 rounded-lg shrink-0" />
-                          <div className="flex-1">
-                            <Skeleton className="h-6 w-3/4 mb-2" />
-                            <Skeleton className="h-4 w-1/2 mb-3" />
-                            <Skeleton className="h-4 w-full" />
-                          </div>
-                        </div>
+                      <CardContent className="p-5">
+                        <Skeleton className="h-5 w-3/4 mb-2" />
+                        <Skeleton className="h-4 w-1/2 mb-3" />
+                        <Skeleton className="h-4 w-full" />
                       </CardContent>
                     </Card>
                   ))
@@ -1141,62 +885,60 @@ const SearchHub = () => {
                   subawardResults.map((sub, index) => (
                     <motion.div
                       key={sub.id}
-                      initial={{ opacity: 0, y: 20 }}
+                      initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.5) }}
+                      transition={{ duration: 0.2, delay: Math.min(index * 0.03, 0.3) }}
                     >
                       <Card variant="glass-hover">
-                        <CardContent className="p-4 sm:p-6">
-                          <div className="flex flex-col gap-3">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Badge variant="glass">Subcontract</Badge>
-                              {sub.agency && <Badge variant="outline">{sub.agency}</Badge>}
+                        <CardContent className="p-4">
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="glass" className="text-xs">Subcontract</Badge>
+                              {sub.agency && <Badge variant="outline" className="text-xs">{sub.agency}</Badge>}
                             </div>
 
-                            <h3 className="font-heading font-semibold text-lg text-foreground">
+                            <h3 className="font-heading font-semibold text-base text-foreground leading-snug">
                               {sub.description || `Subaward #${sub.subaward_number}`}
                             </h3>
 
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-sm">
-                              <span className="text-muted-foreground flex items-center gap-2">
-                                <Building2 className="w-4 h-4" />
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Building2 className="w-3.5 h-3.5" />
                                 <span className="font-medium text-foreground">{sub.subawardee}</span>
-                                <span className="text-muted-foreground">← sub from</span>
-                                <span className="text-muted-foreground">{sub.prime_recipient}</span>
+                                <span className="mx-1">←</span>
+                                <span>{sub.prime_recipient}</span>
                               </span>
-                            </div>
-
-                            <div className="flex flex-wrap gap-4 text-sm">
                               <span className="flex items-center gap-1 text-accent">
-                                <DollarSign className="w-4 h-4" />
+                                <DollarSign className="w-3.5 h-3.5" />
                                 {sub.amount ? `$${sub.amount.toLocaleString()}` : "N/A"}
                               </span>
                               {sub.action_date && (
-                                <span className="flex items-center gap-1 text-muted-foreground">
-                                  <Clock className="w-4 h-4" />
+                                <span className="flex items-center gap-1">
+                                  <Clock className="w-3.5 h-3.5" />
                                   {new Date(sub.action_date).toLocaleDateString()}
                                 </span>
                               )}
                               {sub.place_of_performance && sub.place_of_performance !== "N/A" && (
-                                <span className="flex items-center gap-1 text-muted-foreground">
-                                  <MapPin className="w-4 h-4" />
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="w-3.5 h-3.5" />
                                   {sub.place_of_performance}
                                 </span>
                               )}
                             </div>
 
-                            <div className="flex flex-wrap gap-2 pt-1">
-                              {sub.prime_award_id && (
+                            {sub.prime_award_id && (
+                              <div className="pt-1">
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => window.open(`https://www.usaspending.gov/award/${sub.prime_award_id}`, '_blank')}
+                                  className="h-8 text-xs"
                                 >
-                                  <ExternalLink className="w-4 h-4 mr-2" />
+                                  <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
                                   View on USASpending
                                 </Button>
-                              )}
-                            </div>
+                              </div>
+                            )}
                           </div>
                         </CardContent>
                       </Card>
@@ -1208,7 +950,7 @@ const SearchHub = () => {
                       <Search className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                       <h3 className="font-heading font-semibold text-lg mb-2">Find subcontracting opportunities</h3>
                       <p className="text-muted-foreground">
-                        Search for subcontracts awarded through federal prime contracts via USASpending.gov.
+                        Search for subcontracts awarded through federal prime contracts.
                       </p>
                     </CardContent>
                   </Card>
@@ -1219,21 +961,16 @@ const SearchHub = () => {
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="flex flex-col items-center gap-3 mt-8"
+                  className="flex flex-col items-center gap-2 mt-6"
                 >
                   <Button
                     variant="outline"
-                    size="lg"
                     onClick={handleLoadMoreSubawards}
                     disabled={subawardSearch.isPending}
                     className="gap-2"
                   >
-                    {subawardSearch.isPending ? (
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="w-4 h-4" />
-                    )}
-                    {subawardSearch.isPending ? "Loading..." : "Load More Subcontracts"}
+                    <RefreshCw className={`w-4 h-4 ${subawardSearch.isPending ? "animate-spin" : ""}`} />
+                    {subawardSearch.isPending ? "Loading..." : "Load More"}
                   </Button>
                 </motion.div>
               )}
@@ -1241,6 +978,216 @@ const SearchHub = () => {
           </TabsContent>
         </Tabs>
       </motion.div>
+
+      {/* More Filters Sheet */}
+      <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <SlidersHorizontal className="w-4 h-4 text-accent" />
+              More Filters
+            </SheetTitle>
+            <SheetDescription>
+              Narrow down your search with specific criteria.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="space-y-6 mt-6">
+            {/* Contract Value */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Contract Value</Label>
+              <Select
+                value={advMinValue || advMaxValue ? `${advMinValue}|${advMaxValue}` : "any"}
+                onValueChange={(val) => {
+                  if (val === "any") { setAdvMinValue(""); setAdvMaxValue(""); return; }
+                  const [mn, mx] = val.split("|");
+                  setAdvMinValue(mn || "");
+                  setAdvMaxValue(mx || "");
+                }}
+              >
+                <SelectTrigger className="h-10 text-sm">
+                  <SelectValue placeholder="Any value" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">Any value</SelectItem>
+                  {valueRanges.map(r => (
+                    <SelectItem key={r.label} value={`${r.min}|${r.max}`}>{r.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Agency */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Agency</Label>
+              <Select value={advAgency || "any"} onValueChange={(val) => setAdvAgency(val === "any" ? "" : val)}>
+                <SelectTrigger className="h-10 text-sm">
+                  <SelectValue placeholder="Any agency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">Any agency</SelectItem>
+                  {agencyOptions.map(a => (
+                    <SelectItem key={a} value={a}>{a}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Opportunity Type */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Opportunity Type</Label>
+              <Select value={advType || "any"} onValueChange={(val) => setAdvType(val === "any" ? "" : val)}>
+                <SelectTrigger className="h-10 text-sm">
+                  <SelectValue placeholder="Any type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">Any type</SelectItem>
+                  {opportunityTypeOptions.map(t => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Deadline */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Deadline</Label>
+              <Select value={advDeadline || "any"} onValueChange={(val) => setAdvDeadline(val === "any" ? "" : val)}>
+                <SelectTrigger className="h-10 text-sm">
+                  <SelectValue placeholder="Any deadline" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">Any deadline</SelectItem>
+                  {deadlineOptions.map(d => (
+                    <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Location */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Location</Label>
+              <Select value={advState || "any"} onValueChange={(val) => setAdvState(val === "any" ? "" : val)}>
+                <SelectTrigger className="h-10 text-sm">
+                  <SelectValue placeholder="Any state" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  <SelectItem value="any">Any state</SelectItem>
+                  {stateOptions.map(s => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Industry Codes (optional) */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Industry Codes <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">NAICS Code</p>
+                  <NaicsCodeSelector selected={advNaics} onChange={setAdvNaics} />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">PSC Code</p>
+                  <PscCodeSelector selected={advPsc} onChange={setAdvPsc} />
+                </div>
+              </div>
+            </div>
+
+            {/* Subcontract Options - only when Subcontracts tab is active */}
+            {activeTab === "subcontracts" && (
+              <div className="space-y-4 pt-4 border-t border-border/50">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Subcontract Options</Label>
+                  {hasSubFilters && (
+                    <Button variant="ghost" size="sm" onClick={clearSubFilters} className="text-xs h-7 gap-1 text-muted-foreground">
+                      <RotateCcw className="w-3 h-3" /> Clear
+                    </Button>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <p className="text-xs text-muted-foreground">Prime Contractor Name</p>
+                    <Input
+                      placeholder="e.g., Lockheed Martin"
+                      value={subPrimeContractor}
+                      onChange={(e) => setSubPrimeContractor(e.target.value)}
+                      className="h-10 text-sm"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-muted-foreground">Min Amount</p>
+                      <div className="relative">
+                        <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          value={subMinAmount}
+                          onChange={(e) => setSubMinAmount(e.target.value)}
+                          className="h-10 text-sm pl-7"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-muted-foreground">Max Amount</p>
+                      <div className="relative">
+                        <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                        <Input
+                          type="number"
+                          placeholder="No max"
+                          value={subMaxAmount}
+                          onChange={(e) => setSubMaxAmount(e.target.value)}
+                          className="h-10 text-sm pl-7"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-xs text-muted-foreground">Awarding Agency</p>
+                    <Select value={subAgency || "any"} onValueChange={(val) => setSubAgency(val === "any" ? "" : val)}>
+                      <SelectTrigger className="h-10 text-sm">
+                        <SelectValue placeholder="Any agency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Any agency</SelectItem>
+                        {agencyOptions.map(a => (
+                          <SelectItem key={a} value={a}>{a}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div className="flex gap-3 pt-4 border-t border-border/50">
+              {(hasAdvancedFilters || hasSubFilters) && (
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => { clearAdvancedFilters(); clearSubFilters(); }}
+                >
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Clear All
+                </Button>
+              )}
+              <Button
+                variant="hero"
+                className="flex-1"
+                onClick={handleApplyAdvancedFilters}
+                disabled={isSearching}
+              >
+                <Search className="w-4 h-4 mr-2" />
+                Search with Filters
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Save Search Dialog */}
       <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
