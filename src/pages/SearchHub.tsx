@@ -338,8 +338,15 @@ const SearchHub = () => {
     try {
       setCurrentPage(page);
       if (activeTab === "subcontracts") {
-        // Search subawards
-        const res = await subawardSearch.mutateAsync({ keyword: searchQuery.trim(), page: 1, limit: 25 });
+        const res = await subawardSearch.mutateAsync({
+          keyword: searchQuery.trim(),
+          page: 1,
+          limit: 25,
+          prime_contractor: subPrimeContractor.trim() || undefined,
+          min_amount: subMinAmount ? parseInt(subMinAmount) : undefined,
+          max_amount: subMaxAmount ? parseInt(subMaxAmount) : undefined,
+          agency: subAgency || undefined,
+        });
         setSubawardResults(res.results);
         setSubawardPage(1);
         setSubawardHasNext(res.page_metadata?.hasNext ?? false);
