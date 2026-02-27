@@ -161,7 +161,7 @@ async function searchSubawards(params: {
     keyword = "",
     page = 1,
     limit = 25,
-    sort = "subaward_amount",
+    sort = "amount",
     order = "desc",
     prime_contractor,
   } = params;
