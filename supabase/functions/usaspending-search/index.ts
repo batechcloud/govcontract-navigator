@@ -59,6 +59,9 @@ serve(async (req) => {
       case "search_awards":
         result = await searchAwardsByRecipient(params.recipient_name, params.page || 1, params.limit || 25);
         break;
+      case "search_subawards":
+        result = await searchSubawards(params);
+        break;
       default:
         return new Response(JSON.stringify({ error: "Invalid action" }), {
           status: 400,
