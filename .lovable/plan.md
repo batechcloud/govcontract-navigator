@@ -1,124 +1,50 @@
 
 
-## Add Per-User Rate Limiting to SAM Search
+## Plan: Add Subcontracting Opportunities Tab to Find Contracts
 
-### Problem
-The SAM.gov API has a 450 requests/day global quota. A single user making many searches could exhaust the limit for everyone.
+### Data Source
+USASpending.gov's `/api/v2/search/spending_by_award/` endpoint supports a `subawards: true` parameter that returns subaward/subcontract data. This is a free API (no key required) and is already integrated via the `usaspending-search` edge function. We'll add a new action to that function to search subawards.
 
-### Approach
-Use a new `api_rate_limits` database table to track per-user daily SAM.gov API calls. The edge function checks the count before making an API call and rejects requests that exceed the limit with a clear error message.
+### Implementation Steps
 
-### Design Decisions
-- **Daily limit per user**: 50 requests/day (allows ~9 active users at full capacity within the 450 global limit)
-- **Storage**: A lightweight `api_rate_limits` table with a composite unique constraint on `(user_id, api_name, date)`
-- **Reset**: Automatic daily reset by using the current date as a key -- no cleanup jobs needed
-- **Graceful handling**: When rate-limited, return a 429 status with a clear message and the reset time, so the frontend can display it
+**1. Extend the `usaspending-search` edge function** with a new `search_subawards` action that calls `/api/v2/subawards/` (dedicated subaward endpoint) with keyword, agency, date range, and value filters. Returns fields like Subaward Number, Subawardee Name, Amount, Description, Prime Award ID, Prime Recipient, Action Date, and Place of Performance.
 
-### Changes
+**2. Create a `useSubawardSearch` hook** in `src/hooks/useSearch.tsx` (or a new file) that wraps the mutation call to `usaspending-search` with `action: "search_subawards"`. Includes caching similar to the existing `useSearchContracts` hook. Returns results in a `SubawardResult` interface with fields: id, subawardNumber, primeAwardId, primeRecipient, subawardee, amount, description, actionDate, placeOfPerformance, agency.
 
-**1. Database Migration -- new `api_rate_limits` table**
+**3. Add tabs to SearchHub.tsx** using the existing `Tabs` component:
+- **Tab 1: "Prime Contracts"** (default) — current SAM.gov search behavior, unchanged
+- **Tab 2: "Subcontracts"** — triggers subaward search via USASpending
 
-```sql
-CREATE TABLE public.api_rate_limits (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  api_name text NOT NULL DEFAULT 'sam_search',
-  request_date date NOT NULL DEFAULT CURRENT_DATE,
-  request_count integer NOT NULL DEFAULT 1,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now(),
-  UNIQUE (user_id, api_name, request_date)
-);
+The search bar, quick filters, and advanced filters remain shared. When the user is on the Subcontracts tab, searches hit the USASpending subawards endpoint instead of SAM.gov. Results render in a similar card layout but with subcontract-specific fields (prime contractor, subawardee, subaward amount).
 
-ALTER TABLE public.api_rate_limits ENABLE ROW LEVEL SECURITY;
+**4. Subcontract result cards** will show:
+- Subawardee name and prime contractor
+- Award amount, action date
+- Awarding agency, place of performance
+- Link to USASpending award page
+- Track/bookmark action (reuses existing tracking)
 
-CREATE POLICY "Users can view their own rate limits"
-  ON public.api_rate_limits FOR SELECT
-  USING (auth.uid() = user_id);
+### Technical Details
 
-CREATE POLICY "Service role manages rate limits"
-  ON public.api_rate_limits FOR ALL
-  USING (true)
-  WITH CHECK (true);
+**USASpending Subawards API:**
 ```
-
-A database function to atomically increment and check:
-
-```sql
-CREATE OR REPLACE FUNCTION public.check_and_increment_rate_limit(
-  _user_id uuid,
-  _api_name text,
-  _daily_limit integer
-)
-RETURNS TABLE(allowed boolean, current_count integer, daily_limit integer)
-LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
-AS $$
-DECLARE
-  _count integer;
-BEGIN
-  INSERT INTO api_rate_limits (user_id, api_name, request_date, request_count)
-  VALUES (_user_id, _api_name, CURRENT_DATE, 1)
-  ON CONFLICT (user_id, api_name, request_date)
-  DO UPDATE SET request_count = api_rate_limits.request_count + 1, updated_at = now()
-  RETURNING request_count INTO _count;
-
-  RETURN QUERY SELECT _count <= _daily_limit, _count, _daily_limit;
-END;
-$$;
-```
-
-**2. Edge Function -- `supabase/functions/sam-search/index.ts`**
-
-Add rate limit check right after authentication succeeds (around line 94), before any API call logic:
-
-```typescript
-// After user is authenticated, check rate limit
-const serviceClient = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-);
-
-const DAILY_LIMIT = 50;
-const { data: rateData, error: rateError } = await serviceClient
-  .rpc('check_and_increment_rate_limit', {
-    _user_id: user.id,
-    _api_name: 'sam_search',
-    _daily_limit: DAILY_LIMIT,
-  });
-
-if (rateError) {
-  console.error('Rate limit check failed:', rateError);
-  // Fail open -- allow the request if rate limiting breaks
-} else if (rateData?.[0] && !rateData[0].allowed) {
-  return new Response(JSON.stringify({
-    error: 'Rate limit exceeded',
-    message: `You've reached your daily limit of ${DAILY_LIMIT} searches. Your limit resets at midnight UTC.`,
-    current_count: rateData[0].current_count,
-    daily_limit: DAILY_LIMIT,
-  }), {
-    status: 429,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+POST https://api.usaspending.gov/api/v2/subawards/
+{
+  "page": 1,
+  "limit": 25,
+  "sort": "amount",
+  "order": "desc",
+  "award_id": null,  // optional
+  "keyword": "cybersecurity"
 }
 ```
 
-Key detail: the rate limit is only checked when a real SAM.gov API call will be made (i.e., when `SAM_API_KEY` is configured). Mock data responses skip the rate limit.
+Alternatively, `/api/v2/search/spending_by_award/` with `"subawards": true` can return subaward data inline. We'll use the dedicated `/api/v2/subawards/` endpoint for broader keyword search or fall back to `spending_by_award` with subawards toggle depending on which provides better filtering.
 
-**3. Frontend -- `src/hooks/useSearch.tsx`**
+**Files to modify:**
+- `supabase/functions/usaspending-search/index.ts` — add `search_subawards` action
+- `src/hooks/useSearch.tsx` — add `SubawardResult` interface and `useSubawardSearch` hook
+- `src/pages/SearchHub.tsx` — add Tabs wrapping Prime/Subcontract views, state for active tab, conditional rendering of results
 
-Update the error handling to detect 429 responses and show a user-friendly toast:
-
-```typescript
-// In the search function's error handling
-if (error.message?.includes('Rate limit exceeded') || error.status === 429) {
-  toast.error("Daily search limit reached. Your limit resets at midnight UTC.");
-}
-```
-
-### Summary of files changed
-| File | Change |
-|------|--------|
-| Migration SQL | New `api_rate_limits` table + `check_and_increment_rate_limit` function |
-| `supabase/functions/sam-search/index.ts` | Add rate limit check after auth, before API call |
-| `src/hooks/useSearch.tsx` | Handle 429 rate limit error with toast message |
+**No database changes required.**
 
