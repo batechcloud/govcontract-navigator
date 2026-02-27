@@ -1,51 +1,124 @@
 
 
-## Plan: Simplify the Find Contracts UI
+## Add Per-User Rate Limiting to SAM Search
 
-The current page has too many visible controls at once — quick filter badges, a price dropdown, an advanced filters panel, separate subcontract filters, and dense result cards with 5+ action buttons each. The goal is to make it feel clean and approachable while keeping all functionality accessible.
+### Problem
+The SAM.gov API has a 450 requests/day global quota. A single user making many searches could exhaust the limit for everyone.
 
-### Key Design Changes
+### Approach
+Use a new `api_rate_limits` database table to track per-user daily SAM.gov API calls. The edge function checks the count before making an API call and rejects requests that exceed the limit with a clear error message.
 
-**1. Consolidate the search area**
-- Keep the search bar and Search button as-is (already clean)
-- Remove the "Search in Plain English" heading and sparkles — just show the search bar with a simple placeholder like "What does your business do?"
-- Move the rate limit counter into a subtle tooltip on the search button instead of always-visible text
+### Design Decisions
+- **Daily limit per user**: 50 requests/day (allows ~9 active users at full capacity within the 450 global limit)
+- **Storage**: A lightweight `api_rate_limits` table with a composite unique constraint on `(user_id, api_name, date)`
+- **Reset**: Automatic daily reset by using the current date as a key -- no cleanup jobs needed
+- **Graceful handling**: When rate-limited, return a 429 status with a clear message and the reset time, so the frontend can display it
 
-**2. Simplify quick filters into a single row of pill toggles**
-- Keep the 6 quick filter badges but make them smaller, uniform pills
-- Remove the separate Price Range dropdown from the quick filter row — move it into Advanced Filters only
-- The quick filters row becomes: `[Small Business] [Veteran] [Woman-Owned] [Minority] [HUBZone] [Federal]` + `[More Filters]` button
+### Changes
 
-**3. Replace the "Advanced Filters" collapsible with a slide-out sheet or a simple expandable section**
-- Rename to "More Filters" — less intimidating
-- When expanded, show filters in a cleaner 2-column layout with clear labels
-- Combine PSC/NAICS into one section labeled "Industry Codes (optional)"
-- Group: Contract Value | Agency | Type (row 1), Deadline | Location (row 2)
-- Single "Search with Filters" button at bottom
+**1. Database Migration -- new `api_rate_limits` table**
 
-**4. Move Subcontract filters into the same "More Filters" panel**
-- Instead of a separate filter card that appears after switching tabs, add a "Subcontract Options" section inside the unified More Filters panel (only visible when Subcontracts tab is active)
-- This eliminates the separate filter card that makes the UI feel layered
+```sql
+CREATE TABLE public.api_rate_limits (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  api_name text NOT NULL DEFAULT 'sam_search',
+  request_date date NOT NULL DEFAULT CURRENT_DATE,
+  request_count integer NOT NULL DEFAULT 1,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  UNIQUE (user_id, api_name, request_date)
+);
 
-**5. Simplify result cards**
-- Reduce action buttons from 5 to 2 visible + overflow menu
-- Primary actions visible: **Save** and **Start Bid**
-- Secondary actions (Ask AI, Score, View on SAM.gov) go into a "⋯" dropdown menu
-- Remove redundant badges — show only the match score badge and set-aside (if applicable)
-- Keep: title, agency, value, deadline, location
+ALTER TABLE public.api_rate_limits ENABLE ROW LEVEL SECURITY;
 
-**6. Clean up the tabs**
-- Keep Prime Contracts / Subcontracts tabs but style them as simple underlined tabs rather than the current glass-styled tab bar
+CREATE POLICY "Users can view their own rate limits"
+  ON public.api_rate_limits FOR SELECT
+  USING (auth.uid() = user_id);
 
-### Files to Modify
+CREATE POLICY "Service role manages rate limits"
+  ON public.api_rate_limits FOR ALL
+  USING (true)
+  WITH CHECK (true);
+```
 
-- **`src/pages/SearchHub.tsx`** — All UI restructuring (search area, filters, result cards, tabs)
-- No backend or hook changes needed — purely a UI simplification
+A database function to atomically increment and check:
 
-### What Stays the Same
-- All search functionality (keyword, quick filters, advanced filters, subcontract search)
-- All data hooks and API calls
-- Tracking, bidding, AI, scoring features (just moved to overflow menu)
-- Save Search dialog, Win Score modal
-- Batch loading, scroll-to-top FAB
+```sql
+CREATE OR REPLACE FUNCTION public.check_and_increment_rate_limit(
+  _user_id uuid,
+  _api_name text,
+  _daily_limit integer
+)
+RETURNS TABLE(allowed boolean, current_count integer, daily_limit integer)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
+AS $$
+DECLARE
+  _count integer;
+BEGIN
+  INSERT INTO api_rate_limits (user_id, api_name, request_date, request_count)
+  VALUES (_user_id, _api_name, CURRENT_DATE, 1)
+  ON CONFLICT (user_id, api_name, request_date)
+  DO UPDATE SET request_count = api_rate_limits.request_count + 1, updated_at = now()
+  RETURNING request_count INTO _count;
+
+  RETURN QUERY SELECT _count <= _daily_limit, _count, _daily_limit;
+END;
+$$;
+```
+
+**2. Edge Function -- `supabase/functions/sam-search/index.ts`**
+
+Add rate limit check right after authentication succeeds (around line 94), before any API call logic:
+
+```typescript
+// After user is authenticated, check rate limit
+const serviceClient = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+);
+
+const DAILY_LIMIT = 50;
+const { data: rateData, error: rateError } = await serviceClient
+  .rpc('check_and_increment_rate_limit', {
+    _user_id: user.id,
+    _api_name: 'sam_search',
+    _daily_limit: DAILY_LIMIT,
+  });
+
+if (rateError) {
+  console.error('Rate limit check failed:', rateError);
+  // Fail open -- allow the request if rate limiting breaks
+} else if (rateData?.[0] && !rateData[0].allowed) {
+  return new Response(JSON.stringify({
+    error: 'Rate limit exceeded',
+    message: `You've reached your daily limit of ${DAILY_LIMIT} searches. Your limit resets at midnight UTC.`,
+    current_count: rateData[0].current_count,
+    daily_limit: DAILY_LIMIT,
+  }), {
+    status: 429,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+```
+
+Key detail: the rate limit is only checked when a real SAM.gov API call will be made (i.e., when `SAM_API_KEY` is configured). Mock data responses skip the rate limit.
+
+**3. Frontend -- `src/hooks/useSearch.tsx`**
+
+Update the error handling to detect 429 responses and show a user-friendly toast:
+
+```typescript
+// In the search function's error handling
+if (error.message?.includes('Rate limit exceeded') || error.status === 429) {
+  toast.error("Daily search limit reached. Your limit resets at midnight UTC.");
+}
+```
+
+### Summary of files changed
+| File | Change |
+|------|--------|
+| Migration SQL | New `api_rate_limits` table + `check_and_increment_rate_limit` function |
+| `supabase/functions/sam-search/index.ts` | Add rate limit check after auth, before API call |
+| `src/hooks/useSearch.tsx` | Handle 429 rate limit error with toast message |
 
