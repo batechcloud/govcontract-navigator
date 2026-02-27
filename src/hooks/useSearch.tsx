@@ -34,6 +34,19 @@ export interface SearchResult {
   resourceLinks?: string[];
 }
 
+export interface SubawardResult {
+  id: string;
+  subaward_number: string;
+  prime_award_id: string;
+  prime_recipient: string;
+  subawardee: string;
+  amount: number;
+  description: string;
+  action_date: string;
+  place_of_performance: string;
+  agency: string;
+}
+
 export interface ParsedQuery {
   filters: SearchFilters;
   original_query: string;
@@ -355,5 +368,58 @@ export function useUpdateSavedSearch() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['saved-searches'] });
     }
+  });
+}
+
+// Search subawards via USASpending
+export function useSubawardSearch() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      keyword = "",
+      page = 1,
+      limit = 25,
+      sort = "subaward_amount",
+      order = "desc",
+    }: {
+      keyword?: string;
+      page?: number;
+      limit?: number;
+      sort?: string;
+      order?: string;
+    }) => {
+      const cacheKey = ['subaward-search', keyword, page, limit, sort, order];
+      const cached = queryClient.getQueryData<{ results: SubawardResult[]; page_metadata: any }>(cacheKey);
+      if (cached) return cached;
+
+      const { data, error } = await supabase.functions.invoke('usaspending-search', {
+        body: { action: 'search_subawards', params: { keyword, page, limit, sort, order } },
+      });
+
+      if (error) throw new Error(error.message || "Failed to search subawards");
+
+      // Normalize results
+      const rawResults = data?.results || [];
+      const normalized: SubawardResult[] = rawResults.map((r: any, i: number) => ({
+        id: r.id?.toString() || `sub-${page}-${i}`,
+        subaward_number: r.subaward_number || "N/A",
+        prime_award_id: r.prime_award_internal_id?.toString() || r.prime_award_generated_internal_id || "",
+        prime_recipient: r.prime_recipient_name || "Unknown",
+        subawardee: r.sub_awardee_or_recipient_legal || r.recipient_name || "Unknown",
+        amount: r.subaward_amount || r.amount || 0,
+        description: r.subaward_description || r.description || "",
+        action_date: r.subaward_action_date || r.action_date || "",
+        place_of_performance: [r.sub_legal_entity_city_name, r.sub_legal_entity_state_code].filter(Boolean).join(", ") || "N/A",
+        agency: r.awarding_agency_name || "",
+      }));
+
+      const result = { results: normalized, page_metadata: data?.page_metadata || { page, total: data?.results?.length || 0, hasNext: data?.page_metadata?.hasNext ?? false } };
+      queryClient.setQueryData(cacheKey, result);
+      return result;
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Subaward search failed");
+    },
   });
 }
