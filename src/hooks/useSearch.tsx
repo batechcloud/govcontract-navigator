@@ -34,6 +34,19 @@ export interface SearchResult {
   resourceLinks?: string[];
 }
 
+export interface SubawardResult {
+  id: string;
+  subaward_number: string;
+  prime_award_id: string;
+  prime_recipient: string;
+  subawardee: string;
+  amount: number;
+  description: string;
+  action_date: string;
+  place_of_performance: string;
+  agency: string;
+}
+
 export interface ParsedQuery {
   filters: SearchFilters;
   original_query: string;
