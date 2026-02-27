@@ -382,19 +382,27 @@ export function useSubawardSearch() {
       limit = 25,
       sort = "subaward_amount",
       order = "desc",
+      prime_contractor,
+      min_amount,
+      max_amount,
+      agency,
     }: {
       keyword?: string;
       page?: number;
       limit?: number;
       sort?: string;
       order?: string;
+      prime_contractor?: string;
+      min_amount?: number;
+      max_amount?: number;
+      agency?: string;
     }) => {
-      const cacheKey = ['subaward-search', keyword, page, limit, sort, order];
+      const cacheKey = ['subaward-search', keyword, page, limit, sort, order, prime_contractor, min_amount, max_amount, agency];
       const cached = queryClient.getQueryData<{ results: SubawardResult[]; page_metadata: any }>(cacheKey);
       if (cached) return cached;
 
       const { data, error } = await supabase.functions.invoke('usaspending-search', {
-        body: { action: 'search_subawards', params: { keyword, page, limit, sort, order } },
+        body: { action: 'search_subawards', params: { keyword, page, limit, sort, order, prime_contractor, min_amount, max_amount, agency } },
       });
 
       if (error) throw new Error(error.message || "Failed to search subawards");
