@@ -380,7 +380,7 @@ export function useSubawardSearch() {
       keyword = "",
       page = 1,
       limit = 25,
-      sort = "subaward_amount",
+      sort = "amount",
       order = "desc",
       prime_contractor,
       min_amount,
