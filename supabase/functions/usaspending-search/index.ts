@@ -144,6 +144,70 @@ async function searchAwardsByRecipient(recipientName: string, page: number, limi
     const errorText = await response.text();
     console.error('USAspending error response:', errorText);
     throw new Error(`USAspending API error: ${response.status}`);
+}
+
+async function searchSubawards(params: {
+  keyword?: string;
+  page?: number;
+  limit?: number;
+  sort?: string;
+  order?: string;
+  agency?: string;
+  min_amount?: number;
+  max_amount?: number;
+}) {
+  const {
+    keyword = "",
+    page = 1,
+    limit = 25,
+    sort = "subaward_amount",
+    order = "desc",
+    agency,
+    min_amount,
+    max_amount,
+  } = params;
+
+  // Build filters for the spending_by_award endpoint with subawards=true
+  const filters: Record<string, unknown> = {
+    time_period: [{
+      start_date: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000 * 3).toISOString().split('T')[0],
+      end_date: new Date().toISOString().split('T')[0],
+    }],
+    award_type_codes: ["A", "B", "C", "D"],
+  };
+
+  if (keyword) {
+    filters.keywords = [keyword];
   }
+  if (agency) {
+    filters.agencies = [{ type: "awarding", tier: "toptier", name: agency }];
+  }
+  if (min_amount !== undefined || max_amount !== undefined) {
+    filters.award_amounts = [{
+      lower_bound: min_amount ?? 0,
+      ...(max_amount ? { upper_bound: max_amount } : {}),
+    }];
+  }
+
+  const response = await fetch(`${USASPENDING_API}/subawards/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      page,
+      limit,
+      sort,
+      order,
+      ...(keyword ? { keyword } : {}),
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('USAspending subawards error:', errorText);
+    throw new Error(`USAspending subawards API error: ${response.status}`);
+  }
+
+  return await response.json();
+}
   return await response.json();
 }
