@@ -83,6 +83,14 @@ const SearchHub = () => {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [activeSector, setActiveSector] = useState<string | null>(null);
   const sectorSearchDone = useRef(false);
+  const [activeTab, setActiveTab] = useState<"prime" | "subcontracts">("prime");
+
+  // Subaward search
+  const subawardSearch = useSubawardSearch();
+  const [subawardResults, setSubawardResults] = useState<SubawardResult[]>([]);
+  const [subawardPage, setSubawardPage] = useState(1);
+  const [subawardHasNext, setSubawardHasNext] = useState(false);
+  const [subawardTotal, setSubawardTotal] = useState(0);
 
   // Win probability scoring
   const [scoreModalOpen, setScoreModalOpen] = useState(false);
