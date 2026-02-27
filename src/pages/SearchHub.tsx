@@ -92,6 +92,13 @@ const SearchHub = () => {
   const [subawardHasNext, setSubawardHasNext] = useState(false);
   const [subawardTotal, setSubawardTotal] = useState(0);
 
+  // Subcontract-specific filters
+  const [subPrimeContractor, setSubPrimeContractor] = useState("");
+  const [subMinAmount, setSubMinAmount] = useState("");
+  const [subMaxAmount, setSubMaxAmount] = useState("");
+  const [subAgency, setSubAgency] = useState("");
+  const hasSubFilters = !!(subPrimeContractor || subMinAmount || subMaxAmount || subAgency);
+
   // Win probability scoring
   const [scoreModalOpen, setScoreModalOpen] = useState(false);
   const [scoreTarget, setScoreTarget] = useState<{ title: string; input: ContractScoreInput } | null>(null);
