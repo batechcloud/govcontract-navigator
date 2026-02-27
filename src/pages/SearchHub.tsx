@@ -51,7 +51,7 @@ import {
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useTrackContract, useTrackedContracts } from "@/hooks/useTrackedContracts";
-import { useSmartSearch, useSaveSearch, SearchFilters, SearchResult } from "@/hooks/useSearch";
+import { useSmartSearch, useSaveSearch, useSubawardSearch, SearchFilters, SearchResult, SubawardResult } from "@/hooks/useSearch";
 import { useSearchRateLimit } from "@/hooks/useRateLimit";
 import { toast } from "sonner";
 import { SECTOR_NAICS, SECTOR_CONFIG } from "@/config/sectors";
