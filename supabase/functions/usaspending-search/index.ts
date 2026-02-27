@@ -14,7 +14,6 @@ serve(async (req) => {
   }
 
   try {
-    // JWT verification
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -38,8 +37,7 @@ serve(async (req) => {
       });
     }
 
-    const userId = user.id;
-    console.log(`USAspending search by user: ${userId}`);
+    console.log(`USAspending search by user: ${user.id}`);
 
     const { action, params } = await req.json();
     console.log(`USAspending search action: ${action}`, params);
@@ -144,6 +142,8 @@ async function searchAwardsByRecipient(recipientName: string, page: number, limi
     const errorText = await response.text();
     console.error('USAspending error response:', errorText);
     throw new Error(`USAspending API error: ${response.status}`);
+  }
+  return await response.json();
 }
 
 async function searchSubawards(params: {
@@ -155,6 +155,7 @@ async function searchSubawards(params: {
   agency?: string;
   min_amount?: number;
   max_amount?: number;
+  prime_contractor?: string;
 }) {
   const {
     keyword = "",
@@ -162,31 +163,13 @@ async function searchSubawards(params: {
     limit = 25,
     sort = "subaward_amount",
     order = "desc",
-    agency,
-    min_amount,
-    max_amount,
+    prime_contractor,
   } = params;
 
-  // Build filters for the spending_by_award endpoint with subawards=true
-  const filters: Record<string, unknown> = {
-    time_period: [{
-      start_date: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000 * 3).toISOString().split('T')[0],
-      end_date: new Date().toISOString().split('T')[0],
-    }],
-    award_type_codes: ["A", "B", "C", "D"],
-  };
-
-  if (keyword) {
-    filters.keywords = [keyword];
-  }
-  if (agency) {
-    filters.agencies = [{ type: "awarding", tier: "toptier", name: agency }];
-  }
-  if (min_amount !== undefined || max_amount !== undefined) {
-    filters.award_amounts = [{
-      lower_bound: min_amount ?? 0,
-      ...(max_amount ? { upper_bound: max_amount } : {}),
-    }];
+  // Combine keyword with prime_contractor for broader search
+  let combinedKeyword = keyword;
+  if (prime_contractor) {
+    combinedKeyword = combinedKeyword ? `${combinedKeyword} ${prime_contractor}` : prime_contractor;
   }
 
   const response = await fetch(`${USASPENDING_API}/subawards/`, {
@@ -197,7 +180,7 @@ async function searchSubawards(params: {
       limit,
       sort,
       order,
-      ...(keyword ? { keyword } : {}),
+      ...(combinedKeyword ? { keyword: combinedKeyword } : {}),
     }),
   });
 
@@ -207,7 +190,30 @@ async function searchSubawards(params: {
     throw new Error(`USAspending subawards API error: ${response.status}`);
   }
 
-  return await response.json();
-}
-  return await response.json();
+  const data = await response.json();
+
+  // Client-side filtering (the subawards endpoint has limited server-side filtering)
+  let results = data.results || [];
+
+  if (prime_contractor) {
+    const lc = prime_contractor.toLowerCase();
+    results = results.filter((r: any) =>
+      (r.prime_recipient_name || "").toLowerCase().includes(lc)
+    );
+  }
+
+  if (params.min_amount !== undefined) {
+    results = results.filter((r: any) => (r.subaward_amount || 0) >= params.min_amount!);
+  }
+  if (params.max_amount !== undefined) {
+    results = results.filter((r: any) => (r.subaward_amount || 0) <= params.max_amount!);
+  }
+  if (params.agency) {
+    const agLc = params.agency.toLowerCase();
+    results = results.filter((r: any) =>
+      (r.awarding_agency_name || "").toLowerCase().includes(agLc)
+    );
+  }
+
+  return { ...data, results };
 }
