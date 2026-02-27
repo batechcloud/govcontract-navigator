@@ -14,7 +14,6 @@ serve(async (req) => {
   }
 
   try {
-    // JWT verification
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -38,8 +37,7 @@ serve(async (req) => {
       });
     }
 
-    const userId = user.id;
-    console.log(`USAspending search by user: ${userId}`);
+    console.log(`USAspending search by user: ${user.id}`);
 
     const { action, params } = await req.json();
     console.log(`USAspending search action: ${action}`, params);
@@ -144,6 +142,8 @@ async function searchAwardsByRecipient(recipientName: string, page: number, limi
     const errorText = await response.text();
     console.error('USAspending error response:', errorText);
     throw new Error(`USAspending API error: ${response.status}`);
+  }
+  return await response.json();
 }
 
 async function searchSubawards(params: {
@@ -166,8 +166,7 @@ async function searchSubawards(params: {
     prime_contractor,
   } = params;
 
-  // The /api/v2/subawards/ endpoint accepts keyword-based search
-  // We combine the keyword with prime_contractor for a broader search
+  // Combine keyword with prime_contractor for broader search
   let combinedKeyword = keyword;
   if (prime_contractor) {
     combinedKeyword = combinedKeyword ? `${combinedKeyword} ${prime_contractor}` : prime_contractor;
@@ -193,10 +192,9 @@ async function searchSubawards(params: {
 
   const data = await response.json();
 
-  // Client-side filtering for prime contractor name and amounts
-  // (the subawards endpoint has limited server-side filtering)
+  // Client-side filtering (the subawards endpoint has limited server-side filtering)
   let results = data.results || [];
-  
+
   if (prime_contractor) {
     const lc = prime_contractor.toLowerCase();
     results = results.filter((r: any) =>
