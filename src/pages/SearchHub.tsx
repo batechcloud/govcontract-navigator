@@ -361,7 +361,15 @@ const SearchHub = () => {
 
   const handleLoadMoreSubawards = async () => {
     const nextPage = subawardPage + 1;
-    const res = await subawardSearch.mutateAsync({ keyword: searchQuery.trim(), page: nextPage, limit: 25 });
+    const res = await subawardSearch.mutateAsync({
+      keyword: searchQuery.trim(),
+      page: nextPage,
+      limit: 25,
+      prime_contractor: subPrimeContractor.trim() || undefined,
+      min_amount: subMinAmount ? parseInt(subMinAmount) : undefined,
+      max_amount: subMaxAmount ? parseInt(subMaxAmount) : undefined,
+      agency: subAgency || undefined,
+    });
     setSubawardResults(prev => [...prev, ...res.results]);
     setSubawardPage(nextPage);
     setSubawardHasNext(res.page_metadata?.hasNext ?? false);
