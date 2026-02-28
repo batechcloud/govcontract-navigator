@@ -1,70 +1,124 @@
 
 
-## Plan: Local Contract Cache with Per-Contract Refresh
+## Add Per-User Rate Limiting to SAM Search
 
-### Overview
-Store all API-fetched contracts in a Supabase `cached_contracts` table. Searches will query this local cache first (fast, no API cost). A "Refresh" button on each contract re-fetches that single contract from SAM.gov. A global "Sync from API" button fetches new data from the API and merges it into the cache.
+### Problem
+The SAM.gov API has a 450 requests/day global quota. A single user making many searches could exhaust the limit for everyone.
 
-### Database Changes
+### Approach
+Use a new `api_rate_limits` database table to track per-user daily SAM.gov API calls. The edge function checks the count before making an API call and rejects requests that exceed the limit with a clear error message.
 
-**New table: `cached_contracts`**
-- `id` (uuid, PK)
-- `contract_id` (text, unique) — the SAM.gov / USASpending ID
-- `title`, `agency`, `description`, `location` (text)
-- `value` (numeric)
-- `deadline` (timestamptz, nullable)
-- `posted_date` (timestamptz, nullable)
-- `naics_code`, `set_aside`, `contract_type`, `sector` (text)
-- `source` (text) — "SAM.gov" or "USASpending"
-- `url` (text)
-- `match_score` (integer)
-- `resource_links` (text[])
-- `solicitation_number` (text, nullable)
-- `raw_data` (jsonb) — full API response for that contract
-- `fetched_at` (timestamptz, default now()) — when last refreshed from API
-- `created_at` (timestamptz, default now())
-- `updated_at` (timestamptz, default now())
-- `user_id` (uuid) — owner of the cached data
+### Design Decisions
+- **Daily limit per user**: 50 requests/day (allows ~9 active users at full capacity within the 450 global limit)
+- **Storage**: A lightweight `api_rate_limits` table with a composite unique constraint on `(user_id, api_name, date)`
+- **Reset**: Automatic daily reset by using the current date as a key -- no cleanup jobs needed
+- **Graceful handling**: When rate-limited, return a 429 status with a clear message and the reset time, so the frontend can display it
 
-RLS: users can SELECT/INSERT/UPDATE/DELETE their own rows.
+### Changes
 
-### Code Changes
+**1. Database Migration -- new `api_rate_limits` table**
 
-**1. New hook: `src/hooks/useCachedContracts.ts`**
-- `useCachedSearch(filters)` — queries `cached_contracts` table with Supabase `.ilike()`, `.in()`, `.gte()/.lte()` filters. No API call, instant results.
-- `useSyncFromApi()` — mutation that calls the SAM edge function, then upserts results into `cached_contracts`. Used by the global "Sync New Contracts" button.
-- `useRefreshContract(contractId)` — mutation that re-fetches a single contract from SAM.gov by solicitation number, updates the cached row with fresh data and a new `fetched_at` timestamp.
+```sql
+CREATE TABLE public.api_rate_limits (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  api_name text NOT NULL DEFAULT 'sam_search',
+  request_date date NOT NULL DEFAULT CURRENT_DATE,
+  request_count integer NOT NULL DEFAULT 1,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  UNIQUE (user_id, api_name, request_date)
+);
 
-**2. New edge function: `supabase/functions/sam-refresh-single/index.ts`**
-- Accepts a `solicitationNumber` or `noticeId`
-- Calls SAM.gov API for that single opportunity
-- Returns the latest data
-- Does NOT count against the daily search rate limit (or counts as 1)
+ALTER TABLE public.api_rate_limits ENABLE ROW LEVEL SECURITY;
 
-**3. Modify `src/pages/SearchHub.tsx`**
-- Default search behavior: query `cached_contracts` table instead of calling SAM API
-- Add a prominent "Sync from API" button (with rate-limit indicator) that fetches fresh data from SAM.gov and upserts into cache
-- On each contract card, add a small "Refresh" icon button showing `fetched_at` age (e.g., "2d ago") — clicking it calls `useRefreshContract`
-- Quick filters and keyword search operate on the local cache (fast, no API calls)
+CREATE POLICY "Users can view their own rate limits"
+  ON public.api_rate_limits FOR SELECT
+  USING (auth.uid() = user_id);
 
-**4. Modify `src/hooks/useSearch.tsx`**
-- `useSmartSearch` gains a `searchLocal` mode that queries the cache table
-- API search becomes "sync" mode, only triggered explicitly by the user
+CREATE POLICY "Service role manages rate limits"
+  ON public.api_rate_limits FOR ALL
+  USING (true)
+  WITH CHECK (true);
+```
 
-**5. Update search result cards in `SearchHub.tsx`**
-- Add a `RefreshCw` icon button per card
-- Show "Last updated: X ago" timestamp from `fetched_at`
-- Refresh button calls the single-contract refresh mutation
+A database function to atomically increment and check:
 
-### User Flow
-1. **First visit**: Cache is empty → user clicks "Sync from API" → results fetched and stored
-2. **Subsequent visits**: Search queries the cache instantly (no API call)
-3. **Per-contract refresh**: User clicks refresh icon on a card → that one contract is re-fetched from SAM.gov
-4. **Bulk sync**: User clicks "Sync from API" again to pull latest batch (counts against daily limit)
+```sql
+CREATE OR REPLACE FUNCTION public.check_and_increment_rate_limit(
+  _user_id uuid,
+  _api_name text,
+  _daily_limit integer
+)
+RETURNS TABLE(allowed boolean, current_count integer, daily_limit integer)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
+AS $$
+DECLARE
+  _count integer;
+BEGIN
+  INSERT INTO api_rate_limits (user_id, api_name, request_date, request_count)
+  VALUES (_user_id, _api_name, CURRENT_DATE, 1)
+  ON CONFLICT (user_id, api_name, request_date)
+  DO UPDATE SET request_count = api_rate_limits.request_count + 1, updated_at = now()
+  RETURNING request_count INTO _count;
 
-### Technical Details
-- Cache table uses `ON CONFLICT (contract_id, user_id) DO UPDATE` for upsert logic
-- Local search uses Supabase PostgREST filters: `.ilike('title', '%keyword%')`, `.in('set_aside', [...])`, etc.
-- `fetched_at` column lets the UI show data freshness per contract
-- The single-contract refresh edge function uses the SAM.gov `opportunities/{noticeId}` endpoint (1 API call, not a search)
+  RETURN QUERY SELECT _count <= _daily_limit, _count, _daily_limit;
+END;
+$$;
+```
+
+**2. Edge Function -- `supabase/functions/sam-search/index.ts`**
+
+Add rate limit check right after authentication succeeds (around line 94), before any API call logic:
+
+```typescript
+// After user is authenticated, check rate limit
+const serviceClient = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+);
+
+const DAILY_LIMIT = 50;
+const { data: rateData, error: rateError } = await serviceClient
+  .rpc('check_and_increment_rate_limit', {
+    _user_id: user.id,
+    _api_name: 'sam_search',
+    _daily_limit: DAILY_LIMIT,
+  });
+
+if (rateError) {
+  console.error('Rate limit check failed:', rateError);
+  // Fail open -- allow the request if rate limiting breaks
+} else if (rateData?.[0] && !rateData[0].allowed) {
+  return new Response(JSON.stringify({
+    error: 'Rate limit exceeded',
+    message: `You've reached your daily limit of ${DAILY_LIMIT} searches. Your limit resets at midnight UTC.`,
+    current_count: rateData[0].current_count,
+    daily_limit: DAILY_LIMIT,
+  }), {
+    status: 429,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+```
+
+Key detail: the rate limit is only checked when a real SAM.gov API call will be made (i.e., when `SAM_API_KEY` is configured). Mock data responses skip the rate limit.
+
+**3. Frontend -- `src/hooks/useSearch.tsx`**
+
+Update the error handling to detect 429 responses and show a user-friendly toast:
+
+```typescript
+// In the search function's error handling
+if (error.message?.includes('Rate limit exceeded') || error.status === 429) {
+  toast.error("Daily search limit reached. Your limit resets at midnight UTC.");
+}
+```
+
+### Summary of files changed
+| File | Change |
+|------|--------|
+| Migration SQL | New `api_rate_limits` table + `check_and_increment_rate_limit` function |
+| `supabase/functions/sam-search/index.ts` | Add rate limit check after auth, before API call |
+| `src/hooks/useSearch.tsx` | Handle 429 rate limit error with toast message |
 
