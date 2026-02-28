@@ -146,6 +146,7 @@ const SearchHub = () => {
   const [advState, setAdvState] = useState("");
   const [advType, setAdvType] = useState("");
   const [advSetAside, setAdvSetAside] = useState<string[]>([]);
+  const [advContractType, setAdvContractType] = useState("");
 
   const setAsideOptions = [
     { value: "Small Business", label: "Small Business" },
@@ -158,7 +159,15 @@ const SearchHub = () => {
     { value: "SDB", label: "SDB" },
   ];
 
-  const hasAdvancedFilters = !!(advNaics.length > 0 || advPsc.length > 0 || advMinValue || advMaxValue || advAgency || advDeadline || advState || advType || advSetAside.length > 0);
+  const contractTypeOptions = [
+    { value: "FFP", label: "Firm Fixed Price (FFP)" },
+    { value: "IDIQ", label: "IDIQ" },
+    { value: "BPA", label: "BPA" },
+    { value: "T&M", label: "Time & Materials (T&M)" },
+    { value: "Cost-Plus", label: "Cost-Plus" },
+  ];
+
+  const hasAdvancedFilters = !!(advNaics.length > 0 || advPsc.length > 0 || advMinValue || advMaxValue || advAgency || advDeadline || advState || advType || advSetAside.length > 0 || advContractType);
 
   const agencyOptions = [
     "Department of Defense",
