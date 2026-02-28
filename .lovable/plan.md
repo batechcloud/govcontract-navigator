@@ -1,124 +1,29 @@
 
 
-## Add Per-User Rate Limiting to SAM Search
+## Plan: Add Feature Parity to Subcontract Cards
 
-### Problem
-The SAM.gov API has a 450 requests/day global quota. A single user making many searches could exhaust the limit for everyone.
+### Current State
+- Prime contract cards have: Save, Start Bid, overflow menu (Ask AI, Score, View on SAM.gov)
+- Subcontract cards only have: "View on USASpending" button
+- Subcontracts come from USASpending (historical awards), not SAM.gov (active solicitations)
 
-### Approach
-Use a new `api_rate_limits` database table to track per-user daily SAM.gov API calls. The edge function checks the count before making an API call and rejects requests that exceed the limit with a clear error message.
+### What to Add to Subcontract Cards
 
-### Design Decisions
-- **Daily limit per user**: 50 requests/day (allows ~9 active users at full capacity within the 450 global limit)
-- **Storage**: A lightweight `api_rate_limits` table with a composite unique constraint on `(user_id, api_name, date)`
-- **Reset**: Automatic daily reset by using the current date as a key -- no cleanup jobs needed
-- **Graceful handling**: When rate-limited, return a 429 status with a clear message and the reset time, so the frontend can display it
+**1. Save button** — Allow tracking subcontracts in the pipeline. Adapt `handleTrack` to accept subcontract data by mapping SubawardResult fields to the tracked_contracts format (use subaward_number as contract_id, prime_recipient as agency, etc.).
 
-### Changes
+**2. Ask AI button** — Reuse the same AI chat flow. Pre-fill a question like: "Tell me about this subcontract from [prime_recipient] to [subawardee] worth $[amount] for: [description]. How can I position my company for similar subcontracting opportunities?"
 
-**1. Database Migration -- new `api_rate_limits` table**
+**3. Overflow menu** — Include Ask AI, View on USASpending (moved from standalone button), and a new "Research Prime Contractor" option that searches for the prime recipient.
 
-```sql
-CREATE TABLE public.api_rate_limits (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  api_name text NOT NULL DEFAULT 'sam_search',
-  request_date date NOT NULL DEFAULT CURRENT_DATE,
-  request_count integer NOT NULL DEFAULT 1,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now(),
-  UNIQUE (user_id, api_name, request_date)
-);
+**4. Remove "Start Bid"** — Subcontracts are historical awards, not open solicitations, so "Start Bid" doesn't apply.
 
-ALTER TABLE public.api_rate_limits ENABLE ROW LEVEL SECURITY;
+**5. No attachment summarization** — USASpending subaward data doesn't include document attachments, so this feature genuinely does not apply. The detail page link would also not work since subcontracts don't have SAM.gov noticeIds.
 
-CREATE POLICY "Users can view their own rate limits"
-  ON public.api_rate_limits FOR SELECT
-  USING (auth.uid() = user_id);
+### Files to Modify
+- **`src/pages/SearchHub.tsx`** — Update the subcontract card rendering (lines ~884-946) to add Save button, overflow menu with Ask AI and View on USASpending
 
-CREATE POLICY "Service role manages rate limits"
-  ON public.api_rate_limits FOR ALL
-  USING (true)
-  WITH CHECK (true);
-```
-
-A database function to atomically increment and check:
-
-```sql
-CREATE OR REPLACE FUNCTION public.check_and_increment_rate_limit(
-  _user_id uuid,
-  _api_name text,
-  _daily_limit integer
-)
-RETURNS TABLE(allowed boolean, current_count integer, daily_limit integer)
-LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
-AS $$
-DECLARE
-  _count integer;
-BEGIN
-  INSERT INTO api_rate_limits (user_id, api_name, request_date, request_count)
-  VALUES (_user_id, _api_name, CURRENT_DATE, 1)
-  ON CONFLICT (user_id, api_name, request_date)
-  DO UPDATE SET request_count = api_rate_limits.request_count + 1, updated_at = now()
-  RETURNING request_count INTO _count;
-
-  RETURN QUERY SELECT _count <= _daily_limit, _count, _daily_limit;
-END;
-$$;
-```
-
-**2. Edge Function -- `supabase/functions/sam-search/index.ts`**
-
-Add rate limit check right after authentication succeeds (around line 94), before any API call logic:
-
-```typescript
-// After user is authenticated, check rate limit
-const serviceClient = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-);
-
-const DAILY_LIMIT = 50;
-const { data: rateData, error: rateError } = await serviceClient
-  .rpc('check_and_increment_rate_limit', {
-    _user_id: user.id,
-    _api_name: 'sam_search',
-    _daily_limit: DAILY_LIMIT,
-  });
-
-if (rateError) {
-  console.error('Rate limit check failed:', rateError);
-  // Fail open -- allow the request if rate limiting breaks
-} else if (rateData?.[0] && !rateData[0].allowed) {
-  return new Response(JSON.stringify({
-    error: 'Rate limit exceeded',
-    message: `You've reached your daily limit of ${DAILY_LIMIT} searches. Your limit resets at midnight UTC.`,
-    current_count: rateData[0].current_count,
-    daily_limit: DAILY_LIMIT,
-  }), {
-    status: 429,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
-}
-```
-
-Key detail: the rate limit is only checked when a real SAM.gov API call will be made (i.e., when `SAM_API_KEY` is configured). Mock data responses skip the rate limit.
-
-**3. Frontend -- `src/hooks/useSearch.tsx`**
-
-Update the error handling to detect 429 responses and show a user-friendly toast:
-
-```typescript
-// In the search function's error handling
-if (error.message?.includes('Rate limit exceeded') || error.status === 429) {
-  toast.error("Daily search limit reached. Your limit resets at midnight UTC.");
-}
-```
-
-### Summary of files changed
-| File | Change |
-|------|--------|
-| Migration SQL | New `api_rate_limits` table + `check_and_increment_rate_limit` function |
-| `supabase/functions/sam-search/index.ts` | Add rate limit check after auth, before API call |
-| `src/hooks/useSearch.tsx` | Handle 429 rate limit error with toast message |
+### What Won't Change
+- No new edge functions or hooks needed
+- The existing `handleTrack` and `handleAskAI` patterns are reused with adapted data
+- No database changes — tracked_contracts table already supports flexible contract data
 
