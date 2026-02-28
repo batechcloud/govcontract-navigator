@@ -945,11 +945,11 @@ const SearchHub = () => {
                               )}
                             </div>
 
-                            <div className="flex items-center gap-2 pt-2">
+                            <div className="flex items-center gap-2 pt-1">
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-8 gap-1.5 text-xs"
+                                className="h-8 text-xs"
                                 disabled={trackedIds.has(sub.subaward_number || sub.id)}
                                 onClick={() => {
                                   trackContract.mutate({
@@ -970,15 +970,15 @@ const SearchHub = () => {
                                 }}
                               >
                                 {trackedIds.has(sub.subaward_number || sub.id) ? (
-                                  <><CheckCircle2 className="w-3.5 h-3.5 text-success" /> Saved</>
+                                  <><Heart className="w-3.5 h-3.5 mr-1.5 fill-current" /> Saved</>
                                 ) : (
-                                  <><Heart className="w-3.5 h-3.5" /> Save</>
+                                  <><Heart className="w-3.5 h-3.5 mr-1.5" /> Save</>
                                 )}
                               </Button>
                               <Button
-                                variant="outline"
+                                variant="hero"
                                 size="sm"
-                                className="h-8 gap-1.5 text-xs"
+                                className="h-8 text-xs"
                                 onClick={() => {
                                   const desc = sub.description || `Subaward #${sub.subaward_number}`;
                                   const amountStr = sub.amount ? `$${sub.amount.toLocaleString()}` : "unknown amount";
@@ -986,11 +986,12 @@ const SearchHub = () => {
                                   navigate(`/dashboard/ai?q=${preload}`);
                                 }}
                               >
-                                <Sparkles className="w-3.5 h-3.5" /> Ask AI
+                                <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                                Ask AI
                               </Button>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 ml-auto">
+                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                                     <MoreHorizontal className="w-4 h-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
