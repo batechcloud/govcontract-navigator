@@ -1220,6 +1220,22 @@ const SearchHub = () => {
               </Select>
             </div>
 
+            {/* Contract Type */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Contract Type</Label>
+              <Select value={advContractType || "any"} onValueChange={(val) => setAdvContractType(val === "any" ? "" : val)}>
+                <SelectTrigger className="h-10 text-sm">
+                  <SelectValue placeholder="Any contract type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">Any contract type</SelectItem>
+                  {contractTypeOptions.map(t => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Deadline */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Deadline</Label>
