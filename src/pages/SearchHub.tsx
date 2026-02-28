@@ -351,8 +351,9 @@ const SearchHub = () => {
     try {
       setCurrentPage(page);
       if (activeTab === "subcontracts") {
+        const combinedKeyword = buildSubawardKeyword(searchQuery, activeFilters);
         const res = await subawardSearch.mutateAsync({
-          keyword: searchQuery.trim(),
+          keyword: combinedKeyword,
           page: 1,
           limit: 25,
           prime_contractor: subPrimeContractor.trim() || undefined,
