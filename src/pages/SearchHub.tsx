@@ -221,6 +221,7 @@ const SearchHub = () => {
     setAdvDeadline("");
     setAdvState("");
     setAdvType("");
+    setAdvSetAside([]);
   };
 
   const clearSubFilters = () => {
