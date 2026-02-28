@@ -44,6 +44,84 @@ export type Database = {
         }
         Relationships: []
       }
+      cached_contracts: {
+        Row: {
+          agency: string | null
+          contract_id: string
+          contract_type: string | null
+          created_at: string
+          deadline: string | null
+          description: string | null
+          fetched_at: string
+          id: string
+          location: string | null
+          match_score: number | null
+          naics_code: string | null
+          posted_date: string | null
+          raw_data: Json | null
+          resource_links: string[] | null
+          sector: string | null
+          set_aside: string | null
+          solicitation_number: string | null
+          source: string | null
+          title: string | null
+          updated_at: string
+          url: string | null
+          user_id: string
+          value: number | null
+        }
+        Insert: {
+          agency?: string | null
+          contract_id: string
+          contract_type?: string | null
+          created_at?: string
+          deadline?: string | null
+          description?: string | null
+          fetched_at?: string
+          id?: string
+          location?: string | null
+          match_score?: number | null
+          naics_code?: string | null
+          posted_date?: string | null
+          raw_data?: Json | null
+          resource_links?: string[] | null
+          sector?: string | null
+          set_aside?: string | null
+          solicitation_number?: string | null
+          source?: string | null
+          title?: string | null
+          updated_at?: string
+          url?: string | null
+          user_id: string
+          value?: number | null
+        }
+        Update: {
+          agency?: string | null
+          contract_id?: string
+          contract_type?: string | null
+          created_at?: string
+          deadline?: string | null
+          description?: string | null
+          fetched_at?: string
+          id?: string
+          location?: string | null
+          match_score?: number | null
+          naics_code?: string | null
+          posted_date?: string | null
+          raw_data?: Json | null
+          resource_links?: string[] | null
+          sector?: string | null
+          set_aside?: string | null
+          solicitation_number?: string | null
+          source?: string | null
+          title?: string | null
+          updated_at?: string
+          url?: string | null
+          user_id?: string
+          value?: number | null
+        }
+        Relationships: []
+      }
       chat_conversations: {
         Row: {
           created_at: string
