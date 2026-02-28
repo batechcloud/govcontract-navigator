@@ -289,7 +289,7 @@ const SearchHub = () => {
   const handleApplyAdvancedFilters = async () => {
     setCurrentPage(0);
     setFiltersOpen(false);
-    await searchWithFilters(buildCombinedFilters() as any, 0);
+    await cachedSearch.searchLocal(buildCombinedFilters() as any, 0, 25);
   };
 
   const {
