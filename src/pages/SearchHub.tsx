@@ -624,6 +624,14 @@ const SearchHub = () => {
 
         {/* Quick Filters Row */}
         <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+            Quick Filters
+            {activeFilters.length > 0 && (
+              <span className="bg-accent text-card rounded-full min-w-[18px] h-[18px] px-1 text-[10px] flex items-center justify-center font-bold">
+                {activeFilters.length}
+              </span>
+            )}
+          </span>
           {quickFilters.map((filter) => (
             <button
               key={filter.label}
@@ -638,6 +646,15 @@ const SearchHub = () => {
               {filter.label}
             </button>
           ))}
+
+          {activeFilters.length > 0 && (
+            <button
+              onClick={() => { setActiveFilters([]); }}
+              className="text-[10px] text-muted-foreground hover:text-foreground underline ml-1"
+            >
+              Clear all
+            </button>
+          )}
 
           <button
             onClick={() => setFiltersOpen(true)}
