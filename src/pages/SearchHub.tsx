@@ -72,6 +72,7 @@ import { SECTOR_NAICS, SECTOR_CONFIG } from "@/config/sectors";
 import { useWinProbability, ContractScoreInput, ContractScoreResult } from "@/hooks/useWinProbability";
 import { NaicsCodeSelector } from "@/components/company/NaicsCodeSelector";
 import { PscCodeSelector } from "@/components/company/PscCodeSelector";
+import { Checkbox } from "@/components/ui/checkbox";
 import { WinScoreModal } from "@/components/search/WinScoreModal";
 import { useCompanyProfile } from "@/hooks/useProfile";
 
@@ -144,8 +145,20 @@ const SearchHub = () => {
   const [advDeadline, setAdvDeadline] = useState("");
   const [advState, setAdvState] = useState("");
   const [advType, setAdvType] = useState("");
+  const [advSetAside, setAdvSetAside] = useState<string[]>([]);
 
-  const hasAdvancedFilters = !!(advNaics.length > 0 || advPsc.length > 0 || advMinValue || advMaxValue || advAgency || advDeadline || advState || advType);
+  const setAsideOptions = [
+    { value: "Small Business", label: "Small Business" },
+    { value: "8(a)", label: "8(a)" },
+    { value: "WOSB", label: "WOSB" },
+    { value: "EDWOSB", label: "EDWOSB" },
+    { value: "HUBZone", label: "HUBZone" },
+    { value: "SDVOSB", label: "SDVOSB" },
+    { value: "VOSB", label: "VOSB" },
+    { value: "SDB", label: "SDB" },
+  ];
+
+  const hasAdvancedFilters = !!(advNaics.length > 0 || advPsc.length > 0 || advMinValue || advMaxValue || advAgency || advDeadline || advState || advType || advSetAside.length > 0);
 
   const agencyOptions = [
     "Department of Defense",
@@ -208,6 +221,7 @@ const SearchHub = () => {
     setAdvDeadline("");
     setAdvState("");
     setAdvType("");
+    setAdvSetAside([]);
   };
 
   const clearSubFilters = () => {
@@ -230,6 +244,7 @@ const SearchHub = () => {
       const qf = quickFilters.find(f => f.label === key);
       return qf?.filter.set_aside || [];
     });
+    const mergedSetAsides = [...new Set([...quickSetAsides, ...advSetAside])];
 
     let quickOpportunityType: string | null = null;
     activeFilters.forEach(key => {
@@ -241,7 +256,7 @@ const SearchHub = () => {
       keywords: searchQuery.trim() ? searchQuery.trim().split(/\s+/) : [],
       naics_codes: advNaics,
       psc_codes: advPsc,
-      set_aside: quickSetAsides,
+      set_aside: mergedSetAsides,
       agencies: advAgency ? [advAgency] : [],
       min_value: advMinValue ? parseInt(advMinValue) : null,
       max_value: advMaxValue ? parseInt(advMaxValue) : null,
@@ -431,6 +446,7 @@ const SearchHub = () => {
       const qf = quickFilters.find(f => f.label === key);
       return qf?.filter.set_aside || [];
     });
+    const mergedSetAsides = [...new Set([...quickSetAsides, ...advSetAside])];
     let quickOpportunityType: string | null = null;
     newActiveFilters.forEach(key => {
       const qf = quickFilters.find(f => f.label === key);
@@ -446,7 +462,7 @@ const SearchHub = () => {
       keywords: searchQuery.trim() ? searchQuery.trim().split(/\s+/) : [],
       naics_codes: advNaics,
       psc_codes: advPsc,
-      set_aside: quickSetAsides,
+      set_aside: mergedSetAsides,
       agencies: advAgency ? [advAgency] : [],
       min_value: advMinValue ? parseInt(advMinValue) : null,
       max_value: advMaxValue ? parseInt(advMaxValue) : null,
@@ -1138,6 +1154,28 @@ const SearchHub = () => {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Set-Aside Type */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Set-Aside Type</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {setAsideOptions.map(opt => (
+                  <label key={opt.value} className="flex items-center gap-2 cursor-pointer text-sm">
+                    <Checkbox
+                      checked={advSetAside.includes(opt.value)}
+                      onCheckedChange={(checked) => {
+                        setAdvSetAside(prev =>
+                          checked
+                            ? [...prev, opt.value]
+                            : prev.filter(v => v !== opt.value)
+                        );
+                      }}
+                    />
+                    {opt.label}
+                  </label>
+                ))}
+              </div>
             </div>
 
             {/* Agency */}
