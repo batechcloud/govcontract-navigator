@@ -244,6 +244,7 @@ const SearchHub = () => {
       const qf = quickFilters.find(f => f.label === key);
       return qf?.filter.set_aside || [];
     });
+    const mergedSetAsides = [...new Set([...quickSetAsides, ...advSetAside])];
 
     let quickOpportunityType: string | null = null;
     activeFilters.forEach(key => {
@@ -255,7 +256,7 @@ const SearchHub = () => {
       keywords: searchQuery.trim() ? searchQuery.trim().split(/\s+/) : [],
       naics_codes: advNaics,
       psc_codes: advPsc,
-      set_aside: quickSetAsides,
+      set_aside: mergedSetAsides,
       agencies: advAgency ? [advAgency] : [],
       min_value: advMinValue ? parseInt(advMinValue) : null,
       max_value: advMaxValue ? parseInt(advMaxValue) : null,
