@@ -906,10 +906,8 @@ const SearchHub = () => {
                                   </Button>
 
                                   <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                        <MoreHorizontal className="w-4 h-4" />
-                                      </Button>
+                                    <DropdownMenuTrigger className="inline-flex items-center justify-center rounded-md text-sm font-medium h-8 w-8 p-0 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                                      <MoreHorizontal className="w-4 h-4" />
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="bg-card border-border">
                                       <DropdownMenuItem onClick={() => handleAskAI(result)} className="gap-2 cursor-pointer">
@@ -1116,10 +1114,8 @@ const SearchHub = () => {
                                 Ask AI
                               </Button>
                               <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                    <MoreHorizontal className="w-4 h-4" />
-                                  </Button>
+                                <DropdownMenuTrigger className="inline-flex items-center justify-center rounded-md text-sm font-medium h-8 w-8 p-0 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                                  <MoreHorizontal className="w-4 h-4" />
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="bg-card border-border">
                                   {sub.prime_award_id && (
