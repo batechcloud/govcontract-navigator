@@ -15,6 +15,8 @@ import {
 import { useTrackedContracts, useTrackContract, useUpdateContractNotes, useUpdateContractStatus, TrackedContract } from "@/hooks/useTrackedContracts";
 import { SearchResult } from "@/hooks/useSearch";
 import { supabase } from "@/integrations/supabase/client";
+import { useWinProbability, ContractScoreInput, ContractScoreResult } from "@/hooks/useWinProbability";
+import { WinScoreModal } from "@/components/search/WinScoreModal";
 import { toast } from "sonner";
 import { PIPELINE_STATUSES } from "@/components/tracked/KanbanBoard";
 
@@ -86,6 +88,9 @@ const ContractDetail = () => {
   const trackContract = useTrackContract();
   const updateNotes = useUpdateContractNotes();
   const updateStatus = useUpdateContractStatus();
+  const winScore = useWinProbability();
+  const [scoreModalOpen, setScoreModalOpen] = useState(false);
+  const [scoreResult, setScoreResult] = useState<ContractScoreResult | null>(null);
 
   // Find tracked version by contract_id or by table id
   const tracked = trackedContracts?.find(
@@ -468,13 +473,29 @@ const ContractDetail = () => {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => {
-                  navigate(`/dashboard/search`);
-                  toast.info("Use the Score This button on search results to score contracts.");
+                onClick={async () => {
+                  if (!contract) return;
+                  const input: ContractScoreInput = {
+                    title: contract.title,
+                    agency: contract.agency,
+                    value: contract.value,
+                    setAside: contract.setAside,
+                    naicsCode: contract.naicsCode,
+                    deadline: contract.deadline,
+                    type: contract.type,
+                    description: contract.description,
+                  };
+                  setScoreResult(null);
+                  setScoreModalOpen(true);
+                  try {
+                    const result = await winScore.mutateAsync(input);
+                    setScoreResult(result);
+                  } catch { /* error handled by hook toast */ }
                 }}
+                disabled={winScore.isPending}
                 className="gap-2 border-purple-400/40 text-purple-400 hover:bg-purple-400/10 hover:border-purple-400"
               >
-                <Sparkles className="w-4 h-4" /> Score This
+                <Sparkles className="w-4 h-4" /> {winScore.isPending ? "Scoring..." : "Score This"}
               </Button>
               {contract.link && (
                 <Button variant="ghost" onClick={() => window.open(contract.link, "_blank")} className="gap-2">
@@ -547,6 +568,14 @@ const ContractDetail = () => {
           </Card>
         )}
       </motion.div>
+
+      <WinScoreModal
+        open={scoreModalOpen}
+        onOpenChange={setScoreModalOpen}
+        contractTitle={contract?.title || ""}
+        result={scoreResult}
+        isLoading={winScore.isPending}
+      />
     </DashboardLayout>
   );
 };
