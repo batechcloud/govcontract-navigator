@@ -76,12 +76,12 @@ import { WinScoreModal } from "@/components/search/WinScoreModal";
 import { useCompanyProfile } from "@/hooks/useProfile";
 
 const quickFilters = [
-  { label: "Small Business", filter: { set_aside: ["Small Business"] } },
-  { label: "Veteran-Owned", filter: { set_aside: ["SDVOSB", "VOSB"] } },
-  { label: "Woman-Owned", filter: { set_aside: ["WOSB", "EDWOSB"] } },
-  { label: "Minority-Owned", filter: { set_aside: ["8(a)", "SDB"] } },
-  { label: "HUBZone", filter: { set_aside: ["HUBZone"] } },
-  { label: "Federal", filter: { opportunity_type: "Federal" } },
+  { label: "Small Business", filter: { set_aside: ["Small Business"] }, subKeyword: "small business" },
+  { label: "Veteran-Owned", filter: { set_aside: ["SDVOSB", "VOSB"] }, subKeyword: "veteran" },
+  { label: "Woman-Owned", filter: { set_aside: ["WOSB", "EDWOSB"] }, subKeyword: "woman" },
+  { label: "Minority-Owned", filter: { set_aside: ["8(a)", "SDB"] }, subKeyword: "minority" },
+  { label: "HUBZone", filter: { set_aside: ["HUBZone"] }, subKeyword: "hubzone" },
+  { label: "Federal", filter: { opportunity_type: "Federal" }, subKeyword: "" },
 ];
 
 const SearchHub = () => {
