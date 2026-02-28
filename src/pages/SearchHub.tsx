@@ -641,6 +641,33 @@ const SearchHub = () => {
           )}
         </div>
 
+        {/* Search quota indicator */}
+        {rateLimit && (
+          <div className="flex items-center gap-2 text-xs">
+            <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden max-w-[200px]">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  rateLimit.remaining <= 5
+                    ? "bg-destructive"
+                    : rateLimit.remaining <= 15
+                    ? "bg-yellow-500"
+                    : "bg-primary"
+                }`}
+                style={{ width: `${(rateLimit.remaining / rateLimit.limit) * 100}%` }}
+              />
+            </div>
+            <span className={`font-medium ${
+              rateLimit.remaining <= 5
+                ? "text-destructive"
+                : rateLimit.remaining <= 15
+                ? "text-yellow-500"
+                : "text-muted-foreground"
+            }`}>
+              {rateLimit.remaining}/{rateLimit.limit} searches left today
+            </span>
+          </div>
+        )}
+
         {/* Parsed filters display */}
         <AnimatePresence>
           {parsedFilters && (
