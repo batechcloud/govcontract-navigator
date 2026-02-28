@@ -976,9 +976,9 @@ const SearchHub = () => {
                                 )}
                               </Button>
                               <Button
-                                variant="outline"
+                                variant="hero"
                                 size="sm"
-                                className="h-8 gap-1.5 text-xs"
+                                className="h-8 text-xs"
                                 onClick={() => {
                                   const desc = sub.description || `Subaward #${sub.subaward_number}`;
                                   const amountStr = sub.amount ? `$${sub.amount.toLocaleString()}` : "unknown amount";
