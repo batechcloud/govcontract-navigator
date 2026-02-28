@@ -1156,6 +1156,28 @@ const SearchHub = () => {
               </Select>
             </div>
 
+            {/* Set-Aside Type */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Set-Aside Type</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {setAsideOptions.map(opt => (
+                  <label key={opt.value} className="flex items-center gap-2 cursor-pointer text-sm">
+                    <Checkbox
+                      checked={advSetAside.includes(opt.value)}
+                      onCheckedChange={(checked) => {
+                        setAdvSetAside(prev =>
+                          checked
+                            ? [...prev, opt.value]
+                            : prev.filter(v => v !== opt.value)
+                        );
+                      }}
+                    />
+                    {opt.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+
             {/* Agency */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Agency</Label>
