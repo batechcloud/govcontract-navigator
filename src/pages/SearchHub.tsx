@@ -145,8 +145,20 @@ const SearchHub = () => {
   const [advDeadline, setAdvDeadline] = useState("");
   const [advState, setAdvState] = useState("");
   const [advType, setAdvType] = useState("");
+  const [advSetAside, setAdvSetAside] = useState<string[]>([]);
 
-  const hasAdvancedFilters = !!(advNaics.length > 0 || advPsc.length > 0 || advMinValue || advMaxValue || advAgency || advDeadline || advState || advType);
+  const setAsideOptions = [
+    { value: "Small Business", label: "Small Business" },
+    { value: "8(a)", label: "8(a)" },
+    { value: "WOSB", label: "WOSB" },
+    { value: "EDWOSB", label: "EDWOSB" },
+    { value: "HUBZone", label: "HUBZone" },
+    { value: "SDVOSB", label: "SDVOSB" },
+    { value: "VOSB", label: "VOSB" },
+    { value: "SDB", label: "SDB" },
+  ];
+
+  const hasAdvancedFilters = !!(advNaics.length > 0 || advPsc.length > 0 || advMinValue || advMaxValue || advAgency || advDeadline || advState || advType || advSetAside.length > 0);
 
   const agencyOptions = [
     "Department of Defense",
