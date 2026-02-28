@@ -402,14 +402,14 @@ const SearchHub = () => {
   const trackedIds = new Set(trackedContracts?.map(c => c.contract_id) || []);
 
   const handleSearch = async (page = 0) => {
-    if (!searchQuery.trim() && !hasAdvancedFilters && activeFilters.length === 0) {
-      toast.error("Please enter a search query or apply filters");
-      return;
-    }
     try {
       setCurrentPage(page);
       if (activeTab === "subcontracts") {
         const combinedKeyword = buildSubawardKeyword(searchQuery, activeFilters);
+        if (!combinedKeyword && !hasSubFilters) {
+          toast.error("Please enter a search query or apply filters");
+          return;
+        }
         const res = await subawardSearch.mutateAsync({
           keyword: combinedKeyword,
           page: 1,
@@ -423,12 +423,19 @@ const SearchHub = () => {
         setSubawardPage(1);
         setSubawardHasNext(res.page_metadata?.hasNext ?? false);
         setSubawardTotal(res.page_metadata?.total ?? res.results.length);
-      } else if (hasAdvancedFilters || activeFilters.length > 0) {
-        await searchWithFilters(buildCombinedFilters() as any, page);
       } else {
-        await search(searchQuery, page);
+        // Cache-first: search local cached_contracts table
+        const filters = buildCombinedFilters();
+        await cachedSearch.searchLocal(filters as any, page, 25);
       }
     } catch (error) {}
+  };
+
+  const handleSyncFromApi = async () => {
+    const filters = buildCombinedFilters();
+    await syncFromApi.mutateAsync({ filters: filters as any, page: 0, limit: 25 });
+    // After sync, refresh cache search to show new results
+    await cachedSearch.searchLocal(filters as any, 0, 25);
   };
 
   const handleLoadMoreSubawards = async () => {
