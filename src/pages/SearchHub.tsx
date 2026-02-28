@@ -376,7 +376,7 @@ const SearchHub = () => {
   const handleLoadMoreSubawards = async () => {
     const nextPage = subawardPage + 1;
     const res = await subawardSearch.mutateAsync({
-      keyword: searchQuery.trim(),
+      keyword: buildSubawardKeyword(searchQuery, activeFilters),
       page: nextPage,
       limit: 25,
       prime_contractor: subPrimeContractor.trim() || undefined,
