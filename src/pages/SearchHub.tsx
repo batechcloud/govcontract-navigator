@@ -896,88 +896,29 @@ const SearchHub = () => {
                               <div className="flex items-center gap-2 flex-wrap">
                                 <Badge variant="glass" className="text-xs">Subcontract</Badge>
                                 {sub.agency && <Badge variant="outline" className="text-xs">{sub.agency}</Badge>}
-                              </div>
-                              <div className="flex items-center gap-1 shrink-0">
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8"
-                                        disabled={trackedIds.has(sub.subaward_number || sub.id)}
-                                        onClick={() => {
-                                          trackContract.mutate({
-                                            contract_id: sub.subaward_number || sub.id,
-                                            contract_title: sub.description || `Subaward #${sub.subaward_number}`,
-                                            contract_agency: sub.prime_recipient || null,
-                                            response_deadline: null,
-                                            status: "watching",
-                                            priority: "medium",
-                                            notes: `Subawardee: ${sub.subawardee || "N/A"}`,
-                                            match_score: null,
-                                            posted_date: sub.action_date || null,
-                                            contract_value: sub.amount ? String(sub.amount) : null,
-                                            set_aside: null,
-                                            naics_code: null,
-                                            resource_links: sub.prime_award_id ? [`https://www.usaspending.gov/award/${sub.prime_award_id}`] : null,
-                                          });
-                                        }}
-                                      >
-                                        {trackedIds.has(sub.subaward_number || sub.id) ? (
-                                          <CheckCircle2 className="w-4 h-4 text-success" />
-                                        ) : (
-                                          <Bookmark className="w-4 h-4" />
-                                        )}
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      {trackedIds.has(sub.subaward_number || sub.id) ? "Already saved" : "Save to pipeline"}
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                      <MoreHorizontal className="w-4 h-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => {
-                                      const desc = sub.description || `Subaward #${sub.subaward_number}`;
-                                      const amountStr = sub.amount ? `$${sub.amount.toLocaleString()}` : "unknown amount";
-                                      const preload = encodeURIComponent(`Tell me about this subcontract from ${sub.prime_recipient || "a prime contractor"} to ${sub.subawardee || "a subcontractor"} worth ${amountStr} for: "${desc}". How can I position my company for similar subcontracting opportunities?`);
-                                      navigate(`/dashboard/ai?q=${preload}`);
-                                    }}>
-                                      <Sparkles className="w-4 h-4 mr-2" />
-                                      Ask AI
-                                    </DropdownMenuItem>
-                                    {sub.prime_award_id && (
-                                      <DropdownMenuItem onClick={() => window.open(`https://www.usaspending.gov/award/${sub.prime_award_id}`, '_blank')}>
-                                        <ExternalLink className="w-4 h-4 mr-2" />
-                                        View on USASpending
-                                      </DropdownMenuItem>
-                                    )}
-                                    {sub.prime_recipient && (
-                                      <DropdownMenuItem onClick={() => {
-                                        setActiveTab("prime");
-                                        setSearchQuery(sub.prime_recipient!);
-                                        setTimeout(() => {
-                                          search(sub.prime_recipient!, 0);
-                                        }, 100);
-                                      }}>
-                                        <Search className="w-4 h-4 mr-2" />
-                                        Research Prime Contractor
-                                      </DropdownMenuItem>
-                                    )}
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
+                                {trackedIds.has(sub.subaward_number || sub.id) && (
+                                  <Badge variant="success" className="text-xs">Saved</Badge>
+                                )}
                               </div>
                             </div>
 
-                            <h3 className="font-heading font-semibold text-base text-foreground leading-snug">
-                              {sub.description || `Subaward #${sub.subaward_number}`}
-                            </h3>
+                            <Link
+                              to={`/dashboard/contract/${encodeURIComponent(sub.subaward_number || sub.id)}`}
+                              state={{ contractData: {
+                                id: sub.subaward_number || sub.id,
+                                title: sub.description || `Subaward #${sub.subaward_number}`,
+                                agency: sub.prime_recipient || "Unknown",
+                                value: sub.amount ? `$${sub.amount.toLocaleString()}` : undefined,
+                                postedDate: sub.action_date,
+                                location: sub.place_of_performance,
+                                description: sub.description,
+                                link: sub.prime_award_id ? `https://www.usaspending.gov/award/${sub.prime_award_id}` : undefined,
+                              }}}
+                            >
+                              <h3 className="font-heading font-semibold text-base text-foreground leading-snug hover:text-primary hover:underline transition-colors cursor-pointer">
+                                {sub.description || `Subaward #${sub.subaward_number}`}
+                              </h3>
+                            </Link>
 
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                               <span className="flex items-center gap-1">
@@ -1002,6 +943,78 @@ const SearchHub = () => {
                                   {sub.place_of_performance}
                                 </span>
                               )}
+                            </div>
+
+                            <div className="flex items-center gap-2 pt-1 border-t border-border/50 mt-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 gap-1.5 text-xs"
+                                disabled={trackedIds.has(sub.subaward_number || sub.id)}
+                                onClick={() => {
+                                  trackContract.mutate({
+                                    contract_id: sub.subaward_number || sub.id,
+                                    contract_title: sub.description || `Subaward #${sub.subaward_number}`,
+                                    contract_agency: sub.prime_recipient || null,
+                                    response_deadline: null,
+                                    status: "watching",
+                                    priority: "medium",
+                                    notes: `Subawardee: ${sub.subawardee || "N/A"}`,
+                                    match_score: null,
+                                    posted_date: sub.action_date || null,
+                                    contract_value: sub.amount ? String(sub.amount) : null,
+                                    set_aside: null,
+                                    naics_code: null,
+                                    resource_links: sub.prime_award_id ? [`https://www.usaspending.gov/award/${sub.prime_award_id}`] : null,
+                                  });
+                                }}
+                              >
+                                {trackedIds.has(sub.subaward_number || sub.id) ? (
+                                  <><CheckCircle2 className="w-3.5 h-3.5 text-success" /> Saved</>
+                                ) : (
+                                  <><Heart className="w-3.5 h-3.5" /> Save</>
+                                )}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 gap-1.5 text-xs"
+                                onClick={() => {
+                                  const desc = sub.description || `Subaward #${sub.subaward_number}`;
+                                  const amountStr = sub.amount ? `$${sub.amount.toLocaleString()}` : "unknown amount";
+                                  const preload = encodeURIComponent(`Tell me about this subcontract from ${sub.prime_recipient || "a prime contractor"} to ${sub.subawardee || "a subcontractor"} worth ${amountStr} for: "${desc}". How can I position my company for similar subcontracting opportunities?`);
+                                  navigate(`/dashboard/ai?q=${preload}`);
+                                }}
+                              >
+                                <Sparkles className="w-3.5 h-3.5" /> Ask AI
+                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 ml-auto">
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  {sub.prime_award_id && (
+                                    <DropdownMenuItem onClick={() => window.open(`https://www.usaspending.gov/award/${sub.prime_award_id}`, '_blank')}>
+                                      <ExternalLink className="w-4 h-4 mr-2" />
+                                      View on USASpending
+                                    </DropdownMenuItem>
+                                  )}
+                                  {sub.prime_recipient && (
+                                    <DropdownMenuItem onClick={() => {
+                                      setActiveTab("prime");
+                                      setSearchQuery(sub.prime_recipient!);
+                                      setTimeout(() => {
+                                        search(sub.prime_recipient!, 0);
+                                      }, 100);
+                                    }}>
+                                      <Search className="w-4 h-4 mr-2" />
+                                      Research Prime Contractor
+                                    </DropdownMenuItem>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </div>
                         </CardContent>
