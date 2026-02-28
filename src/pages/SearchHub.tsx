@@ -970,9 +970,9 @@ const SearchHub = () => {
                                 }}
                               >
                                 {trackedIds.has(sub.subaward_number || sub.id) ? (
-                                  <><CheckCircle2 className="w-3.5 h-3.5 text-success" /> Saved</>
+                                  <><Heart className="w-3.5 h-3.5 mr-1.5 fill-current" /> Saved</>
                                 ) : (
-                                  <><Heart className="w-3.5 h-3.5" /> Save</>
+                                  <><Heart className="w-3.5 h-3.5 mr-1.5" /> Save</>
                                 )}
                               </Button>
                               <Button
