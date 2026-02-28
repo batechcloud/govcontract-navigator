@@ -986,7 +986,8 @@ const SearchHub = () => {
                                   navigate(`/dashboard/ai?q=${preload}`);
                                 }}
                               >
-                                <Sparkles className="w-3.5 h-3.5" /> Ask AI
+                                <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                                Ask AI
                               </Button>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
