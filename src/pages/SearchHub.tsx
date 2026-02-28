@@ -1011,16 +1011,30 @@ const SearchHub = () => {
                   <Card variant="glass" className="text-center py-12">
                     <CardContent>
                       <Search className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="font-heading font-semibold text-lg mb-2">Ready to find contracts</h3>
-                      <p className="text-muted-foreground">
-                        Type what your business does and we'll find matching government opportunities.
+                      <h3 className="font-heading font-semibold text-lg mb-2">
+                        {cacheCount === 0 ? "No contracts cached yet" : "No matching contracts found"}
+                      </h3>
+                      <p className="text-muted-foreground mb-4">
+                        {cacheCount === 0
+                          ? "Click 'Sync from API' to fetch contracts from SAM.gov and build your local cache."
+                          : "Try different search terms or filters, or sync fresh data from the API."}
                       </p>
+                      {cacheCount === 0 && (
+                        <Button
+                          variant="hero"
+                          onClick={handleSyncFromApi}
+                          disabled={syncFromApi.isPending}
+                        >
+                          <RefreshCw className={`w-4 h-4 mr-2 ${syncFromApi.isPending ? "animate-spin" : ""}`} />
+                          {syncFromApi.isPending ? "Syncing..." : "Sync from API"}
+                        </Button>
+                      )}
                     </CardContent>
                   </Card>
                 )}
               </div>
 
-              {results.length > 0 && hasMore && !isSearching && (
+              {cachedSearch.results.length > 0 && cachedSearch.total > cachedSearch.results.length && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -1028,17 +1042,15 @@ const SearchHub = () => {
                 >
                   <Button
                     variant="outline"
-                    onClick={loadNextBatch}
-                    disabled={isLoadingBatch}
+                    onClick={() => handleSearch(currentPage + 1)}
+                    disabled={cachedSearch.isSearching}
                     className="gap-2"
                   >
-                    <RefreshCw className={`w-4 h-4 ${isLoadingBatch ? "animate-spin" : ""}`} />
-                    {isLoadingBatch ? "Loading..." : "Load More"}
+                    <ArrowUp className="w-4 h-4 rotate-180" />
+                    Load More
                   </Button>
                   <p className="text-xs text-muted-foreground">
-                    {total - results.length > 0
-                      ? `${(total - results.length).toLocaleString()} more available`
-                      : "All loaded"}
+                    {(cachedSearch.total - cachedSearch.results.length).toLocaleString()} more in cache
                   </p>
                 </motion.div>
               )}
