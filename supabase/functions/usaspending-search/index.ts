@@ -172,14 +172,22 @@ async function searchSubawards(params: {
     combinedKeyword = combinedKeyword ? `${combinedKeyword} ${prime_contractor}` : prime_contractor;
   }
 
+  // When keyword is present, sort by action_date (most recent) for relevance
+  // instead of amount which returns the same outlier records regardless of keyword
+  const effectiveSort = combinedKeyword ? "action_date" : sort;
+  const effectiveOrder = combinedKeyword ? "desc" : order;
+
+  // Request more results so we have enough after post-filtering
+  const fetchLimit = combinedKeyword ? Math.min(limit * 4, 100) : limit;
+
   const response = await fetch(`${USASPENDING_API}/subawards/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       page,
-      limit,
-      sort,
-      order,
+      limit: fetchLimit,
+      sort: effectiveSort,
+      order: effectiveOrder,
       ...(combinedKeyword ? { keyword: combinedKeyword } : {}),
     }),
   });
@@ -195,6 +203,23 @@ async function searchSubawards(params: {
   // Client-side filtering (the subawards endpoint has limited server-side filtering)
   let results = data.results || [];
 
+  // Post-filter: ensure keyword terms actually appear in description or recipient name
+  if (combinedKeyword) {
+    const terms = combinedKeyword.toLowerCase().split(/\s+/).filter(Boolean);
+    results = results.filter((r: any) => {
+      const text = [
+        r.description || "",
+        r.subaward_description || "",
+        r.recipient_name || "",
+        r.sub_awardee_or_recipient_legal || "",
+        r.prime_recipient_name || "",
+        r.awarding_agency_name || "",
+      ].join(" ").toLowerCase();
+      // At least one keyword term must appear in the combined text
+      return terms.some(t => text.includes(t));
+    });
+  }
+
   if (prime_contractor) {
     const lc = prime_contractor.toLowerCase();
     results = results.filter((r: any) =>
@@ -203,10 +228,10 @@ async function searchSubawards(params: {
   }
 
   if (params.min_amount !== undefined) {
-    results = results.filter((r: any) => (r.subaward_amount || 0) >= params.min_amount!);
+    results = results.filter((r: any) => (r.subaward_amount || r.amount || 0) >= params.min_amount!);
   }
   if (params.max_amount !== undefined) {
-    results = results.filter((r: any) => (r.subaward_amount || 0) <= params.max_amount!);
+    results = results.filter((r: any) => (r.subaward_amount || r.amount || 0) <= params.max_amount!);
   }
   if (params.agency) {
     const agLc = params.agency.toLowerCase();
@@ -215,5 +240,16 @@ async function searchSubawards(params: {
     );
   }
 
-  return { ...data, results };
+  // Trim back to requested limit after filtering
+  results = results.slice(0, limit);
+
+  return {
+    ...data,
+    results,
+    page_metadata: {
+      ...data.page_metadata,
+      // Adjust if we filtered down significantly
+      total: data.page_metadata?.total ?? results.length,
+    },
+  };
 }
