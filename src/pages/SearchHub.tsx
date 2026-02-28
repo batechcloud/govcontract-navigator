@@ -522,7 +522,7 @@ const SearchHub = () => {
     };
 
     if (newActiveFilters.length > 0 || searchQuery.trim() || hasAdvancedFilters) {
-      await searchWithFilters(combinedFilters as any, 0);
+      await cachedSearch.searchLocal(combinedFilters as any, 0, 25);
     }
   };
 
