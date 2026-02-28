@@ -217,7 +217,7 @@ export function useSyncFromApi() {
         match_score: r.matchScore || null,
         resource_links: r.resourceLinks || [],
         solicitation_number: r.solicitationNumber || null,
-        raw_data: r,
+        raw_data: r as any,
         fetched_at: new Date().toISOString(),
       }));
 
