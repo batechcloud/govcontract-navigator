@@ -945,9 +945,9 @@ const SearchHub = () => {
                               )}
                             </div>
 
-                            <div className="flex items-center gap-2 pt-1 border-t border-border/50 mt-1">
+                            <div className="flex items-center gap-2 pt-2">
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
                                 className="h-8 gap-1.5 text-xs"
                                 disabled={trackedIds.has(sub.subaward_number || sub.id)}
@@ -976,7 +976,7 @@ const SearchHub = () => {
                                 )}
                               </Button>
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
                                 className="h-8 gap-1.5 text-xs"
                                 onClick={() => {
@@ -990,26 +990,26 @@ const SearchHub = () => {
                               </Button>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 ml-auto">
+                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 ml-auto">
                                     <MoreHorizontal className="w-4 h-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
+                                <DropdownMenuContent align="end" className="bg-card border-border">
                                   {sub.prime_award_id && (
-                                    <DropdownMenuItem onClick={() => window.open(`https://www.usaspending.gov/award/${sub.prime_award_id}`, '_blank')}>
-                                      <ExternalLink className="w-4 h-4 mr-2" />
+                                    <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => window.open(`https://www.usaspending.gov/award/${sub.prime_award_id}`, '_blank')}>
+                                      <ExternalLink className="w-4 h-4" />
                                       View on USASpending
                                     </DropdownMenuItem>
                                   )}
                                   {sub.prime_recipient && (
-                                    <DropdownMenuItem onClick={() => {
+                                    <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => {
                                       setActiveTab("prime");
                                       setSearchQuery(sub.prime_recipient!);
                                       setTimeout(() => {
                                         search(sub.prime_recipient!, 0);
                                       }, 100);
                                     }}>
-                                      <Search className="w-4 h-4 mr-2" />
+                                      <Search className="w-4 h-4" />
                                       Research Prime Contractor
                                     </DropdownMenuItem>
                                   )}
