@@ -871,6 +871,16 @@ const SearchHub = () => {
                                     <FileText className="w-3.5 h-3.5 mr-1.5" />
                                     Start Bid
                                   </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleScoreContract(result)}
+                                    disabled={winScore.isPending}
+                                    className="h-8 text-xs gap-1.5 border-purple-400/40 text-purple-400 hover:bg-purple-400/10 hover:border-purple-400"
+                                  >
+                                    <Sparkles className="w-3.5 h-3.5" />
+                                    Score
+                                  </Button>
 
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
