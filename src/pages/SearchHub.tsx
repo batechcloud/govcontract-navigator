@@ -75,6 +75,7 @@ import { PscCodeSelector } from "@/components/company/PscCodeSelector";
 import { Checkbox } from "@/components/ui/checkbox";
 import { WinScoreModal } from "@/components/search/WinScoreModal";
 import { useCompanyProfile } from "@/hooks/useProfile";
+import { computeHeuristicScore, getScoreColor } from "@/lib/heuristic-score";
 
 const quickFilters = [
   { label: "Small Business", filter: { set_aside: ["Small Business"] }, subKeyword: "small business" },
