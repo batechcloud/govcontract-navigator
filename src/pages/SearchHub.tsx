@@ -834,12 +834,11 @@ const SearchHub = () => {
                       </CardContent>
                     </Card>
                   ))
-                ) : results.length > 0 ? (
-                  results.map((result, index) => {
+                ) : cachedSearch.results.length > 0 ? (
+                  cachedSearch.results.map((result, index) => {
                     const isTracked = trackedIds.has(result.id);
                     const match = getMatchLabel(result.matchScore);
-                    const batchIndex = batchBoundaries.indexOf(index);
-                    const isBatchStart = batchIndex !== -1;
+                    const fetchedAt = (result as any).fetchedAt;
                     return (
                       <div key={result.id}>
                         {isBatchStart && (
