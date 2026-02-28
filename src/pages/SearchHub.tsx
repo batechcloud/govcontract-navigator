@@ -627,27 +627,43 @@ const SearchHub = () => {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="hero"
-                  className="h-12"
-                  onClick={() => handleSearch(0)}
-                  disabled={isSearching}
-                >
-                  {isParsing ? (
-                    <Sparkles className="w-4 h-4 sm:mr-2 animate-spin" />
-                  ) : (
+                  <Button
+                    variant="hero"
+                    className="h-12"
+                    onClick={() => handleSearch(0)}
+                    disabled={cachedSearch.isSearching}
+                  >
                     <Search className="w-4 h-4 sm:mr-2" />
-                  )}
-                  <span className="hidden sm:inline">
-                    {isParsing ? "Understanding..." : isSearching ? "Searching..." : "Search"}
-                  </span>
-                </Button>
+                    <span className="hidden sm:inline">
+                      {cachedSearch.isSearching ? "Searching..." : "Search Cache"}
+                    </span>
+                  </Button>
               </TooltipTrigger>
               {rateLimit && (
                 <TooltipContent>
-                  <p>{rateLimit.remaining} of {rateLimit.limit} searches left today</p>
+                  <p>{rateLimit.remaining} of {rateLimit.limit} API syncs left today</p>
                 </TooltipContent>
               )}
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="h-12 border-primary/50 text-primary hover:bg-primary/10"
+                  onClick={handleSyncFromApi}
+                  disabled={syncFromApi.isPending}
+                >
+                  <RefreshCw className={`w-4 h-4 sm:mr-2 ${syncFromApi.isPending ? "animate-spin" : ""}`} />
+                  <span className="hidden sm:inline">
+                    {syncFromApi.isPending ? "Syncing..." : "Sync from API"}
+                  </span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Fetch fresh contracts from SAM.gov (uses daily quota)</p>
+              </TooltipContent>
             </Tooltip>
           </TooltipProvider>
           {parsedFilters && (
