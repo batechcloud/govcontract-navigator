@@ -225,6 +225,9 @@ serve(async (req) => {
         "8(a)": "SBA",
         "HUBZone": "HZC",
         "WOSB": "WOSB",
+        "EDWOSB": "EDWOSB",
+        "VOSB": "VOSBC",
+        "SDB": "SBP",
         "Small Business": "SBP"
       };
       const codes = filters.set_aside.map((s: string) => setAsideMapping[s] || s).join(",");
