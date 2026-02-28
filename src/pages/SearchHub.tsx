@@ -146,6 +146,7 @@ const SearchHub = () => {
   const [advState, setAdvState] = useState("");
   const [advType, setAdvType] = useState("");
   const [advSetAside, setAdvSetAside] = useState<string[]>([]);
+  const [advContractType, setAdvContractType] = useState("");
 
   const setAsideOptions = [
     { value: "Small Business", label: "Small Business" },
@@ -158,7 +159,15 @@ const SearchHub = () => {
     { value: "SDB", label: "SDB" },
   ];
 
-  const hasAdvancedFilters = !!(advNaics.length > 0 || advPsc.length > 0 || advMinValue || advMaxValue || advAgency || advDeadline || advState || advType || advSetAside.length > 0);
+  const contractTypeOptions = [
+    { value: "FFP", label: "Firm Fixed Price (FFP)" },
+    { value: "IDIQ", label: "IDIQ" },
+    { value: "BPA", label: "BPA" },
+    { value: "T&M", label: "Time & Materials (T&M)" },
+    { value: "Cost-Plus", label: "Cost-Plus" },
+  ];
+
+  const hasAdvancedFilters = !!(advNaics.length > 0 || advPsc.length > 0 || advMinValue || advMaxValue || advAgency || advDeadline || advState || advType || advSetAside.length > 0 || advContractType);
 
   const agencyOptions = [
     "Department of Defense",
@@ -222,6 +231,7 @@ const SearchHub = () => {
     setAdvState("");
     setAdvType("");
     setAdvSetAside([]);
+    setAdvContractType("");
   };
 
   const clearSubFilters = () => {
@@ -1204,6 +1214,22 @@ const SearchHub = () => {
                 <SelectContent>
                   <SelectItem value="any">Any type</SelectItem>
                   {opportunityTypeOptions.map(t => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Contract Type */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Contract Type</Label>
+              <Select value={advContractType || "any"} onValueChange={(val) => setAdvContractType(val === "any" ? "" : val)}>
+                <SelectTrigger className="h-10 text-sm">
+                  <SelectValue placeholder="Any contract type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">Any contract type</SelectItem>
+                  {contractTypeOptions.map(t => (
                     <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
                   ))}
                 </SelectContent>
