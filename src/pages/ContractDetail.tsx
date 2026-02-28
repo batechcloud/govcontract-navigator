@@ -15,6 +15,8 @@ import {
 import { useTrackedContracts, useTrackContract, useUpdateContractNotes, useUpdateContractStatus, TrackedContract } from "@/hooks/useTrackedContracts";
 import { SearchResult } from "@/hooks/useSearch";
 import { supabase } from "@/integrations/supabase/client";
+import { useWinProbability, ContractScoreInput, ContractScoreResult } from "@/hooks/useWinProbability";
+import { WinScoreModal } from "@/components/search/WinScoreModal";
 import { toast } from "sonner";
 import { PIPELINE_STATUSES } from "@/components/tracked/KanbanBoard";
 
