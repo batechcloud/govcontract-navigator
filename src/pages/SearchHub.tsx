@@ -231,6 +231,7 @@ const SearchHub = () => {
     setAdvState("");
     setAdvType("");
     setAdvSetAside([]);
+    setAdvContractType("");
   };
 
   const clearSubFilters = () => {
