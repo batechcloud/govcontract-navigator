@@ -1,0 +1,1 @@
+DELETE FROM api_rate_limits WHERE user_id = '4417452b-cd8f-4822-8092-493e9e828c57' AND api_name = 'sam_search' AND request_date = '2026-02-28';
