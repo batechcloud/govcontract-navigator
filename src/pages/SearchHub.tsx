@@ -591,7 +591,7 @@ const SearchHub = () => {
         className="space-y-4"
       >
         {/* Demo Mode Banner */}
-        {results.length > 0 && /^SAM-20\d\d-/.test(results[0]?.id) && (
+        {cachedSearch.results.length > 0 && /^SAM-20\d\d-/.test(cachedSearch.results[0]?.id) && (
           <div className="bg-accent/10 border border-accent/30 rounded-lg px-4 py-2 flex items-center gap-2 text-sm">
             <span className="font-semibold text-accent">Demo Mode:</span>
             <span className="text-muted-foreground">Showing sample contracts. Add a SAM.gov API key to search live opportunities.</span>
