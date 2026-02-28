@@ -163,6 +163,8 @@ export function useSmartSearch() {
   const hasMore = allResults.length < total;
 
   const search = async (query: string, page = 0) => {
+    const prevResults = allResults;
+    const prevTotal = total;
     setIsSearching(true);
     setCurrentBatchPage(0);
     try {
@@ -181,6 +183,10 @@ export function useSmartSearch() {
       setTotal(searchResults.total);
       return searchResults;
     } catch (error) {
+      // Restore previous results so the UI doesn't go blank on rate-limit errors
+      setResults(prevResults);
+      setAllResults(prevResults);
+      setTotal(prevTotal);
       console.error("Smart search error:", error);
       throw error;
     } finally {
