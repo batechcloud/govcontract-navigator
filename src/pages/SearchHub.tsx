@@ -373,7 +373,7 @@ const SearchHub = () => {
     setSearchParams({}, { replace: true });
   }, [searchParams]);
 
-  // Auto-load all contracts on mount when no sector/q param is present
+  // Auto-load from local cache on mount when no sector/q param is present
   const initialLoadDone = useRef(false);
   useEffect(() => {
     if (initialLoadDone.current) return;
@@ -382,7 +382,8 @@ const SearchHub = () => {
     if (hasSector || hasQ) return; // handled by other effects
     initialLoadDone.current = true;
 
-    searchWithFilters({
+    // Search local cache first (no API call)
+    cachedSearch.searchLocal({
       keywords: [],
       naics_codes: [],
       psc_codes: [],
@@ -392,7 +393,7 @@ const SearchHub = () => {
       max_value: null,
       location: null,
       opportunity_type: null,
-    }, 0);
+    }, 0, 25);
   }, []);
 
   const trackContract = useTrackContract();
