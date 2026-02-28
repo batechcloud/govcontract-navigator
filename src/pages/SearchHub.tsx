@@ -363,6 +363,28 @@ const SearchHub = () => {
     setSearchParams({}, { replace: true });
   }, [searchParams]);
 
+  // Auto-load all contracts on mount when no sector/q param is present
+  const initialLoadDone = useRef(false);
+  useEffect(() => {
+    if (initialLoadDone.current) return;
+    const hasSector = searchParams.get("sector");
+    const hasQ = searchParams.get("q");
+    if (hasSector || hasQ) return; // handled by other effects
+    initialLoadDone.current = true;
+
+    searchWithFilters({
+      keywords: [],
+      naics_codes: [],
+      psc_codes: [],
+      set_aside: [],
+      agencies: [],
+      min_value: null,
+      max_value: null,
+      location: null,
+      opportunity_type: null,
+    }, 0);
+  }, []);
+
   const trackContract = useTrackContract();
   const { data: trackedContracts } = useTrackedContracts();
   const saveSearch = useSaveSearch();
