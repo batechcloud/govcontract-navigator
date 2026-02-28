@@ -568,6 +568,14 @@ const ContractDetail = () => {
           </Card>
         )}
       </motion.div>
+
+      <WinScoreModal
+        open={scoreModalOpen}
+        onOpenChange={setScoreModalOpen}
+        contractTitle={contract?.title || ""}
+        result={scoreResult}
+        isLoading={winScore.isPending}
+      />
     </DashboardLayout>
   );
 };
