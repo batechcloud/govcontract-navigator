@@ -802,6 +802,28 @@ const SearchHub = () => {
                               <div className="flex flex-col gap-2">
                                 {/* Top row: match + set-aside */}
                                 <div className="flex items-center gap-2">
+                                  {(() => {
+                                    const hScore = computeHeuristicScore(result, companyProfile);
+                                    if (hScore >= 0) {
+                                      const sc = getScoreColor(hScore);
+                                      return (
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${sc.bg} ${sc.text} border border-current/20`}>
+                                                {hScore}
+                                              </span>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="top" className="max-w-[200px] text-xs">
+                                              <p className="font-semibold">{sc.label}</p>
+                                              <p className="text-muted-foreground">Quick fit score based on your NAICS codes, certifications &amp; deadline.</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
                                   <Badge className={`${match.className} text-xs`}>{match.text}</Badge>
                                   {result.setAside && result.setAside !== "None" && (
                                     <Badge variant="glass" className="text-xs">{result.setAside}</Badge>
