@@ -76,12 +76,12 @@ import { WinScoreModal } from "@/components/search/WinScoreModal";
 import { useCompanyProfile } from "@/hooks/useProfile";
 
 const quickFilters = [
-  { label: "Small Business", filter: { set_aside: ["Small Business"] } },
-  { label: "Veteran-Owned", filter: { set_aside: ["SDVOSB", "VOSB"] } },
-  { label: "Woman-Owned", filter: { set_aside: ["WOSB", "EDWOSB"] } },
-  { label: "Minority-Owned", filter: { set_aside: ["8(a)", "SDB"] } },
-  { label: "HUBZone", filter: { set_aside: ["HUBZone"] } },
-  { label: "Federal", filter: { opportunity_type: "Federal" } },
+  { label: "Small Business", filter: { set_aside: ["Small Business"] }, subKeyword: "small business" },
+  { label: "Veteran-Owned", filter: { set_aside: ["SDVOSB", "VOSB"] }, subKeyword: "veteran" },
+  { label: "Woman-Owned", filter: { set_aside: ["WOSB", "EDWOSB"] }, subKeyword: "woman" },
+  { label: "Minority-Owned", filter: { set_aside: ["8(a)", "SDB"] }, subKeyword: "minority" },
+  { label: "HUBZone", filter: { set_aside: ["HUBZone"] }, subKeyword: "hubzone" },
+  { label: "Federal", filter: { opportunity_type: "Federal" }, subKeyword: "" },
 ];
 
 const SearchHub = () => {
@@ -351,8 +351,9 @@ const SearchHub = () => {
     try {
       setCurrentPage(page);
       if (activeTab === "subcontracts") {
+        const combinedKeyword = buildSubawardKeyword(searchQuery, activeFilters);
         const res = await subawardSearch.mutateAsync({
-          keyword: searchQuery.trim(),
+          keyword: combinedKeyword,
           page: 1,
           limit: 25,
           prime_contractor: subPrimeContractor.trim() || undefined,
@@ -375,7 +376,7 @@ const SearchHub = () => {
   const handleLoadMoreSubawards = async () => {
     const nextPage = subawardPage + 1;
     const res = await subawardSearch.mutateAsync({
-      keyword: searchQuery.trim(),
+      keyword: buildSubawardKeyword(searchQuery, activeFilters),
       page: nextPage,
       limit: 25,
       prime_contractor: subPrimeContractor.trim() || undefined,
@@ -388,6 +389,14 @@ const SearchHub = () => {
     setSubawardHasNext(res.page_metadata?.hasNext ?? false);
   };
 
+  const buildSubawardKeyword = (query: string, filters: string[]) => {
+    const filterTerms = filters
+      .map(key => quickFilters.find(f => f.label === key)?.subKeyword || "")
+      .filter(Boolean);
+    const parts = [query.trim(), ...filterTerms].filter(Boolean);
+    return parts.join(" ");
+  };
+
   const handleQuickFilter = async (filter: typeof quickFilters[0]) => {
     const filterKey = filter.label;
     let newActiveFilters: string[];
@@ -398,6 +407,25 @@ const SearchHub = () => {
     }
     setActiveFilters(newActiveFilters);
     setCurrentPage(0);
+
+    if (activeTab === "subcontracts") {
+      const combinedKeyword = buildSubawardKeyword(searchQuery, newActiveFilters);
+      if (!combinedKeyword) return;
+      const res = await subawardSearch.mutateAsync({
+        keyword: combinedKeyword,
+        page: 1,
+        limit: 25,
+        prime_contractor: subPrimeContractor.trim() || undefined,
+        min_amount: subMinAmount ? parseInt(subMinAmount) : undefined,
+        max_amount: subMaxAmount ? parseInt(subMaxAmount) : undefined,
+        agency: subAgency || undefined,
+      });
+      setSubawardResults(res.results);
+      setSubawardPage(1);
+      setSubawardHasNext(res.page_metadata?.hasNext ?? false);
+      setSubawardTotal(res.page_metadata?.total ?? res.results.length);
+      return;
+    }
 
     const quickSetAsides = newActiveFilters.flatMap(key => {
       const qf = quickFilters.find(f => f.label === key);
