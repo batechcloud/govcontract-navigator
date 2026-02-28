@@ -807,11 +807,16 @@ const SearchHub = () => {
             <div>
               <div className="flex items-center justify-between mb-4 mt-4">
                 <p className="text-sm text-muted-foreground">
-                  {results.length > 0 ? (
+                  {cachedSearch.results.length > 0 ? (
                     <>
-                      Showing <span className="text-foreground font-semibold">{results.length.toLocaleString()}</span> of{" "}
-                      <span className="text-foreground font-semibold">{total.toLocaleString()}</span> contracts
+                      Showing <span className="text-foreground font-semibold">{cachedSearch.results.length.toLocaleString()}</span> of{" "}
+                      <span className="text-foreground font-semibold">{cachedSearch.total.toLocaleString()}</span> cached contracts
+                      {cacheCount !== undefined && cacheCount > 0 && (
+                        <span className="text-muted-foreground"> ({cacheCount.toLocaleString()} total in cache)</span>
+                      )}
                     </>
+                  ) : cacheCount === 0 ? (
+                    <span>No cached contracts yet. Click <strong>Sync from API</strong> to fetch contracts.</span>
                   ) : (
                     "Search above to find government contracts"
                   )}
@@ -819,7 +824,7 @@ const SearchHub = () => {
               </div>
 
               <div ref={resultListRef} className="space-y-3">
-                {isSearching ? (
+                {cachedSearch.isSearching ? (
                   Array.from({ length: 3 }).map((_, i) => (
                     <Card key={i} variant="glass">
                       <CardContent className="p-5">
