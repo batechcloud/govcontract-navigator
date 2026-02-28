@@ -917,10 +917,27 @@ const SearchHub = () => {
                                       {result.location}
                                     </span>
                                   )}
+                                  {fetchedAt && (
+                                    <span className="flex items-center gap-1 text-xs text-muted-foreground/60">
+                                      <RefreshCw className="w-3 h-3" />
+                                      Updated {formatDistanceToNow(new Date(fetchedAt), { addSuffix: true })}
+                                    </span>
+                                  )}
                                 </div>
 
-                                {/* Actions: Save + Start Bid + overflow menu */}
+                                {/* Actions: Save + Start Bid + Refresh + overflow menu */}
                                 <div className="flex items-center gap-2 pt-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => refreshContract.mutate({ contractId: result.id, solicitationNumber: result.solicitationNumber })}
+                                    disabled={refreshContract.isPending}
+                                    className="h-8 text-xs gap-1 text-muted-foreground hover:text-primary"
+                                    title="Refresh this contract from SAM.gov"
+                                  >
+                                    <RefreshCw className={`w-3.5 h-3.5 ${refreshContract.isPending ? "animate-spin" : ""}`} />
+                                    Refresh
+                                  </Button>
                                   <Button
                                     variant="outline"
                                     size="sm"
