@@ -88,6 +88,9 @@ const ContractDetail = () => {
   const trackContract = useTrackContract();
   const updateNotes = useUpdateContractNotes();
   const updateStatus = useUpdateContractStatus();
+  const winScore = useWinProbability();
+  const [scoreModalOpen, setScoreModalOpen] = useState(false);
+  const [scoreResult, setScoreResult] = useState<ContractScoreResult | null>(null);
 
   // Find tracked version by contract_id or by table id
   const tracked = trackedContracts?.find(
