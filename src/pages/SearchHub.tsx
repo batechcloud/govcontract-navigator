@@ -949,7 +949,7 @@ const SearchHub = () => {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-8 gap-1.5 text-xs"
+                                className="h-8 text-xs"
                                 disabled={trackedIds.has(sub.subaward_number || sub.id)}
                                 onClick={() => {
                                   trackContract.mutate({
