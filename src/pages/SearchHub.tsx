@@ -72,6 +72,7 @@ import { SECTOR_NAICS, SECTOR_CONFIG } from "@/config/sectors";
 import { useWinProbability, ContractScoreInput, ContractScoreResult } from "@/hooks/useWinProbability";
 import { NaicsCodeSelector } from "@/components/company/NaicsCodeSelector";
 import { PscCodeSelector } from "@/components/company/PscCodeSelector";
+import { Checkbox } from "@/components/ui/checkbox";
 import { WinScoreModal } from "@/components/search/WinScoreModal";
 import { useCompanyProfile } from "@/hooks/useProfile";
 
