@@ -94,6 +94,11 @@ const ContractDetail = () => {
   const [scoreModalOpen, setScoreModalOpen] = useState(false);
   const [scoreResult, setScoreResult] = useState<ContractScoreResult | null>(null);
 
+  // AI Summary state
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const summaryFetchedRef = useRef(false);
+
   // Find tracked version by contract_id or by table id
   const tracked = trackedContracts?.find(
     (c) => c.contract_id === contractId || c.id === contractId
