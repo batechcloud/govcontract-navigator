@@ -475,7 +475,11 @@ const SearchHub = () => {
 
     if (activeTab === "subcontracts") {
       const combinedKeyword = buildSubawardKeyword(searchQuery, newActiveFilters);
-      if (!combinedKeyword) return;
+      if (!combinedKeyword && !hasSubFilters) {
+        setSubawardResults([]);
+        setSubawardTotal(0);
+        return;
+      }
       const res = await subawardSearch.mutateAsync({
         keyword: combinedKeyword,
         page: 1,
