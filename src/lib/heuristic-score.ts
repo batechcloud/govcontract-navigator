@@ -89,7 +89,7 @@ export function getScoreColor(score: number): {
   text: string;
   label: string;
 } {
-  if (score >= 70) return { bg: "bg-success/20", text: "text-success", label: "Strong Fit" };
-  if (score >= 40) return { bg: "bg-accent/20", text: "text-accent", label: "Possible Fit" };
-  return { bg: "bg-destructive/20", text: "text-destructive", label: "Weak Fit" };
+  if (score >= 70) return { bg: "bg-success/20", text: "text-success", label: "Great Fit" };
+  if (score >= 40) return { bg: "bg-accent/20", text: "text-accent", label: "Good Fit" };
+  return { bg: "bg-destructive/20", text: "text-destructive", label: "Low Fit" };
 }

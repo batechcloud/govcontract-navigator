@@ -20,8 +20,6 @@ import { cn } from "@/lib/utils";
 const sidebarItems = [
   { icon: LayoutDashboard, label: "Home", href: "/dashboard" },
   { icon: Search, label: "Find Contracts", href: "/dashboard/search" },
-  { icon: Grid3X3, label: "Browse Sectors", href: "/dashboard/sectors" },
-  { icon: BarChart3, label: "USASpending Intel", href: "/dashboard/usaspending" },
   { icon: Heart, label: "My Opportunities", href: "/dashboard/tracked" },
   { icon: FileText, label: "My Proposals", href: "/dashboard/proposals" },
   { icon: Sparkles, label: "Ask AI", href: "/dashboard/ai" },
