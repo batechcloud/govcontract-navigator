@@ -1383,7 +1383,8 @@ const SearchHub = () => {
 
             {/* Industry Codes (optional) */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Industry Codes <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Label className="text-sm font-medium">Industry Codes <span className="text-muted-foreground font-normal">(advanced, optional)</span></Label>
+              <p className="text-xs text-muted-foreground">These are government classification codes. Skip this if you're not sure.</p>
               <div className="space-y-3">
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">NAICS Code</p>
