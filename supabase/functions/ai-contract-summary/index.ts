@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,11 +13,31 @@ serve(async (req) => {
   }
 
   try {
-    const { title, agency, description, value, setAside, naicsCode, deadline, type, location } = await req.json();
+    const { title, agency, description, value, setAside, naicsCode, deadline, type, location, contractId, forceRegenerate } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
+    }
+
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    // Check cache first (unless force regenerate)
+    if (contractId && !forceRegenerate) {
+      const { data: cached } = await serviceClient
+        .from("contract_summaries")
+        .select("summary")
+        .eq("contract_id", contractId)
+        .maybeSingle();
+
+      if (cached?.summary) {
+        return new Response(JSON.stringify({ summary: cached.summary, cached: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const contractContext = [
@@ -91,7 +112,17 @@ Keep each section to 2-4 bullet points max. If information is missing for a sect
     const data = await response.json();
     const summary = data.choices?.[0]?.message?.content || "Unable to generate summary.";
 
-    return new Response(JSON.stringify({ summary }), {
+    // Cache the result
+    if (contractId) {
+      await serviceClient
+        .from("contract_summaries")
+        .upsert(
+          { contract_id: contractId, summary, updated_at: new Date().toISOString() },
+          { onConflict: "contract_id" }
+        );
+    }
+
+    return new Response(JSON.stringify({ summary, cached: false }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
