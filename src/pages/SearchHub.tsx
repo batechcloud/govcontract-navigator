@@ -1401,7 +1401,7 @@ const SearchHub = () => {
             {activeTab === "subcontracts" && (
               <div className="space-y-4 pt-4 border-t border-border/50">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">Subcontract Options</Label>
+                  <Label className="text-sm font-medium">Team-Up Options</Label>
                   {hasSubFilters && (
                     <Button variant="ghost" size="sm" onClick={clearSubFilters} className="text-xs h-7 gap-1 text-muted-foreground">
                       <RotateCcw className="w-3 h-3" /> Clear
