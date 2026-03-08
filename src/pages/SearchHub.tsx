@@ -424,21 +424,34 @@ const SearchHub = () => {
         setSubawardHasNext(res.page_metadata?.hasNext ?? false);
         setSubawardTotal(res.page_metadata?.total ?? res.results.length);
       } else {
-        // Smart search: search cache first, auto-sync from API if cache is empty
+        // Always sync from SAM.gov API for fresh results
         const filters = buildCombinedFilters();
-        const cacheResult = await cachedSearch.searchLocal(filters as any, page, 25);
-        
-        // If cache returned no results and this is page 0, auto-sync from API
-        if (page === 0 && (!cacheResult || cacheResult.total === 0)) {
-          try {
-            await syncFromApi.mutateAsync({ filters: filters as any, page: 0, limit: 25 });
-            await cachedSearch.searchLocal(filters as any, 0, 25);
-          } catch {
-            // Sync failed (rate limit, etc.) — already handled by syncFromApi error handler
-          }
+        setSyncPage(0);
+        try {
+          const syncResult = await syncFromApi.mutateAsync({ filters: filters as any, page: 0, limit: 25 });
+          setApiTotal(syncResult.apiTotal);
+        } catch {
+          // Sync failed (rate limit, etc.) — fall back to cache
         }
+        // Display results from cache
+        await cachedSearch.searchLocal(filters as any, 0, 25);
       }
     } catch (error) {}
+  };
+
+  const handleLoadMoreFromApi = async () => {
+    const nextSyncPage = syncPage + 1;
+    setSyncPage(nextSyncPage);
+    const filters = buildCombinedFilters();
+    try {
+      const syncResult = await syncFromApi.mutateAsync({ filters: filters as any, page: nextSyncPage, limit: 25 });
+      setApiTotal(syncResult.apiTotal);
+      // Re-query local cache with increased limit to show all accumulated results
+      const newLimit = (nextSyncPage + 1) * 25;
+      await cachedSearch.searchLocal(filters as any, 0, newLimit);
+    } catch {
+      // Sync failed — keep showing current results
+    }
   };
 
   const handleSyncFromApi = async () => {
