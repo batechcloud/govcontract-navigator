@@ -164,11 +164,11 @@ export function useCachedSearch() {
       }
 
       // Pagination & ordering
-      if (sortBy === "deadline") {
+      if (effectiveSort === "deadline") {
         query = query
           .order("deadline", { ascending: true, nullsFirst: false })
           .order("match_score", { ascending: false, nullsFirst: false });
-      } else if (sortBy === "value") {
+      } else if (effectiveSort === "value") {
         query = query
           .order("value", { ascending: false, nullsFirst: false })
           .order("match_score", { ascending: false, nullsFirst: false });
