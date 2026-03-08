@@ -466,6 +466,19 @@ function transformSamResults(opportunities: any[], filters: SearchFilters) {
   });
 }
 
+const SET_ASIDE_RAW_TO_LABEL: Record<string, string> = {
+  SBP: "Small Business",
+  SBA: "8(a)",
+  SDVOSBC: "SDVOSB",
+  VOSBC: "VOSB",
+  HZC: "HUBZone",
+};
+
+function normalizeSetAside(raw: string | null | undefined): string {
+  if (!raw || raw === "NONE") return "Full & Open";
+  return SET_ASIDE_RAW_TO_LABEL[raw] || raw;
+}
+
 function formatValue(amount: number | null | undefined): string {
   if (!amount) return "TBD";
   if (amount >= 1000000) {

@@ -145,6 +145,19 @@ function getTodayFormatted(): string {
   return formatSamDate(new Date());
 }
 
+const SET_ASIDE_RAW_TO_LABEL: Record<string, string> = {
+  SBP: "Small Business",
+  SBA: "8(a)",
+  SDVOSBC: "SDVOSB",
+  VOSBC: "VOSB",
+  HZC: "HUBZone",
+};
+
+function normalizeSetAside(raw: string | null | undefined): string {
+  if (!raw || raw === "NONE") return "Full & Open";
+  return SET_ASIDE_RAW_TO_LABEL[raw] || raw;
+}
+
 function extractAgency(opp: any): string {
   if (opp.fullParentPathName) return opp.fullParentPathName.split(".").pop()?.trim() || opp.fullParentPathName;
   if (opp.department) return opp.department;
