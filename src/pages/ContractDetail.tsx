@@ -641,7 +641,7 @@ const ContractDetail = () => {
         {/* Attachments */}
         {(effectiveLinks.length > 0 || fetchingLinks) && (
           <Card variant="glass">
-            <CardContent className="p-6 space-y-4">
+            <CardContent className="p-4 sm:p-6 space-y-4">
               <h2 className="font-heading font-semibold text-foreground flex items-center gap-2">
                 <Paperclip className="w-4 h-4 text-primary" /> Attachments {effectiveLinks.length > 0 && `(${effectiveLinks.length})`}
                 {fetchingLinks && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
@@ -653,17 +653,19 @@ const ContractDetail = () => {
                   const summary = summaries[url];
                   return (
                     <div key={url} className="border border-border/50 rounded-lg p-3 space-y-2">
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
-                        <span className="text-sm font-medium text-foreground flex-1 min-w-0 truncate">
-                          {filename}
-                        </span>
-                        <div className="flex items-center gap-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                          <span className="text-sm font-medium text-foreground truncate">
+                            {filename}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => window.open(url, "_blank")}
-                            className="gap-1.5 text-xs"
+                            className="gap-1.5 text-xs h-8"
                           >
                             <Download className="w-3.5 h-3.5" /> Download
                           </Button>
@@ -672,7 +674,7 @@ const ContractDetail = () => {
                             size="sm"
                             onClick={() => handleSummarize(url)}
                             disabled={isSummarizing || !!summary}
-                            className="gap-1.5 text-xs border-accent/40 text-accent hover:bg-accent/10"
+                            className="gap-1.5 text-xs h-8 border-accent/40 text-accent hover:bg-accent/10"
                           >
                             {isSummarizing ? (
                               <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Summarizing...</>
