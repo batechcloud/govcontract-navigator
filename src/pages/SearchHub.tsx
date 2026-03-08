@@ -791,13 +791,19 @@ const SearchHub = () => {
                 value="prime"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 pb-2 text-sm"
               >
-                Prime Contracts
+                <span className="flex flex-col items-start">
+                  <span>Direct Contracts</span>
+                  <span className="text-[10px] text-muted-foreground font-normal">Bid directly with the government</span>
+                </span>
               </TabsTrigger>
               <TabsTrigger
                 value="subcontracts"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 pb-2 text-sm"
               >
-                Subcontracts
+                <span className="flex flex-col items-start">
+                  <span>Team-Up Opportunities</span>
+                  <span className="text-[10px] text-muted-foreground font-normal">Work with a bigger company</span>
+                </span>
               </TabsTrigger>
             </TabsList>
           </div>
