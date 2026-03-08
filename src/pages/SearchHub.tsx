@@ -996,12 +996,12 @@ const SearchHub = () => {
                     <CardContent>
                       <Search className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                       <h3 className="font-heading font-semibold text-lg mb-2">
-                        {cacheCount === 0 ? "No contracts cached yet" : "No matching contracts found"}
+                        {cacheCount === 0 ? "Let's find contracts for you!" : "No matching contracts found"}
                       </h3>
                       <p className="text-muted-foreground mb-4">
                         {cacheCount === 0
-                          ? "Click 'Sync from API' to fetch contracts from SAM.gov and build your local cache."
-                          : "Try different search terms or filters, or sync fresh data from the API."}
+                          ? "Tell us what your business does and we'll search for government contracts that match."
+                          : "Try different search terms or adjust your filters."}
                       </p>
                       {cacheCount === 0 && (
                         <Button
@@ -1009,8 +1009,8 @@ const SearchHub = () => {
                           onClick={handleSyncFromApi}
                           disabled={syncFromApi.isPending}
                         >
-                          <RefreshCw className={`w-4 h-4 mr-2 ${syncFromApi.isPending ? "animate-spin" : ""}`} />
-                          {syncFromApi.isPending ? "Syncing..." : "Sync from API"}
+                          <Search className="w-4 h-4 mr-2" />
+                          {syncFromApi.isPending ? "Finding contracts..." : "Find Contracts"}
                         </Button>
                       )}
                     </CardContent>
