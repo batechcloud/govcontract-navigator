@@ -79,12 +79,12 @@ import { computeHeuristicScore, getScoreColor } from "@/lib/heuristic-score";
 import { useCachedSearch, useSyncFromApi, useCacheCount } from "@/hooks/useCachedContracts";
 
 const quickFilters = [
-  { label: "Small Business", filter: { set_aside: ["Small Business"] }, subKeyword: "small business" },
-  { label: "Veteran-Owned", filter: { set_aside: ["SDVOSB", "VOSB"] }, subKeyword: "veteran" },
-  { label: "Woman-Owned", filter: { set_aside: ["WOSB", "EDWOSB"] }, subKeyword: "woman" },
-  { label: "Minority-Owned", filter: { set_aside: ["8(a)", "SDB"] }, subKeyword: "minority" },
-  { label: "HUBZone", filter: { set_aside: ["HUBZone"] }, subKeyword: "hubzone" },
-  { label: "Federal", filter: { opportunity_type: "Federal" }, subKeyword: "" },
+  { label: "Small Business", filter: { set_aside: ["Small Business"] }, subKeyword: "small business", tooltip: "Contracts only small companies can bid on" },
+  { label: "Veteran-Owned", filter: { set_aside: ["SDVOSB", "VOSB"] }, subKeyword: "veteran", tooltip: "Reserved for businesses owned by military veterans" },
+  { label: "Woman-Owned", filter: { set_aside: ["WOSB", "EDWOSB"] }, subKeyword: "woman", tooltip: "Reserved for businesses owned by women" },
+  { label: "Minority-Owned", filter: { set_aside: ["8(a)", "SDB"] }, subKeyword: "minority", tooltip: "Reserved for minority-owned or disadvantaged businesses" },
+  { label: "HUBZone", filter: { set_aside: ["HUBZone"] }, subKeyword: "hubzone", tooltip: "For businesses in historically underutilized areas" },
+  { label: "Federal", filter: { opportunity_type: "Federal" }, subKeyword: "", tooltip: "Contracts from U.S. federal government agencies" },
 ];
 
 const SearchHub = () => {
@@ -692,20 +692,28 @@ const SearchHub = () => {
               </span>
             )}
           </span>
-          {quickFilters.map((filter) => (
-            <button
-              key={filter.label}
-              onClick={() => handleQuickFilter(filter)}
-              className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium transition-all border ${
-                activeFilters.includes(filter.label)
-                  ? "bg-accent/20 border-accent/50 text-accent"
-                  : "bg-secondary/50 border-border/50 text-muted-foreground hover:text-foreground hover:border-border"
-              }`}
-            >
-              {activeFilters.includes(filter.label) && <X className="w-3 h-3" />}
-              {filter.label}
-            </button>
-          ))}
+          <TooltipProvider delayDuration={300}>
+            {quickFilters.map((filter) => (
+              <Tooltip key={filter.label}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => handleQuickFilter(filter)}
+                    className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium transition-all border ${
+                      activeFilters.includes(filter.label)
+                        ? "bg-accent/20 border-accent/50 text-accent"
+                        : "bg-secondary/50 border-border/50 text-muted-foreground hover:text-foreground hover:border-border"
+                    }`}
+                  >
+                    {activeFilters.includes(filter.label) && <X className="w-3 h-3" />}
+                    {filter.label}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs max-w-[200px]">
+                  {filter.tooltip}
+                </TooltipContent>
+              </Tooltip>
+            ))}
+          </TooltipProvider>
 
           {activeFilters.length > 0 && (
             <button
