@@ -202,6 +202,8 @@ const ContractDetail = () => {
     try {
       const { data, error } = await supabase.functions.invoke('ai-contract-summary', {
         body: {
+          contractId: contract.id,
+          forceRegenerate: force,
           title: contract.title,
           agency: contract.agency,
           description: contract.description,
