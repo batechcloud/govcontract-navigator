@@ -100,7 +100,7 @@ serve(async (req) => {
       title: opp.title || "Untitled Opportunity",
       agency: extractAgency(opp),
       type: opp.type || "Solicitation",
-      setAside: opp.typeOfSetAside && opp.typeOfSetAside !== "NONE" ? opp.typeOfSetAside : "Full & Open",
+      setAside: normalizeSetAside(opp.typeOfSetAside),
       value: formatValue(opp.award?.amount || opp.baseAndAllOptionsValue),
       deadline: opp.responseDeadLine || opp.archiveDate || null,
       postedDate: opp.postedDate || null,

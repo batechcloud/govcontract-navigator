@@ -61,6 +61,41 @@ function formatCachedValue(v: number | null): string {
   return `$${v}`;
 }
 
+// Mapping from friendly labels to raw SAM codes (for backward-compat queries)
+const SET_ASIDE_LABEL_TO_RAW: Record<string, string[]> = {
+  "Small Business": ["SBP"],
+  "8(a)": ["SBA"],
+  "SDVOSB": ["SDVOSBC"],
+  "VOSB": ["VOSBC"],
+  "HUBZone": ["HZC"],
+  "WOSB": ["WOSB"],
+  "EDWOSB": ["EDWOSB"],
+};
+
+function expandSetAsideFilter(labels: string[]): string[] {
+  const expanded = new Set<string>();
+  for (const label of labels) {
+    expanded.add(label);
+    const rawCodes = SET_ASIDE_LABEL_TO_RAW[label];
+    if (rawCodes) rawCodes.forEach(c => expanded.add(c));
+  }
+  return Array.from(expanded);
+}
+
+// Mapping from raw SAM codes to friendly labels (for normalizing on upsert)
+const SET_ASIDE_RAW_TO_LABEL: Record<string, string> = {
+  SBP: "Small Business",
+  SBA: "8(a)",
+  SDVOSBC: "SDVOSB",
+  VOSBC: "VOSB",
+  HZC: "HUBZone",
+};
+
+function normalizeSetAsideValue(raw: string | null | undefined): string {
+  if (!raw || raw === "NONE") return "Full & Open";
+  return SET_ASIDE_RAW_TO_LABEL[raw] || raw;
+}
+
 function parseValueToNumeric(val: string): number | null {
   if (!val || val === "TBD" || val === "N/A") return null;
   const clean = val.replace(/[^0-9.MKBmkb]/g, "");
