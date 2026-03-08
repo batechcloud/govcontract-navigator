@@ -375,6 +375,58 @@ const ContractDetail = () => {
           </CardContent>
         </Card>
 
+        {/* AI Quick Summary */}
+        <Card variant="glass" className="overflow-hidden">
+          <CardContent className="p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-heading font-semibold text-foreground flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-accent" /> Quick Summary
+              </h2>
+              {aiSummary && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => fetchSummary(true)}
+                  disabled={summaryLoading}
+                  className="gap-1.5 text-xs text-muted-foreground"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${summaryLoading ? "animate-spin" : ""}`} />
+                  Regenerate
+                </Button>
+              )}
+            </div>
+
+            {summaryLoading ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin text-accent" />
+                  Generating summary…
+                </div>
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+                <Skeleton className="h-4 w-4/6" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+            ) : aiSummary ? (
+              <div className="prose prose-sm prose-invert max-w-none text-muted-foreground [&_h2]:text-foreground [&_h2]:text-base [&_h2]:font-semibold [&_h2]:mt-4 [&_h2]:mb-2 [&_ul]:my-1 [&_li]:my-0.5 [&_strong]:text-foreground">
+                <ReactMarkdown>{aiSummary}</ReactMarkdown>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Summary unavailable.{" "}
+                <button onClick={() => fetchSummary(true)} className="text-accent underline hover:no-underline">
+                  Try again
+                </button>
+              </p>
+            )}
+
+            <p className="text-[10px] text-muted-foreground/50 pt-2 border-t border-border/30">
+              Powered by AI · This is an automated summary — always verify details in the official listing.
+            </p>
+          </CardContent>
+        </Card>
+
         {/* Description */}
         {contract.description && (
           <Card variant="glass">
