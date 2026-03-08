@@ -11,8 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   ArrowLeft, Building2, Clock, DollarSign, MapPin, FileText, Heart,
   ExternalLink, MessageSquare, Sparkles, Hash, Calendar, Globe, Tag,
-  StickyNote, Shield, Save, Paperclip, Download, Brain, Loader2,
+  StickyNote, Shield, Save, Paperclip, Download, Brain, Loader2, RefreshCw,
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useTrackedContracts, useTrackContract, useUpdateContractNotes, useUpdateContractStatus, TrackedContract } from "@/hooks/useTrackedContracts";
 import { SearchResult } from "@/hooks/useSearch";
 import { supabase } from "@/integrations/supabase/client";
