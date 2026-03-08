@@ -353,28 +353,70 @@ const ContractDetail = () => {
   if (!contract && fetchLoading) {
     return (
       <DashboardLayout title="Contract Details">
-        <div className="space-y-6 max-w-4xl">
-          <Skeleton className="h-8 w-24" />
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="space-y-6 max-w-4xl"
+        >
+          {/* Back button skeleton */}
+          <Skeleton className="h-9 w-28 rounded-lg" />
+
+          {/* Header card skeleton */}
           <Card variant="glass">
-            <CardContent className="p-6 space-y-4">
-              <Skeleton className="h-6 w-48" />
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-4 w-64" />
-              <div className="flex gap-4 pt-2">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-4 w-28" />
+            <CardContent className="p-6 space-y-5">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-6 w-6 rounded-full" />
+                <Skeleton className="h-5 w-40" />
+              </div>
+              <Skeleton className="h-8 w-3/4" />
+              <div className="flex flex-wrap gap-2">
+                <Skeleton className="h-6 w-20 rounded-full" />
+                <Skeleton className="h-6 w-24 rounded-full" />
+                <Skeleton className="h-6 w-16 rounded-full" />
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="space-y-2">
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-5 w-24" />
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-3 pt-3">
+                <Skeleton className="h-10 w-28 rounded-lg" />
+                <Skeleton className="h-10 w-24 rounded-lg" />
+                <Skeleton className="h-10 w-32 rounded-lg" />
               </div>
             </CardContent>
           </Card>
+
+          {/* AI Summary skeleton */}
           <Card variant="glass">
-            <CardContent className="p-6 space-y-3">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-5/6" />
-              <Skeleton className="h-4 w-4/6" />
+            <CardContent className="p-6 space-y-4">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary animate-pulse" />
+                <Skeleton className="h-5 w-36" />
+              </div>
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+                <Skeleton className="h-4 w-4/6" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+              </div>
             </CardContent>
           </Card>
-        </div>
+
+          {/* Description skeleton */}
+          <Card variant="glass">
+            <CardContent className="p-6 space-y-3">
+              <Skeleton className="h-5 w-28" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+            </CardContent>
+          </Card>
+        </motion.div>
       </DashboardLayout>
     );
   }
