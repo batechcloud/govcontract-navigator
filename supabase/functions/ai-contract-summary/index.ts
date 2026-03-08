@@ -1,0 +1,104 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { title, agency, description, value, setAside, naicsCode, deadline, type, location } = await req.json();
+
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
+    }
+
+    const contractContext = [
+      title && `Title: ${title}`,
+      agency && `Agency: ${agency}`,
+      value && `Estimated Value: ${value}`,
+      type && `Contract Type: ${type}`,
+      setAside && setAside !== "None" && `Set-Aside: ${setAside}`,
+      naicsCode && `NAICS Code: ${naicsCode}`,
+      deadline && `Response Deadline: ${deadline}`,
+      location && `Location: ${location}`,
+      description && `Full Description: ${description}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const systemPrompt = `You are a government contracting advisor explaining contracts to someone who has never done government contracting before. Write a clear, concise summary using simple language, short sentences, and bullet points. Structure your response with these exact markdown headings:
+
+## 📋 What They're Buying
+Brief plain-English explanation of what this contract is for.
+
+## 📝 What's Required
+Key requirements, deliverables, or qualifications needed.
+
+## 👤 Who Can Bid
+Eligibility info — set-asides, certifications, size standards.
+
+## 💰 Value & Pricing
+Contract value, pricing structure, and financial considerations.
+
+## 📅 Key Dates
+Important deadlines and timeline info.
+
+## ✅ Should You Bid?
+Honest assessment — who this contract is ideal for, potential risks, and a clear recommendation for small businesses.
+
+Keep each section to 2-4 bullet points max. If information is missing for a section, say "Not specified in the listing" rather than guessing.`;
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Summarize this government contract:\n\n${contractContext}` },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const text = await response.text();
+      console.error("AI gateway error:", response.status, text);
+      throw new Error("AI gateway error");
+    }
+
+    const data = await response.json();
+    const summary = data.choices?.[0]?.message?.content || "Unable to generate summary.";
+
+    return new Response(JSON.stringify({ summary }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.error("ai-contract-summary error:", error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
