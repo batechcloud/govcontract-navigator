@@ -1045,7 +1045,7 @@ const SearchHub = () => {
                 )}
               </div>
 
-              {cachedSearch.results.length > 0 && cachedSearch.total > cachedSearch.results.length && (
+              {cachedSearch.results.length > 0 && (apiTotal !== null ? cachedSearch.results.length < apiTotal : cachedSearch.total > cachedSearch.results.length) && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -1053,15 +1053,15 @@ const SearchHub = () => {
                 >
                   <Button
                     variant="outline"
-                    onClick={() => handleSearch(currentPage + 1)}
-                    disabled={cachedSearch.isSearching}
+                    onClick={handleLoadMoreFromApi}
+                    disabled={cachedSearch.isSearching || syncFromApi.isPending}
                     className="gap-2"
                   >
                     <ArrowUp className="w-4 h-4 rotate-180" />
-                    Load More
+                    {syncFromApi.isPending ? "Loading..." : "Load More from SAM.gov"}
                   </Button>
                   <p className="text-xs text-muted-foreground">
-                    {(cachedSearch.total - cachedSearch.results.length).toLocaleString()} more results available
+                    {((apiTotal ?? cachedSearch.total) - cachedSearch.results.length).toLocaleString()} more results available on SAM.gov
                   </p>
                 </motion.div>
               )}
