@@ -580,7 +580,7 @@ const ContractDetail = () => {
         {/* Description */}
         {contract.description && (
           <Card variant="glass">
-            <CardContent className="p-6 space-y-3">
+              <CardContent className="p-4 sm:p-6 space-y-3">
               <h2 className="font-heading font-semibold text-foreground flex items-center gap-2">
                 <FileText className="w-4 h-4 text-primary" /> Description
               </h2>
