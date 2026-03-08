@@ -350,6 +350,35 @@ const ContractDetail = () => {
     navigate(`/dashboard/ai?q=${preload}`);
   };
 
+  if (!contract && fetchLoading) {
+    return (
+      <DashboardLayout title="Contract Details">
+        <div className="space-y-6 max-w-4xl">
+          <Skeleton className="h-8 w-24" />
+          <Card variant="glass">
+            <CardContent className="p-6 space-y-4">
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-4 w-64" />
+              <div className="flex gap-4 pt-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-28" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card variant="glass">
+            <CardContent className="p-6 space-y-3">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+              <Skeleton className="h-4 w-4/6" />
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   if (!contract) {
     return (
       <DashboardLayout title="Contract Details">
@@ -368,6 +397,11 @@ const ContractDetail = () => {
                 Search Contracts
               </Button>
             </div>
+          </CardContent>
+        </Card>
+      </DashboardLayout>
+    );
+  }
           </CardContent>
         </Card>
       </DashboardLayout>
