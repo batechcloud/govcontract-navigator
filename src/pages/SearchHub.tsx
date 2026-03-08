@@ -1034,7 +1034,7 @@ const SearchHub = () => {
                     Load More
                   </Button>
                   <p className="text-xs text-muted-foreground">
-                    {(cachedSearch.total - cachedSearch.results.length).toLocaleString()} more in cache
+                    {(cachedSearch.total - cachedSearch.results.length).toLocaleString()} more results available
                   </p>
                 </motion.div>
               )}
