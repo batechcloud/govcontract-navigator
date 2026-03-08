@@ -527,7 +527,7 @@ const ContractDetail = () => {
 
         {/* AI Quick Summary */}
         <Card variant="glass" className="overflow-hidden">
-          <CardContent className="p-6 space-y-4">
+          <CardContent className="p-4 sm:p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="font-heading font-semibold text-foreground flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-accent" /> Quick Summary
