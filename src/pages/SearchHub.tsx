@@ -1247,10 +1247,10 @@ const SearchHub = () => {
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <SlidersHorizontal className="w-4 h-4 text-accent" />
-              More Filters
+              Refine Your Search
             </SheetTitle>
             <SheetDescription>
-              Narrow down your search with specific criteria.
+              Narrow down results to find exactly what you need.
             </SheetDescription>
           </SheetHeader>
 
