@@ -98,9 +98,10 @@ export function useCachedSearch() {
         query = query.in("naics_code", filters.naics_codes);
       }
 
-      // Set-aside
+      // Set-aside — expand to include raw SAM codes for backward compatibility
       if (filters.set_aside && filters.set_aside.length > 0) {
-        query = query.in("set_aside", filters.set_aside);
+        const expanded = expandSetAsideFilter(filters.set_aside);
+        query = query.in("set_aside", expanded);
       }
 
       // Agency
