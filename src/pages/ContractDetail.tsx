@@ -469,55 +469,55 @@ const ContractDetail = () => {
         {/* Header card */}
         <Card variant="glass" className="overflow-hidden relative">
           <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-primary/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-          <CardContent className="p-6 relative space-y-4">
+          <CardContent className="p-4 sm:p-6 relative space-y-3 sm:space-y-4">
             {/* Badges */}
-            <div className="flex flex-wrap items-center gap-2">
-              {contract.type && <Badge variant="outline">{contract.type}</Badge>}
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              {contract.type && <Badge variant="outline" className="text-[10px] sm:text-xs">{contract.type}</Badge>}
               {contract.setAside && contract.setAside !== "None" && (
-                <Badge variant="glass">{contract.setAside}</Badge>
+                <Badge variant="glass" className="text-[10px] sm:text-xs">{contract.setAside}</Badge>
               )}
-              {matchLabel && <Badge className={matchLabel.cls}>{matchLabel.text}</Badge>}
+              {matchLabel && <Badge className={`${matchLabel.cls} text-[10px] sm:text-xs`}>{matchLabel.text}</Badge>}
               {isTracked && (
-                <Badge variant="gold" className="gap-1">
+                <Badge variant="gold" className="gap-1 text-[10px] sm:text-xs">
                   <Heart className="w-3 h-3 fill-current" /> Tracked
                 </Badge>
               )}
             </div>
 
             {/* Title */}
-            <h1 className="font-heading font-bold text-2xl text-foreground leading-tight">
+            <h1 className="font-heading font-bold text-lg sm:text-2xl text-foreground leading-tight">
               {contract.title}
             </h1>
 
             {/* Agency */}
-            <p className="text-muted-foreground flex items-center gap-2">
+            <p className="text-muted-foreground flex items-center gap-2 text-sm sm:text-base">
               <Building2 className="w-4 h-4 shrink-0" />
-              {contract.agency}
+              <span className="break-words">{contract.agency}</span>
             </p>
 
-            {/* Key metrics row */}
-            <div className="flex flex-wrap gap-4 pt-2 border-t border-border/50 text-sm">
+            {/* Key metrics — stack on mobile, row on desktop */}
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-3 sm:gap-4 pt-2 border-t border-border/50 text-xs sm:text-sm">
               {contract.value && (
                 <span className="flex items-center gap-1.5 text-accent font-semibold">
-                  <DollarSign className="w-4 h-4" />
+                  <DollarSign className="w-3.5 sm:w-4 h-3.5 sm:h-4 shrink-0" />
                   {contract.value}
                 </span>
               )}
               {deadline && (
                 <span className={`flex items-center gap-1.5 font-medium ${deadline.cls}`}>
-                  <Clock className="w-4 h-4" />
+                  <Clock className="w-3.5 sm:w-4 h-3.5 sm:h-4 shrink-0" />
                   {deadline.text}
                 </span>
               )}
               {contract.location && (
                 <span className="flex items-center gap-1.5 text-muted-foreground">
-                  <MapPin className="w-4 h-4" />
-                  {contract.location}
+                  <MapPin className="w-3.5 sm:w-4 h-3.5 sm:h-4 shrink-0" />
+                  <span className="truncate">{contract.location}</span>
                 </span>
               )}
               {contract.naicsCode && (
                 <span className="flex items-center gap-1.5 text-muted-foreground">
-                  <Hash className="w-4 h-4" />
+                  <Hash className="w-3.5 sm:w-4 h-3.5 sm:h-4 shrink-0" />
                   NAICS {contract.naicsCode}
                 </span>
               )}
