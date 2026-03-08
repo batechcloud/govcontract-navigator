@@ -116,7 +116,8 @@ export function useCachedSearch() {
   const [isSearching, setIsSearching] = useState(false);
   const [currentSort, setCurrentSort] = useState<SortOption>("match_score");
 
-  const searchLocal = async (filters: SearchFilters, page = 0, limit = 25, sortBy: "match_score" | "deadline" | "value" = "match_score") => {
+  const searchLocal = async (filters: SearchFilters, page = 0, limit = 25, sortBy?: SortOption) => {
+    const effectiveSort = sortBy ?? currentSort;
     if (!user) return;
     setIsSearching(true);
     try {
