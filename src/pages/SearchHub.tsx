@@ -1048,10 +1048,10 @@ const SearchHub = () => {
                 <p className="text-sm text-muted-foreground">
                   {subawardResults.length > 0 ? (
                     <>
-                      Showing <span className="text-foreground font-semibold">{subawardResults.length.toLocaleString()}</span> subcontracts
+                      Showing <span className="text-foreground font-semibold">{subawardResults.length.toLocaleString()}</span> team-up opportunities
                     </>
                   ) : (
-                    "Search above to find subcontracting opportunities"
+                    "Search above to find team-up opportunities with bigger companies"
                   )}
                 </p>
               </div>
