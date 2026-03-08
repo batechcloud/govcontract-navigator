@@ -76,8 +76,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { WinScoreModal } from "@/components/search/WinScoreModal";
 import { useCompanyProfile } from "@/hooks/useProfile";
 import { computeHeuristicScore, getScoreColor } from "@/lib/heuristic-score";
-import { useCachedSearch, useSyncFromApi, useRefreshContract, useCacheCount } from "@/hooks/useCachedContracts";
-import { formatDistanceToNow } from "date-fns";
+import { useCachedSearch, useSyncFromApi, useCacheCount } from "@/hooks/useCachedContracts";
 
 const quickFilters = [
   { label: "Small Business", filter: { set_aside: ["Small Business"] }, subKeyword: "small business" },
@@ -126,9 +125,7 @@ const SearchHub = () => {
   // Cache-first search hooks
   const cachedSearch = useCachedSearch();
   const syncFromApi = useSyncFromApi();
-  const refreshContract = useRefreshContract();
   const { data: cacheCount } = useCacheCount();
-  const [searchMode, setSearchMode] = useState<"cache" | "api">("cache");
 
   const handleScoreContract = (result: SearchResult) => {
     const input: ContractScoreInput = {
@@ -159,22 +156,22 @@ const SearchHub = () => {
   const [advContractType, setAdvContractType] = useState("");
 
   const setAsideOptions = [
-    { value: "Small Business", label: "Small Business" },
-    { value: "8(a)", label: "8(a)" },
-    { value: "WOSB", label: "WOSB" },
-    { value: "EDWOSB", label: "EDWOSB" },
-    { value: "HUBZone", label: "HUBZone" },
-    { value: "SDVOSB", label: "SDVOSB" },
-    { value: "VOSB", label: "VOSB" },
-    { value: "SDB", label: "SDB" },
+    { value: "Small Business", label: "Small Businesses Only" },
+    { value: "8(a)", label: "Minority-Owned (8a)" },
+    { value: "WOSB", label: "Woman-Owned" },
+    { value: "EDWOSB", label: "Economically Disadvantaged Woman-Owned" },
+    { value: "HUBZone", label: "HUBZone Area" },
+    { value: "SDVOSB", label: "Veteran-Owned (Service-Disabled)" },
+    { value: "VOSB", label: "Veteran-Owned" },
+    { value: "SDB", label: "Small Disadvantaged" },
   ];
 
   const contractTypeOptions = [
-    { value: "FFP", label: "Firm Fixed Price (FFP)" },
-    { value: "IDIQ", label: "IDIQ" },
-    { value: "BPA", label: "BPA" },
-    { value: "T&M", label: "Time & Materials (T&M)" },
-    { value: "Cost-Plus", label: "Cost-Plus" },
+    { value: "FFP", label: "Fixed Price" },
+    { value: "IDIQ", label: "Flexible Quantity" },
+    { value: "BPA", label: "Blanket Agreement" },
+    { value: "T&M", label: "Hourly + Materials" },
+    { value: "Cost-Plus", label: "Cost + Fee" },
   ];
 
   const hasAdvancedFilters = !!(advNaics.length > 0 || advPsc.length > 0 || advMinValue || advMaxValue || advAgency || advDeadline || advState || advType || advSetAside.length > 0 || advContractType);
@@ -424,9 +421,19 @@ const SearchHub = () => {
         setSubawardHasNext(res.page_metadata?.hasNext ?? false);
         setSubawardTotal(res.page_metadata?.total ?? res.results.length);
       } else {
-        // Cache-first: search local cached_contracts table
+        // Smart search: search cache first, auto-sync from API if cache is empty
         const filters = buildCombinedFilters();
-        await cachedSearch.searchLocal(filters as any, page, 25);
+        const cacheResult = await cachedSearch.searchLocal(filters as any, page, 25);
+        
+        // If cache returned no results and this is page 0, auto-sync from API
+        if (page === 0 && (!cacheResult || cacheResult.total === 0)) {
+          try {
+            await syncFromApi.mutateAsync({ filters: filters as any, page: 0, limit: 25 });
+            await cachedSearch.searchLocal(filters as any, 0, 25);
+          } catch {
+            // Sync failed (rate limit, etc.) — already handled by syncFromApi error handler
+          }
+        }
       }
     } catch (error) {}
   };
@@ -626,48 +633,17 @@ const SearchHub = () => {
               onKeyDown={(e) => e.key === "Enter" && handleSearch(0)}
             />
           </div>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                  <Button
-                    variant="hero"
-                    className="h-12"
-                    onClick={() => handleSearch(0)}
-                    disabled={cachedSearch.isSearching}
-                  >
-                    <Search className="w-4 h-4 sm:mr-2" />
-                    <span className="hidden sm:inline">
-                      {cachedSearch.isSearching ? "Searching..." : "Search Cache"}
-                    </span>
-                  </Button>
-              </TooltipTrigger>
-              {rateLimit && (
-                <TooltipContent>
-                  <p>{rateLimit.remaining} of {rateLimit.limit} API syncs left today</p>
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="h-12 border-primary/50 text-primary hover:bg-primary/10"
-                  onClick={handleSyncFromApi}
-                  disabled={syncFromApi.isPending}
-                >
-                  <RefreshCw className={`w-4 h-4 sm:mr-2 ${syncFromApi.isPending ? "animate-spin" : ""}`} />
-                  <span className="hidden sm:inline">
-                    {syncFromApi.isPending ? "Syncing..." : "Sync from API"}
-                  </span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Fetch fresh contracts from SAM.gov (uses daily quota)</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Button
+            variant="hero"
+            className="h-12"
+            onClick={() => handleSearch(0)}
+            disabled={cachedSearch.isSearching || syncFromApi.isPending}
+          >
+            <Search className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">
+              {cachedSearch.isSearching || syncFromApi.isPending ? "Searching..." : "Search"}
+            </span>
+          </Button>
           {parsedFilters && (
             <Button variant="outline" className="h-12" onClick={() => setSaveDialogOpen(true)}>
               <Bookmark className="w-4 h-4 sm:mr-2" />
@@ -675,33 +651,6 @@ const SearchHub = () => {
             </Button>
           )}
         </div>
-
-        {/* Search quota indicator */}
-        {rateLimit && (
-          <div className="flex items-center gap-2 text-xs">
-            <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden max-w-[200px]">
-              <div
-                className={`h-full rounded-full transition-all ${
-                  rateLimit.remaining <= 5
-                    ? "bg-destructive"
-                    : rateLimit.remaining <= 15
-                    ? "bg-yellow-500"
-                    : "bg-primary"
-                }`}
-                style={{ width: `${(rateLimit.remaining / rateLimit.limit) * 100}%` }}
-              />
-            </div>
-            <span className={`font-medium ${
-              rateLimit.remaining <= 5
-                ? "text-destructive"
-                : rateLimit.remaining <= 15
-                ? "text-yellow-500"
-                : "text-muted-foreground"
-            }`}>
-              {rateLimit.remaining}/{rateLimit.limit} searches left today
-            </span>
-          </div>
-        )}
 
         {/* Parsed filters display */}
         <AnimatePresence>
@@ -849,13 +798,19 @@ const SearchHub = () => {
                 value="prime"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 pb-2 text-sm"
               >
-                Prime Contracts
+                <span className="flex flex-col items-start">
+                  <span>Direct Contracts</span>
+                  <span className="text-[10px] text-muted-foreground font-normal">Bid directly with the government</span>
+                </span>
               </TabsTrigger>
               <TabsTrigger
                 value="subcontracts"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 pb-2 text-sm"
               >
-                Subcontracts
+                <span className="flex flex-col items-start">
+                  <span>Team-Up Opportunities</span>
+                  <span className="text-[10px] text-muted-foreground font-normal">Work with a bigger company</span>
+                </span>
               </TabsTrigger>
             </TabsList>
           </div>
@@ -868,13 +823,10 @@ const SearchHub = () => {
                   {cachedSearch.results.length > 0 ? (
                     <>
                       Showing <span className="text-foreground font-semibold">{cachedSearch.results.length.toLocaleString()}</span> of{" "}
-                      <span className="text-foreground font-semibold">{cachedSearch.total.toLocaleString()}</span> cached contracts
-                      {cacheCount !== undefined && cacheCount > 0 && (
-                        <span className="text-muted-foreground"> ({cacheCount.toLocaleString()} total in cache)</span>
-                      )}
+                      <span className="text-foreground font-semibold">{cachedSearch.total.toLocaleString()}</span> results
                     </>
                   ) : cacheCount === 0 ? (
-                    <span>No cached contracts yet. Click <strong>Sync from API</strong> to fetch contracts.</span>
+                    <span>No contracts found yet. Try searching above to get started!</span>
                   ) : (
                     "Search above to find government contracts"
                   )}
@@ -914,19 +866,9 @@ const SearchHub = () => {
                                     if (hScore >= 0) {
                                       const sc = getScoreColor(hScore);
                                       return (
-                                        <TooltipProvider>
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${sc.bg} ${sc.text} border border-current/20`}>
-                                                {hScore}
-                                              </span>
-                                            </TooltipTrigger>
-                                            <TooltipContent side="top" className="max-w-[200px] text-xs">
-                                              <p className="font-semibold">{sc.label}</p>
-                                              <p className="text-muted-foreground">Quick fit score based on your NAICS codes, certifications &amp; deadline.</p>
-                                            </TooltipContent>
-                                          </Tooltip>
-                                        </TooltipProvider>
+                                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${sc.bg} ${sc.text} border border-current/20`}>
+                                          {sc.label}
+                                        </span>
                                       );
                                     }
                                     return null;
@@ -975,27 +917,10 @@ const SearchHub = () => {
                                       {result.location}
                                     </span>
                                   )}
-                                  {fetchedAt && (
-                                    <span className="flex items-center gap-1 text-xs text-muted-foreground/60">
-                                      <RefreshCw className="w-3 h-3" />
-                                      Updated {formatDistanceToNow(new Date(fetchedAt), { addSuffix: true })}
-                                    </span>
-                                  )}
                                 </div>
 
-                                {/* Actions: Save + Start Bid + Refresh + overflow menu */}
+                                {/* Actions: Save + overflow menu */}
                                 <div className="flex items-center gap-2 pt-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => refreshContract.mutate({ contractId: result.id, solicitationNumber: result.solicitationNumber })}
-                                    disabled={refreshContract.isPending}
-                                    className="h-8 text-xs gap-1 text-muted-foreground hover:text-primary"
-                                    title="Refresh this contract from SAM.gov"
-                                  >
-                                    <RefreshCw className={`w-3.5 h-3.5 ${refreshContract.isPending ? "animate-spin" : ""}`} />
-                                    Refresh
-                                  </Button>
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -1010,30 +935,28 @@ const SearchHub = () => {
                                     )}
                                   </Button>
                                   <Button
-                                    variant="hero"
+                                    variant="ghost"
                                     size="sm"
-                                    onClick={() => handleStartBid(result)}
                                     className="h-8 text-xs"
+                                    asChild
                                   >
-                                    <FileText className="w-3.5 h-3.5 mr-1.5" />
-                                    Start Bid
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleScoreContract(result)}
-                                    disabled={winScore.isPending}
-                                    className="h-8 text-xs gap-1.5 border-purple-400/40 text-purple-400 hover:bg-purple-400/10 hover:border-purple-400"
-                                  >
-                                    <Sparkles className="w-3.5 h-3.5" />
-                                    Score
+                                    <Link
+                                      to={`/dashboard/contract/${result.id}`}
+                                      state={{ contractData: result }}
+                                    >
+                                      Learn More →
+                                    </Link>
                                   </Button>
 
                                   <DropdownMenu>
-                                    <DropdownMenuTrigger className="inline-flex items-center justify-center rounded-md text-sm font-medium h-8 w-8 p-0 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                                    <DropdownMenuTrigger className="inline-flex items-center justify-center rounded-md text-sm font-medium h-8 w-8 p-0 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ml-auto">
                                       <MoreHorizontal className="w-4 h-4" />
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="bg-card border-border">
+                                      <DropdownMenuItem onClick={() => handleStartBid(result)} className="gap-2 cursor-pointer">
+                                        <FileText className="w-4 h-4 text-primary" />
+                                        Start Bid
+                                      </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => handleAskAI(result)} className="gap-2 cursor-pointer">
                                         <MessageSquare className="w-4 h-4 text-accent" />
                                         Ask AI About This
@@ -1070,12 +993,12 @@ const SearchHub = () => {
                     <CardContent>
                       <Search className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                       <h3 className="font-heading font-semibold text-lg mb-2">
-                        {cacheCount === 0 ? "No contracts cached yet" : "No matching contracts found"}
+                        {cacheCount === 0 ? "Let's find contracts for you!" : "No matching contracts found"}
                       </h3>
                       <p className="text-muted-foreground mb-4">
                         {cacheCount === 0
-                          ? "Click 'Sync from API' to fetch contracts from SAM.gov and build your local cache."
-                          : "Try different search terms or filters, or sync fresh data from the API."}
+                          ? "Tell us what your business does and we'll search for government contracts that match."
+                          : "Try different search terms or adjust your filters."}
                       </p>
                       {cacheCount === 0 && (
                         <Button
@@ -1083,8 +1006,8 @@ const SearchHub = () => {
                           onClick={handleSyncFromApi}
                           disabled={syncFromApi.isPending}
                         >
-                          <RefreshCw className={`w-4 h-4 mr-2 ${syncFromApi.isPending ? "animate-spin" : ""}`} />
-                          {syncFromApi.isPending ? "Syncing..." : "Sync from API"}
+                          <Search className="w-4 h-4 mr-2" />
+                          {syncFromApi.isPending ? "Finding contracts..." : "Find Contracts"}
                         </Button>
                       )}
                     </CardContent>
@@ -1108,7 +1031,7 @@ const SearchHub = () => {
                     Load More
                   </Button>
                   <p className="text-xs text-muted-foreground">
-                    {(cachedSearch.total - cachedSearch.results.length).toLocaleString()} more in cache
+                    {(cachedSearch.total - cachedSearch.results.length).toLocaleString()} more results available
                   </p>
                 </motion.div>
               )}
@@ -1122,10 +1045,10 @@ const SearchHub = () => {
                 <p className="text-sm text-muted-foreground">
                   {subawardResults.length > 0 ? (
                     <>
-                      Showing <span className="text-foreground font-semibold">{subawardResults.length.toLocaleString()}</span> subcontracts
+                      Showing <span className="text-foreground font-semibold">{subawardResults.length.toLocaleString()}</span> team-up opportunities
                     </>
                   ) : (
-                    "Search above to find subcontracting opportunities"
+                    "Search above to find team-up opportunities with bigger companies"
                   )}
                 </p>
               </div>
@@ -1284,9 +1207,9 @@ const SearchHub = () => {
                   <Card variant="glass" className="text-center py-12">
                     <CardContent>
                       <Search className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="font-heading font-semibold text-lg mb-2">Find subcontracting opportunities</h3>
+                      <h3 className="font-heading font-semibold text-lg mb-2">Find team-up opportunities</h3>
                       <p className="text-muted-foreground">
-                        Search for subcontracts awarded through federal prime contracts.
+                        Search for opportunities to work with bigger companies on federal contracts.
                       </p>
                     </CardContent>
                   </Card>
@@ -1321,10 +1244,10 @@ const SearchHub = () => {
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <SlidersHorizontal className="w-4 h-4 text-accent" />
-              More Filters
+              Refine Your Search
             </SheetTitle>
             <SheetDescription>
-              Narrow down your search with specific criteria.
+              Narrow down results to find exactly what you need.
             </SheetDescription>
           </SheetHeader>
 
@@ -1353,9 +1276,9 @@ const SearchHub = () => {
               </Select>
             </div>
 
-            {/* Set-Aside Type */}
+            {/* Who can bid? */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Set-Aside Type</Label>
+              <Label className="text-sm font-medium">Who can bid?</Label>
               <div className="grid grid-cols-2 gap-2">
                 {setAsideOptions.map(opt => (
                   <label key={opt.value} className="flex items-center gap-2 cursor-pointer text-sm">
@@ -1407,9 +1330,9 @@ const SearchHub = () => {
               </Select>
             </div>
 
-            {/* Contract Type */}
+            {/* Payment Type */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Contract Type</Label>
+              <Label className="text-sm font-medium">Payment Type</Label>
               <Select value={advContractType || "any"} onValueChange={(val) => setAdvContractType(val === "any" ? "" : val)}>
                 <SelectTrigger className="h-10 text-sm">
                   <SelectValue placeholder="Any contract type" />
@@ -1457,7 +1380,8 @@ const SearchHub = () => {
 
             {/* Industry Codes (optional) */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Industry Codes <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Label className="text-sm font-medium">Industry Codes <span className="text-muted-foreground font-normal">(advanced, optional)</span></Label>
+              <p className="text-xs text-muted-foreground">These are government classification codes. Skip this if you're not sure.</p>
               <div className="space-y-3">
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">NAICS Code</p>
@@ -1474,7 +1398,7 @@ const SearchHub = () => {
             {activeTab === "subcontracts" && (
               <div className="space-y-4 pt-4 border-t border-border/50">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">Subcontract Options</Label>
+                  <Label className="text-sm font-medium">Team-Up Options</Label>
                   {hasSubFilters && (
                     <Button variant="ghost" size="sm" onClick={clearSubFilters} className="text-xs h-7 gap-1 text-muted-foreground">
                       <RotateCcw className="w-3 h-3" /> Clear
