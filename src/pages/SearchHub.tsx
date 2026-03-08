@@ -692,20 +692,28 @@ const SearchHub = () => {
               </span>
             )}
           </span>
-          {quickFilters.map((filter) => (
-            <button
-              key={filter.label}
-              onClick={() => handleQuickFilter(filter)}
-              className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium transition-all border ${
-                activeFilters.includes(filter.label)
-                  ? "bg-accent/20 border-accent/50 text-accent"
-                  : "bg-secondary/50 border-border/50 text-muted-foreground hover:text-foreground hover:border-border"
-              }`}
-            >
-              {activeFilters.includes(filter.label) && <X className="w-3 h-3" />}
-              {filter.label}
-            </button>
-          ))}
+          <TooltipProvider delayDuration={300}>
+            {quickFilters.map((filter) => (
+              <Tooltip key={filter.label}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => handleQuickFilter(filter)}
+                    className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium transition-all border ${
+                      activeFilters.includes(filter.label)
+                        ? "bg-accent/20 border-accent/50 text-accent"
+                        : "bg-secondary/50 border-border/50 text-muted-foreground hover:text-foreground hover:border-border"
+                    }`}
+                  >
+                    {activeFilters.includes(filter.label) && <X className="w-3 h-3" />}
+                    {filter.label}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs max-w-[200px]">
+                  {filter.tooltip}
+                </TooltipContent>
+              </Tooltip>
+            ))}
+          </TooltipProvider>
 
           {activeFilters.length > 0 && (
             <button
