@@ -1333,9 +1333,9 @@ const SearchHub = () => {
               </Select>
             </div>
 
-            {/* Contract Type */}
+            {/* Payment Type */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Contract Type</Label>
+              <Label className="text-sm font-medium">Payment Type</Label>
               <Select value={advContractType || "any"} onValueChange={(val) => setAdvContractType(val === "any" ? "" : val)}>
                 <SelectTrigger className="h-10 text-sm">
                   <SelectValue placeholder="Any contract type" />
