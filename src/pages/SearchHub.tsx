@@ -79,12 +79,12 @@ import { computeHeuristicScore, getScoreColor } from "@/lib/heuristic-score";
 import { useCachedSearch, useSyncFromApi, useCacheCount } from "@/hooks/useCachedContracts";
 
 const quickFilters = [
-  { label: "Small Business", filter: { set_aside: ["Small Business"] }, subKeyword: "small business" },
-  { label: "Veteran-Owned", filter: { set_aside: ["SDVOSB", "VOSB"] }, subKeyword: "veteran" },
-  { label: "Woman-Owned", filter: { set_aside: ["WOSB", "EDWOSB"] }, subKeyword: "woman" },
-  { label: "Minority-Owned", filter: { set_aside: ["8(a)", "SDB"] }, subKeyword: "minority" },
-  { label: "HUBZone", filter: { set_aside: ["HUBZone"] }, subKeyword: "hubzone" },
-  { label: "Federal", filter: { opportunity_type: "Federal" }, subKeyword: "" },
+  { label: "Small Business", filter: { set_aside: ["Small Business"] }, subKeyword: "small business", tooltip: "Contracts only small companies can bid on" },
+  { label: "Veteran-Owned", filter: { set_aside: ["SDVOSB", "VOSB"] }, subKeyword: "veteran", tooltip: "Reserved for businesses owned by military veterans" },
+  { label: "Woman-Owned", filter: { set_aside: ["WOSB", "EDWOSB"] }, subKeyword: "woman", tooltip: "Reserved for businesses owned by women" },
+  { label: "Minority-Owned", filter: { set_aside: ["8(a)", "SDB"] }, subKeyword: "minority", tooltip: "Reserved for minority-owned or disadvantaged businesses" },
+  { label: "HUBZone", filter: { set_aside: ["HUBZone"] }, subKeyword: "hubzone", tooltip: "For businesses in historically underutilized areas" },
+  { label: "Federal", filter: { opportunity_type: "Federal" }, subKeyword: "", tooltip: "Contracts from U.S. federal government agencies" },
 ];
 
 const SearchHub = () => {
