@@ -459,7 +459,7 @@ const ContractDetail = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="space-y-6 max-w-4xl"
+        className="space-y-4 sm:space-y-6 max-w-4xl px-1 sm:px-0"
       >
         {/* Back button */}
         <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-2 text-muted-foreground hover:text-foreground">
@@ -469,55 +469,55 @@ const ContractDetail = () => {
         {/* Header card */}
         <Card variant="glass" className="overflow-hidden relative">
           <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-primary/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-          <CardContent className="p-6 relative space-y-4">
+          <CardContent className="p-4 sm:p-6 relative space-y-3 sm:space-y-4">
             {/* Badges */}
-            <div className="flex flex-wrap items-center gap-2">
-              {contract.type && <Badge variant="outline">{contract.type}</Badge>}
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              {contract.type && <Badge variant="outline" className="text-[10px] sm:text-xs">{contract.type}</Badge>}
               {contract.setAside && contract.setAside !== "None" && (
-                <Badge variant="glass">{contract.setAside}</Badge>
+                <Badge variant="glass" className="text-[10px] sm:text-xs">{contract.setAside}</Badge>
               )}
-              {matchLabel && <Badge className={matchLabel.cls}>{matchLabel.text}</Badge>}
+              {matchLabel && <Badge className={`${matchLabel.cls} text-[10px] sm:text-xs`}>{matchLabel.text}</Badge>}
               {isTracked && (
-                <Badge variant="gold" className="gap-1">
+                <Badge variant="gold" className="gap-1 text-[10px] sm:text-xs">
                   <Heart className="w-3 h-3 fill-current" /> Tracked
                 </Badge>
               )}
             </div>
 
             {/* Title */}
-            <h1 className="font-heading font-bold text-2xl text-foreground leading-tight">
+            <h1 className="font-heading font-bold text-lg sm:text-2xl text-foreground leading-tight">
               {contract.title}
             </h1>
 
             {/* Agency */}
-            <p className="text-muted-foreground flex items-center gap-2">
+            <p className="text-muted-foreground flex items-center gap-2 text-sm sm:text-base">
               <Building2 className="w-4 h-4 shrink-0" />
-              {contract.agency}
+              <span className="break-words">{contract.agency}</span>
             </p>
 
-            {/* Key metrics row */}
-            <div className="flex flex-wrap gap-4 pt-2 border-t border-border/50 text-sm">
+            {/* Key metrics — stack on mobile, row on desktop */}
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-3 sm:gap-4 pt-2 border-t border-border/50 text-xs sm:text-sm">
               {contract.value && (
                 <span className="flex items-center gap-1.5 text-accent font-semibold">
-                  <DollarSign className="w-4 h-4" />
+                  <DollarSign className="w-3.5 sm:w-4 h-3.5 sm:h-4 shrink-0" />
                   {contract.value}
                 </span>
               )}
               {deadline && (
                 <span className={`flex items-center gap-1.5 font-medium ${deadline.cls}`}>
-                  <Clock className="w-4 h-4" />
+                  <Clock className="w-3.5 sm:w-4 h-3.5 sm:h-4 shrink-0" />
                   {deadline.text}
                 </span>
               )}
               {contract.location && (
                 <span className="flex items-center gap-1.5 text-muted-foreground">
-                  <MapPin className="w-4 h-4" />
-                  {contract.location}
+                  <MapPin className="w-3.5 sm:w-4 h-3.5 sm:h-4 shrink-0" />
+                  <span className="truncate">{contract.location}</span>
                 </span>
               )}
               {contract.naicsCode && (
                 <span className="flex items-center gap-1.5 text-muted-foreground">
-                  <Hash className="w-4 h-4" />
+                  <Hash className="w-3.5 sm:w-4 h-3.5 sm:h-4 shrink-0" />
                   NAICS {contract.naicsCode}
                 </span>
               )}
@@ -527,7 +527,7 @@ const ContractDetail = () => {
 
         {/* AI Quick Summary */}
         <Card variant="glass" className="overflow-hidden">
-          <CardContent className="p-6 space-y-4">
+          <CardContent className="p-4 sm:p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="font-heading font-semibold text-foreground flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-accent" /> Quick Summary
@@ -580,7 +580,7 @@ const ContractDetail = () => {
         {/* Description */}
         {contract.description && (
           <Card variant="glass">
-            <CardContent className="p-6 space-y-3">
+              <CardContent className="p-4 sm:p-6 space-y-3">
               <h2 className="font-heading font-semibold text-foreground flex items-center gap-2">
                 <FileText className="w-4 h-4 text-primary" /> Description
               </h2>
@@ -593,7 +593,7 @@ const ContractDetail = () => {
 
         {/* Contract Details */}
         <Card variant="glass">
-          <CardContent className="p-6 space-y-3">
+            <CardContent className="p-4 sm:p-6 space-y-3">
             <h2 className="font-heading font-semibold text-foreground flex items-center gap-2">
               <Tag className="w-4 h-4 text-primary" /> Contract Details
             </h2>
@@ -641,7 +641,7 @@ const ContractDetail = () => {
         {/* Attachments */}
         {(effectiveLinks.length > 0 || fetchingLinks) && (
           <Card variant="glass">
-            <CardContent className="p-6 space-y-4">
+            <CardContent className="p-4 sm:p-6 space-y-4">
               <h2 className="font-heading font-semibold text-foreground flex items-center gap-2">
                 <Paperclip className="w-4 h-4 text-primary" /> Attachments {effectiveLinks.length > 0 && `(${effectiveLinks.length})`}
                 {fetchingLinks && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
@@ -653,17 +653,19 @@ const ContractDetail = () => {
                   const summary = summaries[url];
                   return (
                     <div key={url} className="border border-border/50 rounded-lg p-3 space-y-2">
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
-                        <span className="text-sm font-medium text-foreground flex-1 min-w-0 truncate">
-                          {filename}
-                        </span>
-                        <div className="flex items-center gap-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                          <span className="text-sm font-medium text-foreground truncate">
+                            {filename}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => window.open(url, "_blank")}
-                            className="gap-1.5 text-xs"
+                            className="gap-1.5 text-xs h-8"
                           >
                             <Download className="w-3.5 h-3.5" /> Download
                           </Button>
@@ -672,7 +674,7 @@ const ContractDetail = () => {
                             size="sm"
                             onClick={() => handleSummarize(url)}
                             disabled={isSummarizing || !!summary}
-                            className="gap-1.5 text-xs border-accent/40 text-accent hover:bg-accent/10"
+                            className="gap-1.5 text-xs h-8 border-accent/40 text-accent hover:bg-accent/10"
                           >
                             {isSummarizing ? (
                               <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Summarizing...</>
@@ -699,8 +701,8 @@ const ContractDetail = () => {
 
         {/* Action buttons */}
         <Card variant="glass">
-          <CardContent className="p-6">
-            <div className="flex flex-wrap gap-3">
+          <CardContent className="p-4 sm:p-6">
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3">
               <Button variant="hero" onClick={handleStartBid} className="gap-2">
                 <FileText className="w-4 h-4" /> Start Bid
               </Button>
@@ -754,7 +756,7 @@ const ContractDetail = () => {
         {/* Notes & Tracking (only for tracked contracts) */}
         {isTracked && tracked && (
           <Card variant="glass">
-            <CardContent className="p-6 space-y-4">
+            <CardContent className="p-4 sm:p-6 space-y-4">
               <h2 className="font-heading font-semibold text-foreground flex items-center gap-2">
                 <StickyNote className="w-4 h-4 text-primary" /> Notes & Tracking
               </h2>
