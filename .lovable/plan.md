@@ -1,124 +1,73 @@
 
 
-## Add Per-User Rate Limiting to SAM Search
+# UX Simplification Review for GC Navigator
 
-### Problem
-The SAM.gov API has a 450 requests/day global quota. A single user making many searches could exhaust the limit for everyone.
+After reviewing the full application, here are the key areas where the experience can be made simpler and more intuitive for someone with zero government contracting knowledge.
 
-### Approach
-Use a new `api_rate_limits` database table to track per-user daily SAM.gov API calls. The edge function checks the count before making an API call and rejects requests that exceed the limit with a clear error message.
+---
 
-### Design Decisions
-- **Daily limit per user**: 50 requests/day (allows ~9 active users at full capacity within the 450 global limit)
-- **Storage**: A lightweight `api_rate_limits` table with a composite unique constraint on `(user_id, api_name, date)`
-- **Reset**: Automatic daily reset by using the current date as a key -- no cleanup jobs needed
-- **Graceful handling**: When rate-limited, return a 429 status with a clear message and the reset time, so the frontend can display it
+## Issues Found
 
-### Changes
+### 1. Search Page is Overwhelming (SearchHub.tsx — 1,628 lines)
+- **Two search buttons** side by side ("Search Cache" and "Sync from API") — confusing. Users don't know or care about caches vs APIs.
+- **Technical labels**: "Search Cache", "Sync from API", "cached contracts", "total in cache" — these are developer concepts, not user concepts.
+- **Too many visible actions per card**: Save, Start Bid, Refresh, Score, plus a `...` overflow menu = 5 action buttons per contract card. Overwhelming.
+- **"Refresh" button on every card** with "Updated 3 hours ago" — users don't need to manually refresh individual contracts.
+- **Rate limit bar** and "X/Y searches left today" shown prominently — adds anxiety.
+- **Prime Contracts / Subcontracts tabs** use jargon. Most beginners don't know the difference.
 
-**1. Database Migration -- new `api_rate_limits` table**
+### 2. Sidebar Has Too Many Items (8 items)
+- "Browse Sectors" and "USASpending Intel" are power-user features that add cognitive load. They could be tucked under the search page or removed from primary nav.
 
-```sql
-CREATE TABLE public.api_rate_limits (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  api_name text NOT NULL DEFAULT 'sam_search',
-  request_date date NOT NULL DEFAULT CURRENT_DATE,
-  request_count integer NOT NULL DEFAULT 1,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now(),
-  UNIQUE (user_id, api_name, request_date)
-);
+### 3. Contract Cards Show Too Much Technical Data
+- Heuristic scores, match badges, NAICS codes, set-aside badges, and "Updated X ago" timestamps create visual noise.
+- The score number (e.g., "72") has no context without hovering the tooltip.
 
-ALTER TABLE public.api_rate_limits ENABLE ROW LEVEL SECURITY;
+### 4. More Filters Sheet Has Jargon
+- "NAICS Code", "PSC Code", "Set-Aside Type", "FFP", "IDIQ", "BPA", "T&M", "Cost-Plus" — all jargon that a beginner won't understand.
 
-CREATE POLICY "Users can view their own rate limits"
-  ON public.api_rate_limits FOR SELECT
-  USING (auth.uid() = user_id);
+---
 
-CREATE POLICY "Service role manages rate limits"
-  ON public.api_rate_limits FOR ALL
-  USING (true)
-  WITH CHECK (true);
-```
+## Proposed Simplification Plan
 
-A database function to atomically increment and check:
+### A. Simplify Search Page UX
+1. **Merge "Search Cache" and "Sync from API" into one "Search" button.** Behind the scenes: search cache first, and if cache is empty or stale (>24h), auto-sync from API. Remove the "Sync from API" button entirely.
+2. **Replace technical status text**: Change "Showing 25 of 142 cached contracts (500 total in cache)" to just "Showing 25 of 142 results".
+3. **Remove per-card "Refresh" button and "Updated X ago" timestamp.** Handle freshness automatically in the background.
+4. **Reduce card actions to 2 visible buttons**: "Save" and "Learn More" (which goes to detail page). Move "Start Bid", "Score", and "Ask AI" to the detail page.
+5. **Hide rate limit bar** — only show a warning toast when user is close to the limit (e.g., <5 remaining).
 
-```sql
-CREATE OR REPLACE FUNCTION public.check_and_increment_rate_limit(
-  _user_id uuid,
-  _api_name text,
-  _daily_limit integer
-)
-RETURNS TABLE(allowed boolean, current_count integer, daily_limit integer)
-LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
-AS $$
-DECLARE
-  _count integer;
-BEGIN
-  INSERT INTO api_rate_limits (user_id, api_name, request_date, request_count)
-  VALUES (_user_id, _api_name, CURRENT_DATE, 1)
-  ON CONFLICT (user_id, api_name, request_date)
-  DO UPDATE SET request_count = api_rate_limits.request_count + 1, updated_at = now()
-  RETURNING request_count INTO _count;
+### B. Simplify Sidebar Navigation (8 → 5 items)
+- Remove "Browse Sectors" from sidebar (make it a section on the search page or a filter).
+- Remove "USASpending Intel" from sidebar (link it from search results or the AI assistant instead).
+- Final sidebar: **Home, Find Contracts, My Opportunities, My Proposals, Ask AI, My Business** (6 items, matching the core sections in memory).
 
-  RETURN QUERY SELECT _count <= _daily_limit, _count, _daily_limit;
-END;
-$$;
-```
+### C. Replace Jargon with Plain Language
+- **"Set-Aside Type"** → "Who can bid?" with friendly labels: "Small Businesses Only", "Veteran-Owned", "Woman-Owned", "Minority-Owned", "HUBZone Area"
+- **"Prime Contracts" tab** → "Direct Contracts" with subtitle "Bid directly with the government"
+- **"Subcontracts" tab** → "Team-Up Opportunities" with subtitle "Work with a bigger company"
+- **"NAICS Code"** → "Industry Code (optional)" — already partially done but still says "NAICS"
+- **Contract types**: "FFP" → "Fixed Price", "IDIQ" → "Flexible Quantity", "BPA" → "Blanket Agreement", "T&M" → "Hourly + Materials", "Cost-Plus" → "Cost + Fee"
+- **"ROI Score" / heuristic score** → "Fit Score" with a simple label like "Great Fit", "Good Fit", "Low Fit" instead of a number
 
-**2. Edge Function -- `supabase/functions/sam-search/index.ts`**
+### D. Simplify Contract Cards
+- Show only: Title, Agency, Dollar Value, Days Left, and a colored "Fit" badge (Great/Good/Low)
+- One primary action: "Save" (heart icon). Clicking the card title navigates to the detail page where all other actions live.
 
-Add rate limit check right after authentication succeeds (around line 94), before any API call logic:
+### E. Add Contextual Help
+- Add a small "What's this?" tooltip icon next to Quick Filters explaining what each filter means in plain English.
+- On the empty state, add a friendlier onboarding message: "Tell us what your business does and we'll find government contracts for you."
 
-```typescript
-// After user is authenticated, check rate limit
-const serviceClient = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-);
+---
 
-const DAILY_LIMIT = 50;
-const { data: rateData, error: rateError } = await serviceClient
-  .rpc('check_and_increment_rate_limit', {
-    _user_id: user.id,
-    _api_name: 'sam_search',
-    _daily_limit: DAILY_LIMIT,
-  });
+## Files to Modify
 
-if (rateError) {
-  console.error('Rate limit check failed:', rateError);
-  // Fail open -- allow the request if rate limiting breaks
-} else if (rateData?.[0] && !rateData[0].allowed) {
-  return new Response(JSON.stringify({
-    error: 'Rate limit exceeded',
-    message: `You've reached your daily limit of ${DAILY_LIMIT} searches. Your limit resets at midnight UTC.`,
-    current_count: rateData[0].current_count,
-    daily_limit: DAILY_LIMIT,
-  }), {
-    status: 429,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
-}
-```
+| File | Changes |
+|------|---------|
+| `src/pages/SearchHub.tsx` | Merge search buttons, simplify card actions, rename tabs, replace jargon, hide technical indicators |
+| `src/components/dashboard/DashboardSidebar.tsx` | Remove "Browse Sectors" and "USASpending Intel" from nav |
+| `src/hooks/useCachedContracts.ts` | Add auto-sync logic when cache is empty/stale |
+| `src/lib/heuristic-score.ts` | Rename score labels to "Great Fit" / "Good Fit" / "Low Fit" |
 
-Key detail: the rate limit is only checked when a real SAM.gov API call will be made (i.e., when `SAM_API_KEY` is configured). Mock data responses skip the rate limit.
-
-**3. Frontend -- `src/hooks/useSearch.tsx`**
-
-Update the error handling to detect 429 responses and show a user-friendly toast:
-
-```typescript
-// In the search function's error handling
-if (error.message?.includes('Rate limit exceeded') || error.status === 429) {
-  toast.error("Daily search limit reached. Your limit resets at midnight UTC.");
-}
-```
-
-### Summary of files changed
-| File | Change |
-|------|--------|
-| Migration SQL | New `api_rate_limits` table + `check_and_increment_rate_limit` function |
-| `supabase/functions/sam-search/index.ts` | Add rate limit check after auth, before API call |
-| `src/hooks/useSearch.tsx` | Handle 429 rate limit error with toast message |
+This is a significant refactor of SearchHub.tsx but the changes are mostly UI copy and removing/relocating elements rather than new logic.
 
