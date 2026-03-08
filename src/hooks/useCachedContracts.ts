@@ -230,7 +230,7 @@ export function useSyncFromApi() {
       const warning = data?.warning;
 
       if (results.length === 0) {
-        return { synced: 0, total: data?.total || 0, warning };
+        return { synced: 0, apiTotal: data?.total || 0, warning };
       }
 
       // 2. Upsert into cached_contracts
