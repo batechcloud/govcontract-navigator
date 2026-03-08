@@ -622,7 +622,7 @@ const SearchHub = () => {
         )}
 
         {/* Simple Search Bar */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div data-tour="search-bar" className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1 relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <Input
