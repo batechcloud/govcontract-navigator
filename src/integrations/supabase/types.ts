@@ -303,6 +303,30 @@ export type Database = {
           },
         ]
       }
+      contract_summaries: {
+        Row: {
+          contract_id: string
+          created_at: string
+          id: string
+          summary: string
+          updated_at: string
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string
+          id?: string
+          summary: string
+          updated_at?: string
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string
+          id?: string
+          summary?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       feature_usage: {
         Row: {
           created_at: string | null
