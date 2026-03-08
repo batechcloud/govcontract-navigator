@@ -160,10 +160,20 @@ export function useCachedSearch() {
       }
 
       // Pagination & ordering
-      query = query
-        .order("match_score", { ascending: false, nullsFirst: false })
-        .order("fetched_at", { ascending: false })
-        .range(page * limit, (page + 1) * limit - 1);
+      if (sortBy === "deadline") {
+        query = query
+          .order("deadline", { ascending: true, nullsFirst: false })
+          .order("match_score", { ascending: false, nullsFirst: false });
+      } else if (sortBy === "value") {
+        query = query
+          .order("value", { ascending: false, nullsFirst: false })
+          .order("match_score", { ascending: false, nullsFirst: false });
+      } else {
+        query = query
+          .order("match_score", { ascending: false, nullsFirst: false })
+          .order("fetched_at", { ascending: false });
+      }
+      query = query.range(page * limit, (page + 1) * limit - 1);
 
       const { data, error, count } = await query;
 
