@@ -684,7 +684,7 @@ const SearchHub = () => {
         </AnimatePresence>
 
         {/* Quick Filters Row */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div data-tour="quick-filters" className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
             Quick Filters
             {activeFilters.length > 0 && (
