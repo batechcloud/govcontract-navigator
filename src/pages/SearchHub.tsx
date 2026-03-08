@@ -1279,9 +1279,9 @@ const SearchHub = () => {
               </Select>
             </div>
 
-            {/* Set-Aside Type */}
+            {/* Who can bid? */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Set-Aside Type</Label>
+              <Label className="text-sm font-medium">Who can bid?</Label>
               <div className="grid grid-cols-2 gap-2">
                 {setAsideOptions.map(opt => (
                   <label key={opt.value} className="flex items-center gap-2 cursor-pointer text-sm">
