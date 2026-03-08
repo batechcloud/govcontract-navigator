@@ -521,9 +521,7 @@ const SearchHub = () => {
       ...(deadlineDate ? { deadline_before: deadlineDate } : {}),
     };
 
-    if (newActiveFilters.length > 0 || searchQuery.trim() || hasAdvancedFilters) {
-      await cachedSearch.searchLocal(combinedFilters as any, 0, 25);
-    }
+    await cachedSearch.searchLocal(combinedFilters as any, 0, 25);
   };
 
   const handleTrack = (result: SearchResult) => {
