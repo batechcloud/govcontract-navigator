@@ -77,6 +77,7 @@ import { WinScoreModal } from "@/components/search/WinScoreModal";
 import { useCompanyProfile } from "@/hooks/useProfile";
 import { computeHeuristicScore, getScoreColor } from "@/lib/heuristic-score";
 import { useCachedSearch, useSyncFromApi, useCacheCount } from "@/hooks/useCachedContracts";
+import { GuidedTour } from "@/components/search/GuidedTour";
 
 const quickFilters = [
   { label: "Small Business", filter: { set_aside: ["Small Business"] }, subKeyword: "small business", tooltip: "Contracts only small companies can bid on" },
@@ -621,7 +622,7 @@ const SearchHub = () => {
         )}
 
         {/* Simple Search Bar */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div data-tour="search-bar" className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1 relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <Input
@@ -683,7 +684,7 @@ const SearchHub = () => {
         </AnimatePresence>
 
         {/* Quick Filters Row */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div data-tour="quick-filters" className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
             Quick Filters
             {activeFilters.length > 0 && (
@@ -841,7 +842,7 @@ const SearchHub = () => {
                 </p>
               </div>
 
-              <div ref={resultListRef} className="space-y-3">
+              <div ref={resultListRef} data-tour="result-list" className="space-y-3">
                 {cachedSearch.isSearching ? (
                   Array.from({ length: 3 }).map((_, i) => (
                     <Card key={i} variant="glass">
@@ -928,7 +929,7 @@ const SearchHub = () => {
                                 </div>
 
                                 {/* Actions: Save + overflow menu */}
-                                <div className="flex items-center gap-2 pt-1">
+                                <div data-tour="card-actions" className="flex items-center gap-2 pt-1">
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -1553,6 +1554,7 @@ const SearchHub = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      <GuidedTour />
     </DashboardLayout>
   );
 };
