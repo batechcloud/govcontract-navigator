@@ -424,9 +424,19 @@ const SearchHub = () => {
         setSubawardHasNext(res.page_metadata?.hasNext ?? false);
         setSubawardTotal(res.page_metadata?.total ?? res.results.length);
       } else {
-        // Cache-first: search local cached_contracts table
+        // Smart search: search cache first, auto-sync from API if cache is empty
         const filters = buildCombinedFilters();
-        await cachedSearch.searchLocal(filters as any, page, 25);
+        const cacheResult = await cachedSearch.searchLocal(filters as any, page, 25);
+        
+        // If cache returned no results and this is page 0, auto-sync from API
+        if (page === 0 && (!cacheResult || cacheResult.total === 0)) {
+          try {
+            await syncFromApi.mutateAsync({ filters: filters as any, page: 0, limit: 25 });
+            await cachedSearch.searchLocal(filters as any, 0, 25);
+          } catch {
+            // Sync failed (rate limit, etc.) — already handled by syncFromApi error handler
+          }
+        }
       }
     } catch (error) {}
   };
