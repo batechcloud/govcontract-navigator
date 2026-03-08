@@ -205,7 +205,11 @@ const ContractDetail = () => {
     fetchContract();
   }, [contractId, stateData, tracked, fetchedContract, fetchLoading]);
 
-  useEffect(() => {
+  // Fetch resourceLinks from SAM.gov if not already available
+  const [fetchedLinks, setFetchedLinks] = useState<string[] | null>(null);
+  const [fetchingLinks, setFetchingLinks] = useState(false);
+
+
     // Skip if we already have links from state or tracked data, or if already fetching/fetched
     if (contract?.resourceLinks?.length || fetchedLinks !== null || fetchingLinks || !contractId) return;
     
