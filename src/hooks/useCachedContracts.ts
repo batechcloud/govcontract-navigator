@@ -245,7 +245,7 @@ export function useSyncFromApi() {
         deadline: r.deadline || null,
         posted_date: r.postedDate || null,
         naics_code: r.naicsCode || null,
-        set_aside: r.setAside || null,
+        set_aside: normalizeSetAsideValue(r.setAside),
         contract_type: r.type || null,
         sector: null,
         source: "SAM.gov",
