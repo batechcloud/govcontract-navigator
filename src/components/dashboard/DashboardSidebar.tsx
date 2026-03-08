@@ -10,8 +10,6 @@ import {
   Settings,
   X,
   LogOut,
-  Grid3X3,
-  BarChart3,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
