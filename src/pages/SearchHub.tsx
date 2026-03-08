@@ -397,6 +397,20 @@ const SearchHub = () => {
     }, 0, 25);
   }, []);
 
+  // Re-query cache when sort order changes
+  const sortInitialized = useRef(false);
+  useEffect(() => {
+    if (!sortInitialized.current) {
+      sortInitialized.current = true;
+      return;
+    }
+    if (cachedSearch.results.length > 0) {
+      const filters = buildCombinedFilters();
+      const currentLimit = Math.max(cachedSearch.results.length, 25);
+      cachedSearch.searchLocal(filters as any, 0, currentLimit);
+    }
+  }, [cachedSearch.currentSort]);
+
   const trackContract = useTrackContract();
   const { data: trackedContracts } = useTrackedContracts();
   const saveSearch = useSaveSearch();
