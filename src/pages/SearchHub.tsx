@@ -848,7 +848,10 @@ const SearchHub = () => {
                   {cachedSearch.results.length > 0 ? (
                     <>
                       Showing <span className="text-foreground font-semibold">{cachedSearch.results.length.toLocaleString()}</span> of{" "}
-                      <span className="text-foreground font-semibold">{cachedSearch.total.toLocaleString()}</span> results
+                      <span className="text-foreground font-semibold">{(apiTotal ?? cachedSearch.total).toLocaleString()}</span> results
+                      {apiTotal !== null && apiTotal > cachedSearch.total && (
+                        <span className="text-muted-foreground ml-1">(from SAM.gov)</span>
+                      )}
                     </>
                   ) : cacheCount === 0 ? (
                     <span>No contracts found yet. Try searching above to get started!</span>
