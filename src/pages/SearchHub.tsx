@@ -922,19 +922,8 @@ const SearchHub = () => {
                                   )}
                                 </div>
 
-                                {/* Actions: Save + Start Bid + Refresh + overflow menu */}
+                                {/* Actions: Save + overflow menu */}
                                 <div className="flex items-center gap-2 pt-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => refreshContract.mutate({ contractId: result.id, solicitationNumber: result.solicitationNumber })}
-                                    disabled={refreshContract.isPending}
-                                    className="h-8 text-xs gap-1 text-muted-foreground hover:text-primary"
-                                    title="Refresh this contract from SAM.gov"
-                                  >
-                                    <RefreshCw className={`w-3.5 h-3.5 ${refreshContract.isPending ? "animate-spin" : ""}`} />
-                                    Refresh
-                                  </Button>
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -949,30 +938,28 @@ const SearchHub = () => {
                                     )}
                                   </Button>
                                   <Button
-                                    variant="hero"
+                                    variant="ghost"
                                     size="sm"
-                                    onClick={() => handleStartBid(result)}
                                     className="h-8 text-xs"
+                                    asChild
                                   >
-                                    <FileText className="w-3.5 h-3.5 mr-1.5" />
-                                    Start Bid
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleScoreContract(result)}
-                                    disabled={winScore.isPending}
-                                    className="h-8 text-xs gap-1.5 border-purple-400/40 text-purple-400 hover:bg-purple-400/10 hover:border-purple-400"
-                                  >
-                                    <Sparkles className="w-3.5 h-3.5" />
-                                    Score
+                                    <Link
+                                      to={`/dashboard/contract/${result.id}`}
+                                      state={{ contractData: result }}
+                                    >
+                                      Learn More →
+                                    </Link>
                                   </Button>
 
                                   <DropdownMenu>
-                                    <DropdownMenuTrigger className="inline-flex items-center justify-center rounded-md text-sm font-medium h-8 w-8 p-0 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                                    <DropdownMenuTrigger className="inline-flex items-center justify-center rounded-md text-sm font-medium h-8 w-8 p-0 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ml-auto">
                                       <MoreHorizontal className="w-4 h-4" />
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="bg-card border-border">
+                                      <DropdownMenuItem onClick={() => handleStartBid(result)} className="gap-2 cursor-pointer">
+                                        <FileText className="w-4 h-4 text-primary" />
+                                        Start Bid
+                                      </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => handleAskAI(result)} className="gap-2 cursor-pointer">
                                         <MessageSquare className="w-4 h-4 text-accent" />
                                         Ask AI About This
