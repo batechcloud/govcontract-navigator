@@ -107,11 +107,14 @@ function parseValueToNumeric(val: string): number | null {
 }
 
 /** Search contracts from the local cached_contracts table */
+export type SortOption = "match_score" | "deadline" | "value";
+
 export function useCachedSearch() {
   const { user } = useAuth();
   const [results, setResults] = useState<(SearchResult & { fetchedAt: string })[]>([]);
   const [total, setTotal] = useState(0);
   const [isSearching, setIsSearching] = useState(false);
+  const [currentSort, setCurrentSort] = useState<SortOption>("match_score");
 
   const searchLocal = async (filters: SearchFilters, page = 0, limit = 25, sortBy: "match_score" | "deadline" | "value" = "match_score") => {
     if (!user) return;
