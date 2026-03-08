@@ -1554,6 +1554,7 @@ const SearchHub = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      <GuidedTour />
     </DashboardLayout>
   );
 };
