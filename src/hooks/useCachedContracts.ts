@@ -194,7 +194,7 @@ export function useCachedSearch() {
     }
   };
 
-  return { results, total, isSearching, searchLocal };
+  return { results, total, isSearching, searchLocal, currentSort, setCurrentSort };
 }
 
 /** Get the count of cached contracts for the current user */
