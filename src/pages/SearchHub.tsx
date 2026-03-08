@@ -626,48 +626,17 @@ const SearchHub = () => {
               onKeyDown={(e) => e.key === "Enter" && handleSearch(0)}
             />
           </div>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                  <Button
-                    variant="hero"
-                    className="h-12"
-                    onClick={() => handleSearch(0)}
-                    disabled={cachedSearch.isSearching}
-                  >
-                    <Search className="w-4 h-4 sm:mr-2" />
-                    <span className="hidden sm:inline">
-                      {cachedSearch.isSearching ? "Searching..." : "Search Cache"}
-                    </span>
-                  </Button>
-              </TooltipTrigger>
-              {rateLimit && (
-                <TooltipContent>
-                  <p>{rateLimit.remaining} of {rateLimit.limit} API syncs left today</p>
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="h-12 border-primary/50 text-primary hover:bg-primary/10"
-                  onClick={handleSyncFromApi}
-                  disabled={syncFromApi.isPending}
-                >
-                  <RefreshCw className={`w-4 h-4 sm:mr-2 ${syncFromApi.isPending ? "animate-spin" : ""}`} />
-                  <span className="hidden sm:inline">
-                    {syncFromApi.isPending ? "Syncing..." : "Sync from API"}
-                  </span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Fetch fresh contracts from SAM.gov (uses daily quota)</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Button
+            variant="hero"
+            className="h-12"
+            onClick={() => handleSearch(0)}
+            disabled={cachedSearch.isSearching || syncFromApi.isPending}
+          >
+            <Search className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">
+              {cachedSearch.isSearching || syncFromApi.isPending ? "Searching..." : "Search"}
+            </span>
+          </Button>
           {parsedFilters && (
             <Button variant="outline" className="h-12" onClick={() => setSaveDialogOpen(true)}>
               <Bookmark className="w-4 h-4 sm:mr-2" />
@@ -675,33 +644,6 @@ const SearchHub = () => {
             </Button>
           )}
         </div>
-
-        {/* Search quota indicator */}
-        {rateLimit && (
-          <div className="flex items-center gap-2 text-xs">
-            <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden max-w-[200px]">
-              <div
-                className={`h-full rounded-full transition-all ${
-                  rateLimit.remaining <= 5
-                    ? "bg-destructive"
-                    : rateLimit.remaining <= 15
-                    ? "bg-yellow-500"
-                    : "bg-primary"
-                }`}
-                style={{ width: `${(rateLimit.remaining / rateLimit.limit) * 100}%` }}
-              />
-            </div>
-            <span className={`font-medium ${
-              rateLimit.remaining <= 5
-                ? "text-destructive"
-                : rateLimit.remaining <= 15
-                ? "text-yellow-500"
-                : "text-muted-foreground"
-            }`}>
-              {rateLimit.remaining}/{rateLimit.limit} searches left today
-            </span>
-          </div>
-        )}
 
         {/* Parsed filters display */}
         <AnimatePresence>
