@@ -929,7 +929,7 @@ const SearchHub = () => {
                                 </div>
 
                                 {/* Actions: Save + overflow menu */}
-                                <div className="flex items-center gap-2 pt-1">
+                                <div data-tour="card-actions" className="flex items-center gap-2 pt-1">
                                   <Button
                                     variant="outline"
                                     size="sm"
