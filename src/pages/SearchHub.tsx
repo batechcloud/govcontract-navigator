@@ -1210,9 +1210,9 @@ const SearchHub = () => {
                   <Card variant="glass" className="text-center py-12">
                     <CardContent>
                       <Search className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="font-heading font-semibold text-lg mb-2">Find subcontracting opportunities</h3>
+                      <h3 className="font-heading font-semibold text-lg mb-2">Find team-up opportunities</h3>
                       <p className="text-muted-foreground">
-                        Search for subcontracts awarded through federal prime contracts.
+                        Search for opportunities to work with bigger companies on federal contracts.
                       </p>
                     </CardContent>
                   </Card>
