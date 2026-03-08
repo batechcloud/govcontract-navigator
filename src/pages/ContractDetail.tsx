@@ -193,6 +193,42 @@ const ContractDetail = () => {
   const deadline = getDaysLeft(contract?.deadline || null);
   const isTracked = !!tracked;
 
+  // AI Summary auto-fetch
+  const fetchSummary = async (force = false) => {
+    if (!contract || (summaryFetchedRef.current && !force)) return;
+    summaryFetchedRef.current = true;
+    setSummaryLoading(true);
+    setAiSummary(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-contract-summary', {
+        body: {
+          title: contract.title,
+          agency: contract.agency,
+          description: contract.description,
+          value: contract.value,
+          setAside: contract.setAside,
+          naicsCode: contract.naicsCode,
+          deadline: contract.deadline,
+          type: contract.type,
+          location: contract.location,
+        },
+      });
+      if (error) throw error;
+      setAiSummary(data.summary);
+    } catch (err: any) {
+      console.error("Summary error:", err);
+      setAiSummary(null);
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (contract && !summaryFetchedRef.current) {
+      fetchSummary();
+    }
+  }, [contract?.id]);
+
   const handleTrack = () => {
     if (!contract) return;
     trackContract.mutate({
