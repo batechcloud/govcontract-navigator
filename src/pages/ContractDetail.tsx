@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useLocation, useNavigate, Link } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
 import { motion } from "framer-motion";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,8 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   ArrowLeft, Building2, Clock, DollarSign, MapPin, FileText, Heart,
   ExternalLink, MessageSquare, Sparkles, Hash, Calendar, Globe, Tag,
-  StickyNote, Shield, Save, Paperclip, Download, Brain, Loader2,
+  StickyNote, Shield, Save, Paperclip, Download, Brain, Loader2, RefreshCw,
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useTrackedContracts, useTrackContract, useUpdateContractNotes, useUpdateContractStatus, TrackedContract } from "@/hooks/useTrackedContracts";
 import { SearchResult } from "@/hooks/useSearch";
 import { supabase } from "@/integrations/supabase/client";
@@ -91,6 +93,11 @@ const ContractDetail = () => {
   const winScore = useWinProbability();
   const [scoreModalOpen, setScoreModalOpen] = useState(false);
   const [scoreResult, setScoreResult] = useState<ContractScoreResult | null>(null);
+
+  // AI Summary state
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const summaryFetchedRef = useRef(false);
 
   // Find tracked version by contract_id or by table id
   const tracked = trackedContracts?.find(
@@ -185,6 +192,42 @@ const ContractDetail = () => {
 
   const deadline = getDaysLeft(contract?.deadline || null);
   const isTracked = !!tracked;
+
+  // AI Summary auto-fetch
+  const fetchSummary = async (force = false) => {
+    if (!contract || (summaryFetchedRef.current && !force)) return;
+    summaryFetchedRef.current = true;
+    setSummaryLoading(true);
+    setAiSummary(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-contract-summary', {
+        body: {
+          title: contract.title,
+          agency: contract.agency,
+          description: contract.description,
+          value: contract.value,
+          setAside: contract.setAside,
+          naicsCode: contract.naicsCode,
+          deadline: contract.deadline,
+          type: contract.type,
+          location: contract.location,
+        },
+      });
+      if (error) throw error;
+      setAiSummary(data.summary);
+    } catch (err: any) {
+      console.error("Summary error:", err);
+      setAiSummary(null);
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (contract && !summaryFetchedRef.current) {
+      fetchSummary();
+    }
+  }, [contract?.id]);
 
   const handleTrack = () => {
     if (!contract) return;
@@ -329,6 +372,58 @@ const ContractDetail = () => {
                 </span>
               )}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* AI Quick Summary */}
+        <Card variant="glass" className="overflow-hidden">
+          <CardContent className="p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-heading font-semibold text-foreground flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-accent" /> Quick Summary
+              </h2>
+              {aiSummary && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => fetchSummary(true)}
+                  disabled={summaryLoading}
+                  className="gap-1.5 text-xs text-muted-foreground"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${summaryLoading ? "animate-spin" : ""}`} />
+                  Regenerate
+                </Button>
+              )}
+            </div>
+
+            {summaryLoading ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin text-accent" />
+                  Generating summary…
+                </div>
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+                <Skeleton className="h-4 w-4/6" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+            ) : aiSummary ? (
+              <div className="prose prose-sm prose-invert max-w-none text-muted-foreground [&_h2]:text-foreground [&_h2]:text-base [&_h2]:font-semibold [&_h2]:mt-4 [&_h2]:mb-2 [&_ul]:my-1 [&_li]:my-0.5 [&_strong]:text-foreground">
+                <ReactMarkdown>{aiSummary}</ReactMarkdown>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Summary unavailable.{" "}
+                <button onClick={() => fetchSummary(true)} className="text-accent underline hover:no-underline">
+                  Try again
+                </button>
+              </p>
+            )}
+
+            <p className="text-[10px] text-muted-foreground/50 pt-2 border-t border-border/30">
+              Powered by AI · This is an automated summary — always verify details in the official listing.
+            </p>
           </CardContent>
         </Card>
 

@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.sam-refresh-single]
 verify_jwt = false
+
+[functions.ai-contract-summary]
+verify_jwt = false
