@@ -107,13 +107,17 @@ function parseValueToNumeric(val: string): number | null {
 }
 
 /** Search contracts from the local cached_contracts table */
+export type SortOption = "match_score" | "deadline" | "value";
+
 export function useCachedSearch() {
   const { user } = useAuth();
   const [results, setResults] = useState<(SearchResult & { fetchedAt: string })[]>([]);
   const [total, setTotal] = useState(0);
   const [isSearching, setIsSearching] = useState(false);
+  const [currentSort, setCurrentSort] = useState<SortOption>("match_score");
 
-  const searchLocal = async (filters: SearchFilters, page = 0, limit = 25) => {
+  const searchLocal = async (filters: SearchFilters, page = 0, limit = 25, sortBy?: SortOption) => {
+    const effectiveSort = sortBy ?? currentSort;
     if (!user) return;
     setIsSearching(true);
     try {
@@ -160,10 +164,20 @@ export function useCachedSearch() {
       }
 
       // Pagination & ordering
-      query = query
-        .order("match_score", { ascending: false, nullsFirst: false })
-        .order("fetched_at", { ascending: false })
-        .range(page * limit, (page + 1) * limit - 1);
+      if (effectiveSort === "deadline") {
+        query = query
+          .order("deadline", { ascending: true, nullsFirst: false })
+          .order("match_score", { ascending: false, nullsFirst: false });
+      } else if (effectiveSort === "value") {
+        query = query
+          .order("value", { ascending: false, nullsFirst: false })
+          .order("match_score", { ascending: false, nullsFirst: false });
+      } else {
+        query = query
+          .order("match_score", { ascending: false, nullsFirst: false })
+          .order("fetched_at", { ascending: false });
+      }
+      query = query.range(page * limit, (page + 1) * limit - 1);
 
       const { data, error, count } = await query;
 
@@ -181,7 +195,7 @@ export function useCachedSearch() {
     }
   };
 
-  return { results, total, isSearching, searchLocal };
+  return { results, total, isSearching, searchLocal, currentSort, setCurrentSort };
 }
 
 /** Get the count of cached contracts for the current user */

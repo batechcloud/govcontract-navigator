@@ -61,6 +61,7 @@ import {
   RefreshCw,
   CheckCircle2,
   ArrowUp,
+  ArrowUpDown,
   MoreHorizontal,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
@@ -76,7 +77,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { WinScoreModal } from "@/components/search/WinScoreModal";
 import { useCompanyProfile } from "@/hooks/useProfile";
 import { computeHeuristicScore, getScoreColor } from "@/lib/heuristic-score";
-import { useCachedSearch, useSyncFromApi, useCacheCount } from "@/hooks/useCachedContracts";
+import { useCachedSearch, useSyncFromApi, useCacheCount, SortOption } from "@/hooks/useCachedContracts";
 import { GuidedTour } from "@/components/search/GuidedTour";
 
 const quickFilters = [
@@ -395,6 +396,20 @@ const SearchHub = () => {
       opportunity_type: null,
     }, 0, 25);
   }, []);
+
+  // Re-query cache when sort order changes
+  const sortInitialized = useRef(false);
+  useEffect(() => {
+    if (!sortInitialized.current) {
+      sortInitialized.current = true;
+      return;
+    }
+    if (cachedSearch.results.length > 0) {
+      const filters = buildCombinedFilters();
+      const currentLimit = Math.max(cachedSearch.results.length, 25);
+      cachedSearch.searchLocal(filters as any, 0, currentLimit);
+    }
+  }, [cachedSearch.currentSort]);
 
   const trackContract = useTrackContract();
   const { data: trackedContracts } = useTrackedContracts();
@@ -859,6 +874,22 @@ const SearchHub = () => {
                     "Search above to find government contracts"
                   )}
                 </p>
+                {cachedSearch.results.length > 0 && (
+                  <Select
+                    value={cachedSearch.currentSort}
+                    onValueChange={(val) => cachedSearch.setCurrentSort(val as SortOption)}
+                  >
+                    <SelectTrigger className="w-[180px] h-8 text-xs bg-card border-border">
+                      <ArrowUpDown className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
+                      <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-card border-border">
+                      <SelectItem value="match_score">Match Score</SelectItem>
+                      <SelectItem value="deadline">Deadline (Soonest)</SelectItem>
+                      <SelectItem value="value">Value (Highest)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               <div ref={resultListRef} data-tour="result-list" className="space-y-3">
