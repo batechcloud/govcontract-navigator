@@ -77,6 +77,7 @@ import { WinScoreModal } from "@/components/search/WinScoreModal";
 import { useCompanyProfile } from "@/hooks/useProfile";
 import { computeHeuristicScore, getScoreColor } from "@/lib/heuristic-score";
 import { useCachedSearch, useSyncFromApi, useCacheCount } from "@/hooks/useCachedContracts";
+import { GuidedTour } from "@/components/search/GuidedTour";
 
 const quickFilters = [
   { label: "Small Business", filter: { set_aside: ["Small Business"] }, subKeyword: "small business", tooltip: "Contracts only small companies can bid on" },
