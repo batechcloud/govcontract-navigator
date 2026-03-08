@@ -920,12 +920,6 @@ const SearchHub = () => {
                                       {result.location}
                                     </span>
                                   )}
-                                  {fetchedAt && (
-                                    <span className="flex items-center gap-1 text-xs text-muted-foreground/60">
-                                      <RefreshCw className="w-3 h-3" />
-                                      Updated {formatDistanceToNow(new Date(fetchedAt), { addSuffix: true })}
-                                    </span>
-                                  )}
                                 </div>
 
                                 {/* Actions: Save + Start Bid + Refresh + overflow menu */}
