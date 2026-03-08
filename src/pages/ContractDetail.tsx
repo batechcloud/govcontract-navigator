@@ -701,8 +701,8 @@ const ContractDetail = () => {
 
         {/* Action buttons */}
         <Card variant="glass">
-          <CardContent className="p-6">
-            <div className="flex flex-wrap gap-3">
+          <CardContent className="p-4 sm:p-6">
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3">
               <Button variant="hero" onClick={handleStartBid} className="gap-2">
                 <FileText className="w-4 h-4" /> Start Bid
               </Button>
