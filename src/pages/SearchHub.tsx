@@ -816,13 +816,10 @@ const SearchHub = () => {
                   {cachedSearch.results.length > 0 ? (
                     <>
                       Showing <span className="text-foreground font-semibold">{cachedSearch.results.length.toLocaleString()}</span> of{" "}
-                      <span className="text-foreground font-semibold">{cachedSearch.total.toLocaleString()}</span> cached contracts
-                      {cacheCount !== undefined && cacheCount > 0 && (
-                        <span className="text-muted-foreground"> ({cacheCount.toLocaleString()} total in cache)</span>
-                      )}
+                      <span className="text-foreground font-semibold">{cachedSearch.total.toLocaleString()}</span> results
                     </>
                   ) : cacheCount === 0 ? (
-                    <span>No cached contracts yet. Click <strong>Sync from API</strong> to fetch contracts.</span>
+                    <span>No contracts found yet. Try searching above to get started!</span>
                   ) : (
                     "Search above to find government contracts"
                   )}
