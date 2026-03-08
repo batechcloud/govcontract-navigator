@@ -159,22 +159,22 @@ const SearchHub = () => {
   const [advContractType, setAdvContractType] = useState("");
 
   const setAsideOptions = [
-    { value: "Small Business", label: "Small Business" },
-    { value: "8(a)", label: "8(a)" },
-    { value: "WOSB", label: "WOSB" },
-    { value: "EDWOSB", label: "EDWOSB" },
-    { value: "HUBZone", label: "HUBZone" },
-    { value: "SDVOSB", label: "SDVOSB" },
-    { value: "VOSB", label: "VOSB" },
-    { value: "SDB", label: "SDB" },
+    { value: "Small Business", label: "Small Businesses Only" },
+    { value: "8(a)", label: "Minority-Owned (8a)" },
+    { value: "WOSB", label: "Woman-Owned" },
+    { value: "EDWOSB", label: "Economically Disadvantaged Woman-Owned" },
+    { value: "HUBZone", label: "HUBZone Area" },
+    { value: "SDVOSB", label: "Veteran-Owned (Service-Disabled)" },
+    { value: "VOSB", label: "Veteran-Owned" },
+    { value: "SDB", label: "Small Disadvantaged" },
   ];
 
   const contractTypeOptions = [
-    { value: "FFP", label: "Firm Fixed Price (FFP)" },
-    { value: "IDIQ", label: "IDIQ" },
-    { value: "BPA", label: "BPA" },
-    { value: "T&M", label: "Time & Materials (T&M)" },
-    { value: "Cost-Plus", label: "Cost-Plus" },
+    { value: "FFP", label: "Fixed Price" },
+    { value: "IDIQ", label: "Flexible Quantity" },
+    { value: "BPA", label: "Blanket Agreement" },
+    { value: "T&M", label: "Hourly + Materials" },
+    { value: "Cost-Plus", label: "Cost + Fee" },
   ];
 
   const hasAdvancedFilters = !!(advNaics.length > 0 || advPsc.length > 0 || advMinValue || advMaxValue || advAgency || advDeadline || advState || advType || advSetAside.length > 0 || advContractType);
