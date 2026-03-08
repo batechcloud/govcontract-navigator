@@ -125,9 +125,7 @@ const SearchHub = () => {
   // Cache-first search hooks
   const cachedSearch = useCachedSearch();
   const syncFromApi = useSyncFromApi();
-  const refreshContract = useRefreshContract();
   const { data: cacheCount } = useCacheCount();
-  const [searchMode, setSearchMode] = useState<"cache" | "api">("cache");
 
   const handleScoreContract = (result: SearchResult) => {
     const input: ContractScoreInput = {
