@@ -456,8 +456,9 @@ const SearchHub = () => {
 
   const handleSyncFromApi = async () => {
     const filters = buildCombinedFilters();
-    await syncFromApi.mutateAsync({ filters: filters as any, page: 0, limit: 25 });
-    // After sync, refresh cache search to show new results
+    setSyncPage(0);
+    const syncResult = await syncFromApi.mutateAsync({ filters: filters as any, page: 0, limit: 25 });
+    setApiTotal(syncResult.apiTotal);
     await cachedSearch.searchLocal(filters as any, 0, 25);
   };
 
