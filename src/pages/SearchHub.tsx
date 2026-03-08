@@ -874,6 +874,22 @@ const SearchHub = () => {
                     "Search above to find government contracts"
                   )}
                 </p>
+                {cachedSearch.results.length > 0 && (
+                  <Select
+                    value={cachedSearch.currentSort}
+                    onValueChange={(val) => cachedSearch.setCurrentSort(val as SortOption)}
+                  >
+                    <SelectTrigger className="w-[180px] h-8 text-xs bg-card border-border">
+                      <ArrowUpDown className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
+                      <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-card border-border">
+                      <SelectItem value="match_score">Match Score</SelectItem>
+                      <SelectItem value="deadline">Deadline (Soonest)</SelectItem>
+                      <SelectItem value="value">Value (Highest)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               <div ref={resultListRef} data-tour="result-list" className="space-y-3">
