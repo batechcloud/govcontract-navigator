@@ -100,7 +100,7 @@ serve(async (req) => {
       title: opp.title || "Untitled Opportunity",
       agency: extractAgency(opp),
       type: opp.type || "Solicitation",
-      setAside: opp.typeOfSetAside && opp.typeOfSetAside !== "NONE" ? opp.typeOfSetAside : "Full & Open",
+      setAside: normalizeSetAside(opp.typeOfSetAside),
       value: formatValue(opp.award?.amount || opp.baseAndAllOptionsValue),
       deadline: opp.responseDeadLine || opp.archiveDate || null,
       postedDate: opp.postedDate || null,
@@ -143,6 +143,19 @@ function getDateMonthsAgo(months: number): string {
 
 function getTodayFormatted(): string {
   return formatSamDate(new Date());
+}
+
+const SET_ASIDE_RAW_TO_LABEL: Record<string, string> = {
+  SBP: "Small Business",
+  SBA: "8(a)",
+  SDVOSBC: "SDVOSB",
+  VOSBC: "VOSB",
+  HZC: "HUBZone",
+};
+
+function normalizeSetAside(raw: string | null | undefined): string {
+  if (!raw || raw === "NONE") return "Full & Open";
+  return SET_ASIDE_RAW_TO_LABEL[raw] || raw;
 }
 
 function extractAgency(opp: any): string {

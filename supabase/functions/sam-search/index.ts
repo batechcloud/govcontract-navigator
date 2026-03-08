@@ -446,7 +446,7 @@ function transformSamResults(opportunities: any[], filters: SearchFilters) {
       title: opp.title || "Untitled Opportunity",
       agency: extractAgency(opp),
       type: opp.type || "Solicitation",
-      setAside: opp.typeOfSetAside && opp.typeOfSetAside !== "NONE" ? opp.typeOfSetAside : "Full & Open",
+      setAside: normalizeSetAside(opp.typeOfSetAside),
       value: formatValue(opp.award?.amount || opp.baseAndAllOptionsValue),
       deadline: opp.responseDeadLine || opp.archiveDate || opp.date,
       postedDate: opp.postedDate,
@@ -464,6 +464,19 @@ function transformSamResults(opportunities: any[], filters: SearchFilters) {
       _rawAgencyPath: opp.fullParentPathName || "",
     };
   });
+}
+
+const SET_ASIDE_RAW_TO_LABEL: Record<string, string> = {
+  SBP: "Small Business",
+  SBA: "8(a)",
+  SDVOSBC: "SDVOSB",
+  VOSBC: "VOSB",
+  HZC: "HUBZone",
+};
+
+function normalizeSetAside(raw: string | null | undefined): string {
+  if (!raw || raw === "NONE") return "Full & Open";
+  return SET_ASIDE_RAW_TO_LABEL[raw] || raw;
 }
 
 function formatValue(amount: number | null | undefined): string {
