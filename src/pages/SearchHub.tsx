@@ -817,7 +817,32 @@ const SearchHub = () => {
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "prime" | "subcontracts")} className="w-full">
+        <Tabs value={activeTab} onValueChange={async (v) => {
+          const newTab = v as "prime" | "subcontracts";
+          setActiveTab(newTab);
+          setCurrentPage(0);
+          if (newTab === "prime") {
+            const filters = buildCombinedFilters();
+            await cachedSearch.searchLocal(filters as any, 0, 25);
+          } else {
+            const combinedKeyword = buildSubawardKeyword(searchQuery, activeFilters);
+            if (combinedKeyword || hasSubFilters) {
+              const res = await subawardSearch.mutateAsync({
+                keyword: combinedKeyword,
+                page: 1,
+                limit: 25,
+                prime_contractor: subPrimeContractor.trim() || undefined,
+                min_amount: subMinAmount ? parseInt(subMinAmount) : undefined,
+                max_amount: subMaxAmount ? parseInt(subMaxAmount) : undefined,
+                agency: subAgency || undefined,
+              });
+              setSubawardResults(res.results);
+              setSubawardPage(1);
+              setSubawardHasNext(res.page_metadata?.hasNext ?? false);
+              setSubawardTotal(res.page_metadata?.total ?? res.results.length);
+            }
+          }
+        }} className="w-full">
           <div className="border-b border-border/50">
             <TabsList className="bg-transparent border-none p-0 h-auto gap-4">
               <TabsTrigger
