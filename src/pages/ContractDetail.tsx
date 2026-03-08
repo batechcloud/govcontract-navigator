@@ -402,11 +402,6 @@ const ContractDetail = () => {
       </DashboardLayout>
     );
   }
-          </CardContent>
-        </Card>
-      </DashboardLayout>
-    );
-  }
 
   const matchLabel = contract.matchScore
     ? contract.matchScore >= 90
