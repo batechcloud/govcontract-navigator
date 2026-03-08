@@ -459,7 +459,7 @@ const ContractDetail = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="space-y-6 max-w-4xl"
+        className="space-y-4 sm:space-y-6 max-w-4xl px-1 sm:px-0"
       >
         {/* Back button */}
         <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-2 text-muted-foreground hover:text-foreground">
