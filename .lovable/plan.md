@@ -1,59 +1,124 @@
 
 
-## Plan: Fix Search to Access All SAM.gov Contracts with Proper Pagination
+## Add Per-User Rate Limiting to SAM Search
 
-### Problem Analysis
+### Problem
+The SAM.gov API has a 450 requests/day global quota. A single user making many searches could exhaust the limit for everyone.
 
-The "Showing 25 of 25" issue stems from the current architecture:
+### Approach
+Use a new `api_rate_limits` database table to track per-user daily SAM.gov API calls. The edge function checks the count before making an API call and rejects requests that exceed the limit with a clear error message.
 
-1. **`syncFromApi`** fetches only 25 results from SAM.gov and caches them locally
-2. **`cachedSearch.searchLocal`** queries only the local `cached_contracts` table — so "total" reflects cached rows, not SAM.gov's actual total (which could be thousands)
-3. **"Load More"** paginates the local cache, never fetching more from SAM.gov
-4. The SAM.gov API returns `totalRecords` (e.g., 5000) but this value is never surfaced to the UI
-
-### Solution
-
-Restructure the search flow so the UI always shows SAM.gov's real total and "Load More" fetches the next batch from SAM.gov.
+### Design Decisions
+- **Daily limit per user**: 50 requests/day (allows ~9 active users at full capacity within the 450 global limit)
+- **Storage**: A lightweight `api_rate_limits` table with a composite unique constraint on `(user_id, api_name, date)`
+- **Reset**: Automatic daily reset by using the current date as a key -- no cleanup jobs needed
+- **Graceful handling**: When rate-limited, return a 429 status with a clear message and the reset time, so the frontend can display it
 
 ### Changes
 
-**1. Update `useSyncFromApi` in `src/hooks/useCachedContracts.ts`**
-- Return `apiTotal` (the real `totalRecords` from SAM.gov) alongside `synced` count
-- Accept a `page` parameter to support fetching subsequent pages
+**1. Database Migration -- new `api_rate_limits` table**
 
-**2. Update `src/pages/SearchHub.tsx` — search flow**
-- Track `apiTotal` as a separate state variable (the real SAM.gov total)
-- On initial search: call `syncFromApi` (page 0, limit 25), store `apiTotal` from SAM response, then display cached results
-- Display: "Showing 25 of 5,000 results" using `apiTotal` instead of `cachedSearch.total`
-- **"Load More"** button: increment a `syncPage` counter, call `syncFromApi` with the next page, cache new results, then re-query local cache with increased range to show all accumulated results
-- Show "Sync from SAM.gov" button alongside the count to let users explicitly pull fresh data
+```sql
+CREATE TABLE public.api_rate_limits (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  api_name text NOT NULL DEFAULT 'sam_search',
+  request_date date NOT NULL DEFAULT CURRENT_DATE,
+  request_count integer NOT NULL DEFAULT 1,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  UNIQUE (user_id, api_name, request_date)
+);
 
-**3. Update `src/pages/SearchHub.tsx` — keyword search**
-- Ensure that when the user types a keyword and hits Enter/Search, the flow always calls `syncFromApi` (not just `cachedSearch.searchLocal`), so live SAM.gov data is fetched for the current query
-- Only fall back to cache-only when the user has no search terms and just browsing previously synced data
+ALTER TABLE public.api_rate_limits ENABLE ROW LEVEL SECURITY;
 
-**4. Update result counter display**
-- Change from `cachedSearch.total` to `apiTotal` for the "of X results" display
-- Show "Load More" when `cachedSearch.results.length < apiTotal`
+CREATE POLICY "Users can view their own rate limits"
+  ON public.api_rate_limits FOR SELECT
+  USING (auth.uid() = user_id);
 
-### Technical Details
-
-```text
-User Flow:
-  Search "IT support"
-    → syncFromApi(filters, page=0, limit=25) → SAM API returns 25 results + totalRecords=3200
-    → cache 25 rows → searchLocal() → display 25
-    → UI shows "Showing 25 of 3,200 results"
-    
-  Click "Load More"
-    → syncFromApi(filters, page=1, limit=25) → SAM API returns next 25
-    → cache 25 more rows → searchLocal(page range 0-49) → display 50
-    → UI shows "Showing 50 of 3,200 results"
+CREATE POLICY "Service role manages rate limits"
+  ON public.api_rate_limits FOR ALL
+  USING (true)
+  WITH CHECK (true);
 ```
 
-The SAM.gov API supports `offset` pagination natively (already implemented in the edge function via `params.append("offset", ...)`), so no backend changes are needed.
+A database function to atomically increment and check:
 
-### Files to Modify
-- `src/hooks/useCachedContracts.ts` — return `apiTotal` from sync, support page param properly
-- `src/pages/SearchHub.tsx` — new `apiTotal` state, reworked search/load-more flow, always sync on active search
+```sql
+CREATE OR REPLACE FUNCTION public.check_and_increment_rate_limit(
+  _user_id uuid,
+  _api_name text,
+  _daily_limit integer
+)
+RETURNS TABLE(allowed boolean, current_count integer, daily_limit integer)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
+AS $$
+DECLARE
+  _count integer;
+BEGIN
+  INSERT INTO api_rate_limits (user_id, api_name, request_date, request_count)
+  VALUES (_user_id, _api_name, CURRENT_DATE, 1)
+  ON CONFLICT (user_id, api_name, request_date)
+  DO UPDATE SET request_count = api_rate_limits.request_count + 1, updated_at = now()
+  RETURNING request_count INTO _count;
+
+  RETURN QUERY SELECT _count <= _daily_limit, _count, _daily_limit;
+END;
+$$;
+```
+
+**2. Edge Function -- `supabase/functions/sam-search/index.ts`**
+
+Add rate limit check right after authentication succeeds (around line 94), before any API call logic:
+
+```typescript
+// After user is authenticated, check rate limit
+const serviceClient = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+);
+
+const DAILY_LIMIT = 50;
+const { data: rateData, error: rateError } = await serviceClient
+  .rpc('check_and_increment_rate_limit', {
+    _user_id: user.id,
+    _api_name: 'sam_search',
+    _daily_limit: DAILY_LIMIT,
+  });
+
+if (rateError) {
+  console.error('Rate limit check failed:', rateError);
+  // Fail open -- allow the request if rate limiting breaks
+} else if (rateData?.[0] && !rateData[0].allowed) {
+  return new Response(JSON.stringify({
+    error: 'Rate limit exceeded',
+    message: `You've reached your daily limit of ${DAILY_LIMIT} searches. Your limit resets at midnight UTC.`,
+    current_count: rateData[0].current_count,
+    daily_limit: DAILY_LIMIT,
+  }), {
+    status: 429,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+```
+
+Key detail: the rate limit is only checked when a real SAM.gov API call will be made (i.e., when `SAM_API_KEY` is configured). Mock data responses skip the rate limit.
+
+**3. Frontend -- `src/hooks/useSearch.tsx`**
+
+Update the error handling to detect 429 responses and show a user-friendly toast:
+
+```typescript
+// In the search function's error handling
+if (error.message?.includes('Rate limit exceeded') || error.status === 429) {
+  toast.error("Daily search limit reached. Your limit resets at midnight UTC.");
+}
+```
+
+### Summary of files changed
+| File | Change |
+|------|--------|
+| Migration SQL | New `api_rate_limits` table + `check_and_increment_rate_limit` function |
+| `supabase/functions/sam-search/index.ts` | Add rate limit check after auth, before API call |
+| `src/hooks/useSearch.tsx` | Handle 429 rate limit error with toast message |
 

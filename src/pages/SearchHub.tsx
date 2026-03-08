@@ -96,6 +96,8 @@ const SearchHub = () => {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [searchName, setSearchName] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
+  const [syncPage, setSyncPage] = useState(0);
+  const [apiTotal, setApiTotal] = useState<number | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [activeSector, setActiveSector] = useState<string | null>(null);
   const sectorSearchDone = useRef(false);
@@ -422,27 +424,41 @@ const SearchHub = () => {
         setSubawardHasNext(res.page_metadata?.hasNext ?? false);
         setSubawardTotal(res.page_metadata?.total ?? res.results.length);
       } else {
-        // Smart search: search cache first, auto-sync from API if cache is empty
+        // Always sync from SAM.gov API for fresh results
         const filters = buildCombinedFilters();
-        const cacheResult = await cachedSearch.searchLocal(filters as any, page, 25);
-        
-        // If cache returned no results and this is page 0, auto-sync from API
-        if (page === 0 && (!cacheResult || cacheResult.total === 0)) {
-          try {
-            await syncFromApi.mutateAsync({ filters: filters as any, page: 0, limit: 25 });
-            await cachedSearch.searchLocal(filters as any, 0, 25);
-          } catch {
-            // Sync failed (rate limit, etc.) — already handled by syncFromApi error handler
-          }
+        setSyncPage(0);
+        try {
+          const syncResult = await syncFromApi.mutateAsync({ filters: filters as any, page: 0, limit: 25 });
+          setApiTotal(syncResult.apiTotal);
+        } catch {
+          // Sync failed (rate limit, etc.) — fall back to cache
         }
+        // Display results from cache
+        await cachedSearch.searchLocal(filters as any, 0, 25);
       }
     } catch (error) {}
   };
 
+  const handleLoadMoreFromApi = async () => {
+    const nextSyncPage = syncPage + 1;
+    setSyncPage(nextSyncPage);
+    const filters = buildCombinedFilters();
+    try {
+      const syncResult = await syncFromApi.mutateAsync({ filters: filters as any, page: nextSyncPage, limit: 25 });
+      setApiTotal(syncResult.apiTotal);
+      // Re-query local cache with increased limit to show all accumulated results
+      const newLimit = (nextSyncPage + 1) * 25;
+      await cachedSearch.searchLocal(filters as any, 0, newLimit);
+    } catch {
+      // Sync failed — keep showing current results
+    }
+  };
+
   const handleSyncFromApi = async () => {
     const filters = buildCombinedFilters();
-    await syncFromApi.mutateAsync({ filters: filters as any, page: 0, limit: 25 });
-    // After sync, refresh cache search to show new results
+    setSyncPage(0);
+    const syncResult = await syncFromApi.mutateAsync({ filters: filters as any, page: 0, limit: 25 });
+    setApiTotal(syncResult.apiTotal);
     await cachedSearch.searchLocal(filters as any, 0, 25);
   };
 
@@ -832,7 +848,10 @@ const SearchHub = () => {
                   {cachedSearch.results.length > 0 ? (
                     <>
                       Showing <span className="text-foreground font-semibold">{cachedSearch.results.length.toLocaleString()}</span> of{" "}
-                      <span className="text-foreground font-semibold">{cachedSearch.total.toLocaleString()}</span> results
+                      <span className="text-foreground font-semibold">{(apiTotal ?? cachedSearch.total).toLocaleString()}</span> results
+                      {apiTotal !== null && apiTotal > cachedSearch.total && (
+                        <span className="text-muted-foreground ml-1">(from SAM.gov)</span>
+                      )}
                     </>
                   ) : cacheCount === 0 ? (
                     <span>No contracts found yet. Try searching above to get started!</span>
@@ -1026,7 +1045,7 @@ const SearchHub = () => {
                 )}
               </div>
 
-              {cachedSearch.results.length > 0 && cachedSearch.total > cachedSearch.results.length && (
+              {cachedSearch.results.length > 0 && (apiTotal !== null ? cachedSearch.results.length < apiTotal : cachedSearch.total > cachedSearch.results.length) && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -1034,15 +1053,15 @@ const SearchHub = () => {
                 >
                   <Button
                     variant="outline"
-                    onClick={() => handleSearch(currentPage + 1)}
-                    disabled={cachedSearch.isSearching}
+                    onClick={handleLoadMoreFromApi}
+                    disabled={cachedSearch.isSearching || syncFromApi.isPending}
                     className="gap-2"
                   >
                     <ArrowUp className="w-4 h-4 rotate-180" />
-                    Load More
+                    {syncFromApi.isPending ? "Loading..." : "Load More from SAM.gov"}
                   </Button>
                   <p className="text-xs text-muted-foreground">
-                    {(cachedSearch.total - cachedSearch.results.length).toLocaleString()} more results available
+                    {((apiTotal ?? cachedSearch.total) - cachedSearch.results.length).toLocaleString()} more results available on SAM.gov
                   </p>
                 </motion.div>
               )}

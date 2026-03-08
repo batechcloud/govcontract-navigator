@@ -230,7 +230,7 @@ export function useSyncFromApi() {
       const warning = data?.warning;
 
       if (results.length === 0) {
-        return { synced: 0, total: data?.total || 0, warning };
+        return { synced: 0, apiTotal: data?.total || 0, warning };
       }
 
       // 2. Upsert into cached_contracts
@@ -266,7 +266,7 @@ export function useSyncFromApi() {
         throw new Error("Failed to cache contracts");
       }
 
-      return { synced: results.length, total: data?.total || 0, warning };
+      return { synced: results.length, apiTotal: data?.total || 0, warning };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["cached-contracts-count"] });
@@ -274,7 +274,7 @@ export function useSyncFromApi() {
       if (data.warning) {
         toast.warning(data.warning, { duration: 6000 });
       }
-      toast.success(`Synced ${data.synced} contracts to local cache`);
+      toast.success(`Synced ${data.synced} contracts from SAM.gov`);
     },
     onError: (error: Error) => {
       if (error.message?.includes("Rate limit") || error.message?.includes("daily limit")) {
