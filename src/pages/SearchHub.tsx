@@ -96,6 +96,9 @@ const SearchHub = () => {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [searchName, setSearchName] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
+  const [syncPage, setSyncPage] = useState(0);
+  const [apiTotal, setApiTotal] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [activeSector, setActiveSector] = useState<string | null>(null);
   const sectorSearchDone = useRef(false);
