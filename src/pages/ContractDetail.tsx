@@ -94,6 +94,10 @@ const ContractDetail = () => {
   const [scoreModalOpen, setScoreModalOpen] = useState(false);
   const [scoreResult, setScoreResult] = useState<ContractScoreResult | null>(null);
 
+  // Direct-fetch fallback state (for new-tab / direct URL access)
+  const [fetchedContract, setFetchedContract] = useState<ContractData | null>(null);
+  const [fetchLoading, setFetchLoading] = useState(false);
+
   // AI Summary state
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
@@ -104,7 +108,7 @@ const ContractDetail = () => {
     (c) => c.contract_id === contractId || c.id === contractId
   );
 
-  // Build display data: prefer router state, fallback to tracked
+  // Build display data: prefer router state, fallback to tracked, then fetched
   const contract: ContractData | null = stateData
     ? {
         id: stateData.id,
@@ -125,12 +129,85 @@ const ContractDetail = () => {
       }
     : tracked
       ? trackedToContractData(tracked)
-      : null;
+      : fetchedContract;
+
+  // Fallback: fetch contract when no state data and not tracked
+  useEffect(() => {
+    if (stateData || tracked || fetchedContract || fetchLoading || !contractId) return;
+
+    const fetchContract = async () => {
+      setFetchLoading(true);
+      try {
+        // 1) Check cached_contracts table first
+        const { data: cached } = await supabase
+          .from("cached_contracts")
+          .select("*")
+          .eq("contract_id", contractId)
+          .limit(1)
+          .maybeSingle();
+
+        if (cached) {
+          setFetchedContract({
+            id: cached.contract_id,
+            title: cached.title || "Untitled",
+            agency: cached.agency || "Federal Agency",
+            type: cached.contract_type || undefined,
+            setAside: cached.set_aside || undefined,
+            value: cached.value ? (cached.value >= 1000000 ? `$${(Number(cached.value) / 1000000).toFixed(1)}M` : cached.value >= 1000 ? `$${(Number(cached.value) / 1000).toFixed(0)}K` : `$${cached.value}`) : undefined,
+            deadline: cached.deadline || undefined,
+            postedDate: cached.posted_date || undefined,
+            location: cached.location || undefined,
+            naicsCode: cached.naics_code || undefined,
+            description: cached.description || undefined,
+            solicitationNumber: cached.solicitation_number || undefined,
+            link: cached.url || undefined,
+            matchScore: cached.match_score || undefined,
+            resourceLinks: cached.resource_links || undefined,
+          });
+          return;
+        }
+
+        // 2) Call sam-refresh-single edge function
+        const { data, error } = await supabase.functions.invoke("sam-refresh-single", {
+          body: { noticeId: contractId },
+        });
+
+        if (error || !data?.result) {
+          setFetchedContract(null);
+          return;
+        }
+
+        const r = data.result;
+        setFetchedContract({
+          id: r.id,
+          title: r.title,
+          agency: r.agency,
+          type: r.type || undefined,
+          setAside: r.setAside || undefined,
+          value: r.value || undefined,
+          deadline: r.deadline || undefined,
+          postedDate: r.postedDate || undefined,
+          location: r.location || undefined,
+          naicsCode: r.naicsCode || undefined,
+          description: r.description || undefined,
+          solicitationNumber: r.solicitationNumber || undefined,
+          link: r.link || undefined,
+          matchScore: r.matchScore || undefined,
+          resourceLinks: r.resourceLinks || undefined,
+        });
+      } catch (err) {
+        console.error("Failed to fetch contract:", err);
+      } finally {
+        setFetchLoading(false);
+      }
+    };
+
+    fetchContract();
+  }, [contractId, stateData, tracked, fetchedContract, fetchLoading]);
 
   // Fetch resourceLinks from SAM.gov if not already available
   const [fetchedLinks, setFetchedLinks] = useState<string[] | null>(null);
   const [fetchingLinks, setFetchingLinks] = useState(false);
-
   useEffect(() => {
     // Skip if we already have links from state or tracked data, or if already fetching/fetched
     if (contract?.resourceLinks?.length || fetchedLinks !== null || fetchingLinks || !contractId) return;
@@ -272,6 +349,35 @@ const ContractDetail = () => {
     const preload = encodeURIComponent(`I need help understanding this contract: "${contract.title}"${sol} from ${contract.agency}. Can you explain what they're looking for and whether it might be a good fit for a small business?`);
     navigate(`/dashboard/ai?q=${preload}`);
   };
+
+  if (!contract && fetchLoading) {
+    return (
+      <DashboardLayout title="Contract Details">
+        <div className="space-y-6 max-w-4xl">
+          <Skeleton className="h-8 w-24" />
+          <Card variant="glass">
+            <CardContent className="p-6 space-y-4">
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-4 w-64" />
+              <div className="flex gap-4 pt-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-28" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card variant="glass">
+            <CardContent className="p-6 space-y-3">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+              <Skeleton className="h-4 w-4/6" />
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (!contract) {
     return (
