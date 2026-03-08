@@ -475,7 +475,11 @@ const SearchHub = () => {
 
     if (activeTab === "subcontracts") {
       const combinedKeyword = buildSubawardKeyword(searchQuery, newActiveFilters);
-      if (!combinedKeyword) return;
+      if (!combinedKeyword && !hasSubFilters) {
+        setSubawardResults([]);
+        setSubawardTotal(0);
+        return;
+      }
       const res = await subawardSearch.mutateAsync({
         keyword: combinedKeyword,
         page: 1,
@@ -521,9 +525,7 @@ const SearchHub = () => {
       ...(deadlineDate ? { deadline_before: deadlineDate } : {}),
     };
 
-    if (newActiveFilters.length > 0 || searchQuery.trim() || hasAdvancedFilters) {
-      await cachedSearch.searchLocal(combinedFilters as any, 0, 25);
-    }
+    await cachedSearch.searchLocal(combinedFilters as any, 0, 25);
   };
 
   const handleTrack = (result: SearchResult) => {
@@ -758,7 +760,38 @@ const SearchHub = () => {
 
           {activeFilters.length > 0 && (
             <button
-              onClick={() => { setActiveFilters([]); }}
+              onClick={async () => {
+                setActiveFilters([]);
+                setCurrentPage(0);
+                if (activeTab === "subcontracts") {
+                  const keyword = searchQuery.trim();
+                  if (keyword || hasSubFilters) {
+                    const res = await subawardSearch.mutateAsync({
+                      keyword: keyword || "",
+                      page: 1,
+                      limit: 25,
+                      prime_contractor: subPrimeContractor.trim() || undefined,
+                      min_amount: subMinAmount ? parseInt(subMinAmount) : undefined,
+                      max_amount: subMaxAmount ? parseInt(subMaxAmount) : undefined,
+                      agency: subAgency || undefined,
+                    });
+                    setSubawardResults(res.results);
+                    setSubawardPage(1);
+                    setSubawardHasNext(res.page_metadata?.hasNext ?? false);
+                    setSubawardTotal(res.page_metadata?.total ?? res.results.length);
+                  } else {
+                    setSubawardResults([]);
+                    setSubawardTotal(0);
+                  }
+                } else {
+                  const filters = buildCombinedFilters();
+                  // Clear quick filter set-asides from the combined filters
+                  await cachedSearch.searchLocal({
+                    ...filters,
+                    set_aside: advSetAside.length > 0 ? advSetAside : [],
+                  } as any, 0, 25);
+                }
+              }}
               className="text-[10px] text-muted-foreground hover:text-foreground underline ml-1"
             >
               Clear all
@@ -784,7 +817,32 @@ const SearchHub = () => {
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "prime" | "subcontracts")} className="w-full">
+        <Tabs value={activeTab} onValueChange={async (v) => {
+          const newTab = v as "prime" | "subcontracts";
+          setActiveTab(newTab);
+          setCurrentPage(0);
+          if (newTab === "prime") {
+            const filters = buildCombinedFilters();
+            await cachedSearch.searchLocal(filters as any, 0, 25);
+          } else {
+            const combinedKeyword = buildSubawardKeyword(searchQuery, activeFilters);
+            if (combinedKeyword || hasSubFilters) {
+              const res = await subawardSearch.mutateAsync({
+                keyword: combinedKeyword,
+                page: 1,
+                limit: 25,
+                prime_contractor: subPrimeContractor.trim() || undefined,
+                min_amount: subMinAmount ? parseInt(subMinAmount) : undefined,
+                max_amount: subMaxAmount ? parseInt(subMaxAmount) : undefined,
+                agency: subAgency || undefined,
+              });
+              setSubawardResults(res.results);
+              setSubawardPage(1);
+              setSubawardHasNext(res.page_metadata?.hasNext ?? false);
+              setSubawardTotal(res.page_metadata?.total ?? res.results.length);
+            }
+          }
+        }} className="w-full">
           <div className="border-b border-border/50">
             <TabsList className="bg-transparent border-none p-0 h-auto gap-4">
               <TabsTrigger
