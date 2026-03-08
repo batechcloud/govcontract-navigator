@@ -94,6 +94,10 @@ const ContractDetail = () => {
   const [scoreModalOpen, setScoreModalOpen] = useState(false);
   const [scoreResult, setScoreResult] = useState<ContractScoreResult | null>(null);
 
+  // Direct-fetch fallback state (for new-tab / direct URL access)
+  const [fetchedContract, setFetchedContract] = useState<ContractData | null>(null);
+  const [fetchLoading, setFetchLoading] = useState(false);
+
   // AI Summary state
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
