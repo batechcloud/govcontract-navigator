@@ -842,7 +842,7 @@ const SearchHub = () => {
                 </p>
               </div>
 
-              <div ref={resultListRef} className="space-y-3">
+              <div ref={resultListRef} data-tour="result-list" className="space-y-3">
                 {cachedSearch.isSearching ? (
                   Array.from({ length: 3 }).map((_, i) => (
                     <Card key={i} variant="glass">
