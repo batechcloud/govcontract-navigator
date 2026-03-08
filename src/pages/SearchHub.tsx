@@ -958,8 +958,10 @@ const SearchHub = () => {
                                   </Button>
 
                                   <DropdownMenu>
-                                    <DropdownMenuTrigger className="inline-flex items-center justify-center rounded-md text-sm font-medium h-8 w-8 p-0 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ml-auto">
-                                      <MoreHorizontal className="w-4 h-4" />
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 ml-auto">
+                                        <MoreHorizontal className="w-4 h-4" />
+                                      </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="bg-card border-border">
                                       <DropdownMenuItem onClick={() => handleStartBid(result)} className="gap-2 cursor-pointer">
