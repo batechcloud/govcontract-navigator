@@ -756,7 +756,7 @@ const ContractDetail = () => {
         {/* Notes & Tracking (only for tracked contracts) */}
         {isTracked && tracked && (
           <Card variant="glass">
-            <CardContent className="p-6 space-y-4">
+            <CardContent className="p-4 sm:p-6 space-y-4">
               <h2 className="font-heading font-semibold text-foreground flex items-center gap-2">
                 <StickyNote className="w-4 h-4 text-primary" /> Notes & Tracking
               </h2>
