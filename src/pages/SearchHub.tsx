@@ -1602,35 +1602,13 @@ const SearchHub = () => {
         </SheetContent>
       </Sheet>
 
-      {/* Save Search Dialog */}
-      <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Save This Search</DialogTitle>
-            <DialogDescription>
-              Give it a name so you can quickly run it again later.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="searchName">Name</Label>
-              <Input
-                id="searchName"
-                placeholder="e.g., IT contracts for my business"
-                value={searchName}
-                onChange={(e) => setSearchName(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveSearch} disabled={saveSearch.isPending}>
-              <Save className="w-4 h-4 mr-2" />
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Save Search Modal */}
+      <SaveSearchModal
+        open={savedSearchModalOpen}
+        onOpenChange={setSavedSearchModalOpen}
+        onSave={handleSaveSearch}
+        isLoading={savedSearches.saveSearch.isPending}
+      />
 
       {/* Win Score Modal */}
       <WinScoreModal
