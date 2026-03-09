@@ -713,10 +713,27 @@ const SearchHub = () => {
               {cachedSearch.isSearching || syncFromApi.isPending ? "Searching..." : "Search"}
             </span>
           </Button>
-          {parsedFilters && (
-            <Button variant="outline" className="h-12" onClick={() => setSaveDialogOpen(true)}>
+          <DropdownMenu open={savedSearchesOpen} onOpenChange={setSavedSearchesOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="h-12">
+                <History className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Saved Searches</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[400px] p-4">
+              <div className="mb-3">
+                <h4 className="font-semibold text-sm mb-1">Saved Searches</h4>
+                <p className="text-xs text-muted-foreground">
+                  Quickly load your saved search criteria
+                </p>
+              </div>
+              <SavedSearchesList onLoadSearch={handleLoadSavedSearch} />
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {searchQuery.trim() && (
+            <Button variant="outline" className="h-12" onClick={() => setSavedSearchModalOpen(true)}>
               <Bookmark className="w-4 h-4 sm:mr-2" />
-              <span className="hidden sm:inline">Save Search</span>
+              <span className="hidden sm:inline">Save</span>
             </Button>
           )}
         </div>
