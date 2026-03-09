@@ -98,8 +98,6 @@ const SearchHub = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
-  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-  const [searchName, setSearchName] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
   const [syncPage, setSyncPage] = useState(0);
   const [apiTotal, setApiTotal] = useState<number | null>(null);
