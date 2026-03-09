@@ -63,6 +63,7 @@ import {
   ArrowUp,
   ArrowUpDown,
   MoreHorizontal,
+  History,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useTrackContract, useTrackedContracts } from "@/hooks/useTrackedContracts";
@@ -79,6 +80,9 @@ import { useCompanyProfile } from "@/hooks/useProfile";
 import { computeHeuristicScore, getScoreColor } from "@/lib/heuristic-score";
 import { useCachedSearch, useSyncFromApi, useCacheCount, SortOption } from "@/hooks/useCachedContracts";
 import { GuidedTour } from "@/components/search/GuidedTour";
+import { useSavedSearches, SavedSearch } from "@/hooks/useSavedSearches";
+import { SaveSearchModal } from "@/components/search/SaveSearchModal";
+import { SavedSearchesList } from "@/components/search/SavedSearchesList";
 
 const quickFilters = [
   { label: "Small Business", filter: { set_aside: ["Small Business"] }, subKeyword: "small business", tooltip: "Contracts only small companies can bid on" },
@@ -94,8 +98,6 @@ const SearchHub = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
-  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-  const [searchName, setSearchName] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
   const [syncPage, setSyncPage] = useState(0);
   const [apiTotal, setApiTotal] = useState<number | null>(null);
@@ -130,6 +132,11 @@ const SearchHub = () => {
   const cachedSearch = useCachedSearch();
   const syncFromApi = useSyncFromApi();
   const { data: cacheCount } = useCacheCount();
+
+  // Saved searches
+  const savedSearches = useSavedSearches();
+  const [savedSearchModalOpen, setSavedSearchModalOpen] = useState(false);
+  const [savedSearchesOpen, setSavedSearchesOpen] = useState(false);
 
   const handleScoreContract = (result: SearchResult) => {
     const input: ContractScoreInput = {
@@ -595,18 +602,46 @@ const SearchHub = () => {
     navigate(`/dashboard/ai?q=${preload}`);
   };
 
-  const handleSaveSearch = () => {
-    if (!searchName.trim()) {
-      toast.error("Please enter a name for your search");
-      return;
-    }
-    if (!parsedFilters) {
-      toast.error("Please perform a search first");
-      return;
-    }
-    saveSearch.mutate({ name: searchName, query: searchQuery, filters: parsedFilters });
-    setSaveDialogOpen(false);
-    setSearchName("");
+  const handleSaveSearch = (name: string) => {
+    const filters = buildCombinedFilters();
+    savedSearches.saveSearch.mutate({
+      name,
+      query: searchQuery,
+      filters,
+      searchType: "federal",
+    });
+  };
+
+  const handleLoadSavedSearch = async (search: SavedSearch) => {
+    setSavedSearchesOpen(false);
+    
+    // Update last run timestamp
+    savedSearches.updateLastRun.mutate(search.id);
+    
+    // Load the search query
+    setSearchQuery(search.query);
+    
+    // Load the filters
+    const filters = search.filters as any;
+    if (filters.naics_codes) setAdvNaics(filters.naics_codes);
+    if (filters.psc_codes) setAdvPsc(filters.psc_codes);
+    if (filters.min_value) setAdvMinValue(filters.min_value.toString());
+    if (filters.max_value) setAdvMaxValue(filters.max_value.toString());
+    if (filters.agencies?.length > 0) setAdvAgency(filters.agencies[0]);
+    if (filters.location) setAdvState(filters.location);
+    if (filters.opportunity_type) setAdvType(filters.opportunity_type);
+    if (filters.set_aside) setAdvSetAside(filters.set_aside);
+    
+    // Execute the search
+    setCurrentPage(0);
+    setSyncPage(0);
+    setApiTotal(null);
+    
+    const syncResult = await syncFromApi.mutateAsync({ filters, page: 0, limit: 25 });
+    setApiTotal(syncResult.apiTotal);
+    await cachedSearch.searchLocal(filters as any, 0, 25);
+    
+    toast.success(`Loaded search: ${search.name}`);
   };
 
   const getMatchLabel = (score: number) => {
@@ -676,10 +711,27 @@ const SearchHub = () => {
               {cachedSearch.isSearching || syncFromApi.isPending ? "Searching..." : "Search"}
             </span>
           </Button>
-          {parsedFilters && (
-            <Button variant="outline" className="h-12" onClick={() => setSaveDialogOpen(true)}>
+          <DropdownMenu open={savedSearchesOpen} onOpenChange={setSavedSearchesOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="h-12">
+                <History className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Saved Searches</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[400px] p-4">
+              <div className="mb-3">
+                <h4 className="font-semibold text-sm mb-1">Saved Searches</h4>
+                <p className="text-xs text-muted-foreground">
+                  Quickly load your saved search criteria
+                </p>
+              </div>
+              <SavedSearchesList onLoadSearch={handleLoadSavedSearch} />
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {searchQuery.trim() && (
+            <Button variant="outline" className="h-12" onClick={() => setSavedSearchModalOpen(true)}>
               <Bookmark className="w-4 h-4 sm:mr-2" />
-              <span className="hidden sm:inline">Save Search</span>
+              <span className="hidden sm:inline">Save</span>
             </Button>
           )}
         </div>
@@ -1550,35 +1602,13 @@ const SearchHub = () => {
         </SheetContent>
       </Sheet>
 
-      {/* Save Search Dialog */}
-      <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Save This Search</DialogTitle>
-            <DialogDescription>
-              Give it a name so you can quickly run it again later.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="searchName">Name</Label>
-              <Input
-                id="searchName"
-                placeholder="e.g., IT contracts for my business"
-                value={searchName}
-                onChange={(e) => setSearchName(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveSearch} disabled={saveSearch.isPending}>
-              <Save className="w-4 h-4 mr-2" />
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Save Search Modal */}
+      <SaveSearchModal
+        open={savedSearchModalOpen}
+        onOpenChange={setSavedSearchModalOpen}
+        onSave={handleSaveSearch}
+        isLoading={savedSearches.saveSearch.isPending}
+      />
 
       {/* Win Score Modal */}
       <WinScoreModal
