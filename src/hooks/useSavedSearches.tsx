@@ -28,7 +28,7 @@ export function useSavedSearches() {
       const { data, error } = await supabase
         .from("saved_searches")
         .select("*")
-        .order("last_run_at", { ascending: false, nullsLast: false })
+        .order("last_run_at", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false });
 
       if (error) throw error;
