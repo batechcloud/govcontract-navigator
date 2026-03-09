@@ -939,6 +939,7 @@ const SearchHub = () => {
                       <SelectItem value="match_score">Match Score</SelectItem>
                       <SelectItem value="deadline">Deadline (Soonest)</SelectItem>
                       <SelectItem value="value">Value (Highest)</SelectItem>
+                      <SelectItem value="posted_date">Posted Date (Newest)</SelectItem>
                     </SelectContent>
                   </Select>
                 )}

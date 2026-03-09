@@ -107,7 +107,7 @@ function parseValueToNumeric(val: string): number | null {
 }
 
 /** Search contracts from the local cached_contracts table */
-export type SortOption = "match_score" | "deadline" | "value";
+export type SortOption = "match_score" | "deadline" | "value" | "posted_date";
 
 export function useCachedSearch() {
   const { user } = useAuth();
@@ -171,6 +171,10 @@ export function useCachedSearch() {
       } else if (effectiveSort === "value") {
         query = query
           .order("value", { ascending: false, nullsFirst: false })
+          .order("match_score", { ascending: false, nullsFirst: false });
+      } else if (effectiveSort === "posted_date") {
+        query = query
+          .order("posted_date", { ascending: false, nullsFirst: false })
           .order("match_score", { ascending: false, nullsFirst: false });
       } else {
         query = query
