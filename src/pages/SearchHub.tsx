@@ -604,18 +604,46 @@ const SearchHub = () => {
     navigate(`/dashboard/ai?q=${preload}`);
   };
 
-  const handleSaveSearch = () => {
-    if (!searchName.trim()) {
-      toast.error("Please enter a name for your search");
-      return;
-    }
-    if (!parsedFilters) {
-      toast.error("Please perform a search first");
-      return;
-    }
-    saveSearch.mutate({ name: searchName, query: searchQuery, filters: parsedFilters });
-    setSaveDialogOpen(false);
-    setSearchName("");
+  const handleSaveSearch = (name: string) => {
+    const filters = buildCombinedFilters();
+    savedSearches.saveSearch.mutate({
+      name,
+      query: searchQuery,
+      filters,
+      searchType: "federal",
+    });
+  };
+
+  const handleLoadSavedSearch = async (search: SavedSearch) => {
+    setSavedSearchesOpen(false);
+    
+    // Update last run timestamp
+    savedSearches.updateLastRun.mutate(search.id);
+    
+    // Load the search query
+    setSearchQuery(search.query);
+    
+    // Load the filters
+    const filters = search.filters as any;
+    if (filters.naics_codes) setAdvNaics(filters.naics_codes);
+    if (filters.psc_codes) setAdvPsc(filters.psc_codes);
+    if (filters.min_value) setAdvMinValue(filters.min_value.toString());
+    if (filters.max_value) setAdvMaxValue(filters.max_value.toString());
+    if (filters.agencies?.length > 0) setAdvAgency(filters.agencies[0]);
+    if (filters.location) setAdvState(filters.location);
+    if (filters.opportunity_type) setAdvType(filters.opportunity_type);
+    if (filters.set_aside) setAdvSetAside(filters.set_aside);
+    
+    // Execute the search
+    setCurrentPage(0);
+    setSyncPage(0);
+    setApiTotal(null);
+    
+    const syncResult = await syncFromApi.mutateAsync({ filters, page: 0, limit: 25 });
+    setApiTotal(syncResult.apiTotal);
+    await cachedSearch.searchLocal(filters as any, 0, 25);
+    
+    toast.success(`Loaded search: ${search.name}`);
   };
 
   const getMatchLabel = (score: number) => {
