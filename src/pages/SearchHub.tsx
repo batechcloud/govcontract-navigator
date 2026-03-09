@@ -63,6 +63,7 @@ import {
   ArrowUp,
   ArrowUpDown,
   MoreHorizontal,
+  History,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useTrackContract, useTrackedContracts } from "@/hooks/useTrackedContracts";
@@ -79,6 +80,9 @@ import { useCompanyProfile } from "@/hooks/useProfile";
 import { computeHeuristicScore, getScoreColor } from "@/lib/heuristic-score";
 import { useCachedSearch, useSyncFromApi, useCacheCount, SortOption } from "@/hooks/useCachedContracts";
 import { GuidedTour } from "@/components/search/GuidedTour";
+import { useSavedSearches, SavedSearch } from "@/hooks/useSavedSearches";
+import { SaveSearchModal } from "@/components/search/SaveSearchModal";
+import { SavedSearchesList } from "@/components/search/SavedSearchesList";
 
 const quickFilters = [
   { label: "Small Business", filter: { set_aside: ["Small Business"] }, subKeyword: "small business", tooltip: "Contracts only small companies can bid on" },
