@@ -107,7 +107,7 @@ function parseValueToNumeric(val: string): number | null {
 }
 
 /** Search contracts from the local cached_contracts table */
-export type SortOption = "match_score" | "deadline" | "value";
+export type SortOption = "match_score" | "deadline" | "value" | "posted_date";
 
 export function useCachedSearch() {
   const { user } = useAuth();
