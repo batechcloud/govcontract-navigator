@@ -135,6 +135,11 @@ const SearchHub = () => {
   const syncFromApi = useSyncFromApi();
   const { data: cacheCount } = useCacheCount();
 
+  // Saved searches
+  const savedSearches = useSavedSearches();
+  const [savedSearchModalOpen, setSavedSearchModalOpen] = useState(false);
+  const [savedSearchesOpen, setSavedSearchesOpen] = useState(false);
+
   const handleScoreContract = (result: SearchResult) => {
     const input: ContractScoreInput = {
       title: result.title,
