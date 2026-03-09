@@ -172,6 +172,10 @@ export function useCachedSearch() {
         query = query
           .order("value", { ascending: false, nullsFirst: false })
           .order("match_score", { ascending: false, nullsFirst: false });
+      } else if (effectiveSort === "posted_date") {
+        query = query
+          .order("posted_date", { ascending: false, nullsFirst: false })
+          .order("match_score", { ascending: false, nullsFirst: false });
       } else {
         query = query
           .order("match_score", { ascending: false, nullsFirst: false })
