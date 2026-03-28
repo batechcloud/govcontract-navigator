@@ -14,13 +14,20 @@ interface Props {
   contracts: TrackedContract[];
 }
 
+function sanitizeCell(val: unknown): string {
+  const str = String(val ?? "");
+  const escaped = str.replace(/"/g, '""');
+  if (/^[=+\-@\t\r]/.test(escaped)) return `"'${escaped}"`;
+  return `"${escaped}"`;
+}
+
 function exportCSV(contracts: TrackedContract[]) {
   const headers = ["Title", "Agency", "Status", "Priority", "Value", "Deadline", "Notes"];
   const rows = contracts.map(c => [
     c.contract_title, c.contract_agency || "", c.status, c.priority || "", c.contract_value || "",
     c.response_deadline || "", c.notes || "",
   ]);
-  const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const csv = [headers, ...rows].map(r => r.map(v => sanitizeCell(v)).join(",")).join("\n");
   const blob = new Blob([csv], { type: "text/csv" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
