@@ -41,6 +41,25 @@ serve(async (req) => {
       });
     }
 
+    // SSRF prevention: only allow government domains
+    const ALLOWED_SUFFIXES = ['.gov', '.mil'];
+    try {
+      const parsed = new URL(documentUrl);
+      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+        throw new Error('Invalid protocol');
+      }
+      const hostnameAllowed = ALLOWED_SUFFIXES.some(s => parsed.hostname.endsWith(s));
+      if (!hostnameAllowed) {
+        return new Response(JSON.stringify({ error: "Only .gov and .mil document URLs are allowed" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } catch (e) {
+      return new Response(JSON.stringify({ error: "Invalid or disallowed document URL" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     console.log("Fetching document:", documentUrl);
 
     // Fetch the document server-side to avoid CORS
