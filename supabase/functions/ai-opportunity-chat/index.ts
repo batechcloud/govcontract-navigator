@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://esm.sh/zod@3.23.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,7 +34,29 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, companyContext } = await req.json();
+    const ChatSchema = z.object({
+      messages: z.array(z.object({
+        role: z.enum(["user", "assistant", "system"]),
+        content: z.string().max(10000),
+      })).min(1).max(50),
+      companyContext: z.object({
+        company_name: z.string().max(200).optional(),
+        capabilities: z.array(z.string().max(200)).optional(),
+        certifications: z.array(z.string().max(100)).optional(),
+        naics_codes: z.array(z.string().max(10)).optional(),
+        employee_count: z.string().max(50).optional(),
+        annual_revenue: z.string().max(50).optional(),
+      }).nullable().optional(),
+    });
+
+    const parsed = ChatSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return new Response(JSON.stringify({ error: "Invalid request", details: parsed.error.flatten().fieldErrors }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { messages, companyContext } = parsed.data;
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
 

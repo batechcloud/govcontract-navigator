@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://esm.sh/zod@3.23.8";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -38,14 +39,22 @@ serve(async (req) => {
   }
 
   try {
-    const { noticeId, solicitationNumber } = await req.json();
+    const RefreshSchema = z.object({
+      noticeId: z.string().max(200).optional(),
+      solicitationNumber: z.string().max(200).optional(),
+    }).refine(data => data.noticeId || data.solicitationNumber, {
+      message: "noticeId or solicitationNumber required",
+    });
 
-    if (!noticeId && !solicitationNumber) {
+    const parsed = RefreshSchema.safeParse(await req.json());
+    if (!parsed.success) {
       return new Response(
-        JSON.stringify({ error: "noticeId or solicitationNumber required" }),
+        JSON.stringify({ error: parsed.error.issues[0]?.message || "Invalid request" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const { noticeId, solicitationNumber } = parsed.data;
 
     const SAM_API_KEY = Deno.env.get("SAM_API_KEY");
     if (!SAM_API_KEY) {

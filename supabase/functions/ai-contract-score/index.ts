@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://esm.sh/zod@3.23.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -98,12 +99,27 @@ serve(async (req) => {
   const userId = user.id;
 
   try {
-    const { contract } = await req.json();
-    if (!contract?.title) {
-      return new Response(JSON.stringify({ error: "Contract title is required" }), {
+    const ContractSchema = z.object({
+      contract: z.object({
+        title: z.string().min(1, "Contract title is required").max(500),
+        agency: z.string().max(300).optional(),
+        value: z.union([z.string(), z.number()]).optional(),
+        setAside: z.string().max(100).optional(),
+        naicsCode: z.string().max(10).optional(),
+        deadline: z.string().max(50).optional(),
+        type: z.string().max(100).optional(),
+        description: z.string().max(10000).optional(),
+      }),
+    });
+
+    const parsed = ContractSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return new Response(JSON.stringify({ error: "Invalid request", details: parsed.error.flatten().fieldErrors }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const { contract } = parsed.data;
 
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");

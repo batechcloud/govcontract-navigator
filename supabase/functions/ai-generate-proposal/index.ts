@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.87.1";
+import { z } from "https://esm.sh/zod@3.23.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -38,14 +39,21 @@ serve(async (req) => {
 
     // user is already available from getUser() above
 
-    const { opportunityId, opportunityTitle, agency, customInstructions } = await req.json();
+    const ProposalSchema = z.object({
+      opportunityId: z.string().max(200).optional(),
+      opportunityTitle: z.string().min(1, "Opportunity title is required").max(500),
+      agency: z.string().max(300).optional(),
+      customInstructions: z.string().max(5000).optional(),
+    });
 
-    if (!opportunityTitle) {
-      return new Response(JSON.stringify({ error: "Opportunity title is required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    const parsed = ProposalSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return new Response(JSON.stringify({ error: "Invalid request", details: parsed.error.flatten().fieldErrors }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const { opportunityId, opportunityTitle, agency, customInstructions } = parsed.data;
 
     // Fetch company profile
     const { data: companyProfile } = await supabase
