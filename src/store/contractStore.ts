@@ -69,6 +69,13 @@ export const useContractStore = create<ContractStore>()(
         const notes = get().contractNotes;
         const statuses = get().contractStatus;
 
+        const sanitize = (val: unknown): string => {
+          const str = String(val ?? "");
+          const escaped = str.replace(/"/g, '""');
+          if (/^[=+\-@\t\r]/.test(escaped)) return `"'${escaped}"`;
+          return `"${escaped}"`;
+        };
+
         const headers = [
           "Title", "Agency", "Sector", "Value", "Deadline",
           "ROI Score", "Set-Aside", "Contract Type", "Location",
@@ -76,22 +83,22 @@ export const useContractStore = create<ContractStore>()(
         ];
 
         const rows = contracts.map((c) => [
-          `"${c.title}"`,
-          `"${c.agency}"`,
-          c.sector,
-          c.value,
-          c.deadline,
-          c.roiScore,
-          c.setAside,
-          c.contractType || "",
-          c.location || "",
-          c.source,
-          statuses[c.id] || "Researching",
-          `"${(notes[c.id] || "").replace(/"/g, "'")}"`,
-          c.url,
+          sanitize(c.title),
+          sanitize(c.agency),
+          sanitize(c.sector),
+          sanitize(c.value),
+          sanitize(c.deadline),
+          sanitize(c.roiScore),
+          sanitize(c.setAside),
+          sanitize(c.contractType),
+          sanitize(c.location),
+          sanitize(c.source),
+          sanitize(statuses[c.id] || "Researching"),
+          sanitize(notes[c.id]),
+          sanitize(c.url),
         ]);
 
-        const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
+        const csv = [headers.map(h => sanitize(h)), ...rows].map((r) => r.join(",")).join("\n");
         const blob = new Blob([csv], { type: "text/csv" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
