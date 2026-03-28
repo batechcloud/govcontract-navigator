@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://esm.sh/zod@3.23.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -35,7 +36,28 @@ serve(async (req) => {
       });
     }
 
-    const { title, agency, description, value, setAside, naicsCode, deadline, type, location, contractId, forceRegenerate } = await req.json();
+    const SummarySchema = z.object({
+      title: z.string().max(500).optional(),
+      agency: z.string().max(300).optional(),
+      description: z.string().max(20000).optional(),
+      value: z.string().max(100).optional(),
+      setAside: z.string().max(100).optional(),
+      naicsCode: z.string().max(10).optional(),
+      deadline: z.string().max(50).optional(),
+      type: z.string().max(100).optional(),
+      location: z.string().max(200).optional(),
+      contractId: z.string().max(200).optional(),
+      forceRegenerate: z.boolean().default(false),
+    });
+
+    const parsed = SummarySchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return new Response(JSON.stringify({ error: "Invalid request", details: parsed.error.flatten().fieldErrors }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { title, agency, description, value, setAside, naicsCode, deadline, type, location, contractId, forceRegenerate } = parsed.data;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {

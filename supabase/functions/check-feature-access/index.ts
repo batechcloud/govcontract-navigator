@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://esm.sh/zod@3.23.8";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -45,14 +46,20 @@ serve(async (req) => {
     // Use service role client for DB operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { feature_code, increment_usage } = await req.json();
+    const FeatureSchema = z.object({
+      feature_code: z.string().min(1, "feature_code is required").max(100),
+      increment_usage: z.boolean().default(false),
+    });
 
-    if (!feature_code) {
-      return new Response(JSON.stringify({ error: 'feature_code is required' }), {
+    const parsed = FeatureSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return new Response(JSON.stringify({ error: 'Invalid request', details: parsed.error.flatten().fieldErrors }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    const { feature_code, increment_usage } = parsed.data;
 
     console.log(`Checking feature access for user ${userId}, feature: ${feature_code}`);
 

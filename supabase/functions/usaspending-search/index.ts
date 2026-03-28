@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://esm.sh/zod@3.23.8";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -39,32 +40,52 @@ serve(async (req) => {
 
     console.log(`USAspending search by user: ${user.id}`);
 
-    const { action, params } = await req.json();
+    const ActionSchema = z.object({
+      action: z.enum(["search_recipients", "get_recipient_profile", "get_recipient_awards", "search_awards", "search_subawards"]),
+      params: z.object({
+        keyword: z.string().max(500).optional(),
+        page: z.number().int().min(1).max(100).optional(),
+        limit: z.number().int().min(1).max(100).optional(),
+        recipient_id: z.string().max(200).optional(),
+        recipient_hash: z.string().max(200).optional(),
+        recipient_name: z.string().max(500).optional(),
+        sort: z.string().max(50).optional(),
+        order: z.enum(["asc", "desc"]).optional(),
+        agency: z.string().max(300).optional(),
+        min_amount: z.number().nonnegative().optional(),
+        max_amount: z.number().nonnegative().optional(),
+        prime_contractor: z.string().max(500).optional(),
+      }).default({}),
+    });
+
+    const parsed = ActionSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return new Response(JSON.stringify({ error: "Invalid request", details: parsed.error.flatten().fieldErrors }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { action, params } = parsed.data;
     console.log(`USAspending search action: ${action}`, params);
 
     let result;
 
     switch (action) {
       case "search_recipients":
-        result = await searchRecipients(params.keyword, params.page || 1);
+        result = await searchRecipients(params.keyword || "", params.page || 1);
         break;
       case "get_recipient_profile":
-        result = await getRecipientProfile(params.recipient_id);
+        result = await getRecipientProfile(params.recipient_id || "");
         break;
       case "get_recipient_awards":
-        result = await getRecipientAwards(params.recipient_hash, params.page || 1, params.limit || 25);
+        result = await getRecipientAwards(params.recipient_hash || "", params.page || 1, params.limit || 25);
         break;
       case "search_awards":
-        result = await searchAwardsByRecipient(params.recipient_name, params.page || 1, params.limit || 25);
+        result = await searchAwardsByRecipient(params.recipient_name || "", params.page || 1, params.limit || 25);
         break;
       case "search_subawards":
         result = await searchSubawards(params);
         break;
-      default:
-        return new Response(JSON.stringify({ error: "Invalid action" }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
     }
 
     return new Response(JSON.stringify(result), {

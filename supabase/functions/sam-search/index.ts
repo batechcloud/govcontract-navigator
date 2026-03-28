@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://esm.sh/zod@3.23.8";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -94,8 +95,40 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.json();
-    const { mode, filters, page = 0, limit = 10 } = body;
+    const rawBody = await req.json();
+
+    const FiltersSchema = z.object({
+      keywords: z.array(z.string().max(200)).max(20).default([]),
+      naics_codes: z.array(z.string().max(10)).max(20).default([]),
+      psc_codes: z.array(z.string().max(10)).max(20).default([]),
+      set_aside: z.array(z.string().max(50)).max(10).default([]),
+      agencies: z.array(z.string().max(200)).max(10).default([]),
+      min_value: z.number().nonnegative().nullable().default(null),
+      max_value: z.number().nonnegative().nullable().default(null),
+      location: z.string().max(100).nullable().default(null),
+      opportunity_type: z.string().max(100).nullable().default(null),
+      deadline_before: z.string().max(50).optional(),
+    }).default({});
+
+    const BodySchema = z.object({
+      mode: z.enum(["search", "detail"]).optional(),
+      filters: FiltersSchema,
+      page: z.number().int().min(0).max(100).default(0),
+      limit: z.number().int().min(1).max(100).default(10),
+      noticeId: z.string().max(200).optional(),
+    });
+
+    const parsed = BodySchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return new Response(JSON.stringify({ error: "Invalid request", details: parsed.error.flatten().fieldErrors }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { mode, filters, page, limit, noticeId: parsedNoticeId } = parsed.data;
+    // Re-attach noticeId for detail mode
+    const body = { ...parsed.data };
     
     const SAM_API_KEY = Deno.env.get("SAM_API_KEY");
 

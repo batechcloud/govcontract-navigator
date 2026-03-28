@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://esm.sh/zod@3.23.8";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -34,12 +35,18 @@ serve(async (req) => {
   }
 
   try {
-    const { documentUrl } = await req.json();
-    if (!documentUrl || typeof documentUrl !== "string") {
-      return new Response(JSON.stringify({ error: "documentUrl is required" }), {
+    const DocSchema = z.object({
+      documentUrl: z.string().min(1, "documentUrl is required").max(2000).url("Must be a valid URL"),
+    });
+
+    const parsed = DocSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return new Response(JSON.stringify({ error: "Invalid request", details: parsed.error.flatten().fieldErrors }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const { documentUrl } = parsed.data;
 
     // SSRF prevention: only allow government domains
     const ALLOWED_SUFFIXES = ['.gov', '.mil'];
