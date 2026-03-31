@@ -3,6 +3,7 @@ import { Footer } from "@/components/layout/Footer";
 import { motion } from "framer-motion";
 import { Play, Clock, BookOpen } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Helmet } from "react-helmet-async";
 
 const tutorials = [
   {
