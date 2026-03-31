@@ -2,6 +2,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { motion } from "framer-motion";
 import { Target, Heart, Zap, Users } from "lucide-react";
+import { Helmet } from "react-helmet-async";
 
 const values = [
   {
