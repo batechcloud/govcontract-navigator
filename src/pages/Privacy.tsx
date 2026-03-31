@@ -6,6 +6,11 @@ import { Helmet } from "react-helmet-async";
 export default function Privacy() {
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>Privacy Policy – GC Navigator</title>
+        <meta name="description" content="Learn how GC Navigator collects, uses, and protects your data. Read our full privacy policy." />
+        <link rel="canonical" href="https://gc-navigator.lovable.app/privacy" />
+      </Helmet>
       <Navbar />
       
       <main className="pt-24 pb-16">

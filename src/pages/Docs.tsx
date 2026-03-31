@@ -44,6 +44,11 @@ const docCategories = [
 export default function Docs() {
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>Documentation – GC Navigator User Guides</title>
+        <meta name="description" content="Explore GC Navigator documentation. Quick start guides, API references, and best practices for government contracting." />
+        <link rel="canonical" href="https://gc-navigator.lovable.app/docs" />
+      </Helmet>
       <Navbar />
       
       <main className="pt-24 pb-16">
