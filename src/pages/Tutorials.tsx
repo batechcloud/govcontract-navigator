@@ -76,6 +76,11 @@ const getLevelColor = (level: string) => {
 export default function Tutorials() {
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>Tutorials – Learn Government Contracting with GC Navigator</title>
+        <meta name="description" content="Step-by-step video tutorials for GC Navigator. Learn AI-powered search, proposal generation, and bid pipeline management." />
+        <link rel="canonical" href="https://gc-navigator.lovable.app/tutorials" />
+      </Helmet>
       <Navbar />
       
       <main className="pt-24 pb-16">
