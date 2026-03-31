@@ -327,6 +327,81 @@ export type Database = {
         }
         Relationships: []
       }
+      contracts: {
+        Row: {
+          agency: string | null
+          contract_id: string
+          contract_type: string | null
+          created_at: string
+          deadline: string | null
+          description: string | null
+          fetched_at: string
+          id: string
+          location: string | null
+          match_score: number | null
+          naics_code: string | null
+          posted_date: string | null
+          raw_data: Json | null
+          resource_links: string[] | null
+          sector: string | null
+          set_aside: string | null
+          solicitation_number: string | null
+          source: string | null
+          title: string | null
+          updated_at: string
+          url: string | null
+          value: number | null
+        }
+        Insert: {
+          agency?: string | null
+          contract_id: string
+          contract_type?: string | null
+          created_at?: string
+          deadline?: string | null
+          description?: string | null
+          fetched_at?: string
+          id?: string
+          location?: string | null
+          match_score?: number | null
+          naics_code?: string | null
+          posted_date?: string | null
+          raw_data?: Json | null
+          resource_links?: string[] | null
+          sector?: string | null
+          set_aside?: string | null
+          solicitation_number?: string | null
+          source?: string | null
+          title?: string | null
+          updated_at?: string
+          url?: string | null
+          value?: number | null
+        }
+        Update: {
+          agency?: string | null
+          contract_id?: string
+          contract_type?: string | null
+          created_at?: string
+          deadline?: string | null
+          description?: string | null
+          fetched_at?: string
+          id?: string
+          location?: string | null
+          match_score?: number | null
+          naics_code?: string | null
+          posted_date?: string | null
+          raw_data?: Json | null
+          resource_links?: string[] | null
+          sector?: string | null
+          set_aside?: string | null
+          solicitation_number?: string | null
+          source?: string | null
+          title?: string | null
+          updated_at?: string
+          url?: string | null
+          value?: number | null
+        }
+        Relationships: []
+      }
       feature_usage: {
         Row: {
           created_at: string | null
@@ -608,6 +683,30 @@ export type Database = {
           sort_order?: number | null
           updated_at?: string | null
           yearly_price?: number
+        }
+        Relationships: []
+      }
+      sync_metadata: {
+        Row: {
+          id: string
+          last_posted_date: string | null
+          last_synced_at: string
+          total_synced: number | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          last_posted_date?: string | null
+          last_synced_at?: string
+          total_synced?: number | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          last_posted_date?: string | null
+          last_synced_at?: string
+          total_synced?: number | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -945,6 +1044,8 @@ export type Database = {
         Args: { _feature_code: string; _increment?: number; _user_id: string }
         Returns: number
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user" | "superadmin"
