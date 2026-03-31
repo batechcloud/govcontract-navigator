@@ -289,7 +289,7 @@ export function useSyncMetadata() {
         .eq("id", "sam_sync")
         .single();
       if (error) throw error;
-      return data as { last_synced_at: string; total_synced: number };
+      return data as unknown as { last_synced_at: string; total_synced: number };
     },
     enabled: !!user,
   });
