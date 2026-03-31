@@ -1,10 +1,16 @@
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { motion } from "framer-motion";
+import { Helmet } from "react-helmet-async";
 
 export default function Terms() {
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>Terms of Service – GC Navigator</title>
+        <meta name="description" content="Read GC Navigator's terms of service governing the use of our government contracting platform." />
+        <link rel="canonical" href="https://gc-navigator.lovable.app/terms" />
+      </Helmet>
       <Navbar />
       
       <main className="pt-24 pb-16">

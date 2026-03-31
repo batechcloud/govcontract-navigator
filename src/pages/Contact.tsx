@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Helmet } from "react-helmet-async";
 
 export default function Contact() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -25,6 +26,11 @@ export default function Contact() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>Contact Us – GC Navigator Support & Demos</title>
+        <meta name="description" content="Get in touch with the GC Navigator team. Book a demo, ask questions, or request support for government contracting." />
+        <link rel="canonical" href="https://gc-navigator.lovable.app/contact" />
+      </Helmet>
       <Navbar />
       
       <main className="pt-24 pb-16">

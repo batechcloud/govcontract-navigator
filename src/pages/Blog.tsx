@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Calendar, User, ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 
 const blogPosts = [
   {
@@ -59,6 +60,11 @@ const blogPosts = [
 export default function Blog() {
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>Blog – Government Contracting Tips & Insights</title>
+        <meta name="description" content="Expert tips on government contracting for small businesses. Learn about SAM.gov, set-asides, proposal writing, and winning strategies." />
+        <link rel="canonical" href="https://gc-navigator.lovable.app/blog" />
+      </Helmet>
       <Navbar />
       
       <main className="pt-24 pb-16">

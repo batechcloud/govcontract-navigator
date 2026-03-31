@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 
 const faqs = [
   {
@@ -69,6 +70,11 @@ const supportOptions = [
 export default function Help() {
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>Help Center – GC Navigator FAQs & Support</title>
+        <meta name="description" content="Find answers to common questions about GC Navigator. Browse FAQs, contact support, or explore our documentation." />
+        <link rel="canonical" href="https://gc-navigator.lovable.app/help" />
+      </Helmet>
       <Navbar />
       
       <main className="pt-24 pb-16">
