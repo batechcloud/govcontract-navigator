@@ -56,6 +56,7 @@ serve(async (req) => {
     const postedFrom = formatSamDate(lastSyncedAt);
     const postedTo = formatSamDate(now);
 
+    const diagnostics: any[] = [];
     console.log(`Incremental sync: fetching contracts posted from ${postedFrom} to ${postedTo}`);
 
     let totalSynced = 0;
@@ -79,17 +80,31 @@ serve(async (req) => {
         headers: { Accept: "application/json" },
       });
 
+      const responseText = await response.text();
+      
       if (!response.ok) {
-        console.error(`SAM.gov API error at offset ${offset}: ${response.status}`);
+        console.error(`SAM.gov API error at offset ${offset}: ${response.status}`, responseText.substring(0, 500));
+        // Include diagnostic info in response
+        diagnostics.push({ offset, status: response.status, body: responseText.substring(0, 200) });
         break;
       }
 
-      const data = await response.json();
-      const opportunities = data.opportunitiesData || [];
+      let data: any;
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        console.error("Failed to parse SAM.gov response:", responseText.substring(0, 300));
+        diagnostics.push({ offset, error: "parse_error", body: responseText.substring(0, 200) });
+        break;
+      }
+      
+      console.log(`SAM.gov response keys: ${Object.keys(data).join(", ")}, totalRecords: ${data.totalRecords}`);
+      const opportunities = data.opportunitiesData || data.data || data.results || [];
       console.log(`Got ${opportunities.length} opportunities (totalRecords: ${data.totalRecords})`);
 
       if (opportunities.length === 0) {
         hasMore = false;
+        diagnostics.push({ offset, totalRecords: data.totalRecords, keys: Object.keys(data) });
         break;
       }
 
@@ -138,6 +153,7 @@ serve(async (req) => {
       synced: totalSynced,
       from: postedFrom,
       to: postedTo,
+      diagnostics: diagnostics.length > 0 ? diagnostics : undefined,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
