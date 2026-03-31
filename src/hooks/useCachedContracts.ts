@@ -7,7 +7,6 @@ import { SearchFilters, SearchResult } from "./useSearch";
 
 export interface CachedContract {
   id: string;
-  user_id: string;
   contract_id: string;
   title: string | null;
   agency: string | null;
@@ -31,9 +30,8 @@ export interface CachedContract {
   updated_at: string;
 }
 
-/** Convert a cached_contracts row to a SearchResult for the UI */
+/** Convert a contracts row to a SearchResult for the UI */
 function toSearchResult(row: CachedContract): SearchResult & { fetchedAt: string } {
-  const raw = row.raw_data || {};
   return {
     id: row.contract_id,
     title: row.title || "Untitled",
@@ -82,31 +80,7 @@ function expandSetAsideFilter(labels: string[]): string[] {
   return Array.from(expanded);
 }
 
-// Mapping from raw SAM codes to friendly labels (for normalizing on upsert)
-const SET_ASIDE_RAW_TO_LABEL: Record<string, string> = {
-  SBP: "Small Business",
-  SBA: "8(a)",
-  SDVOSBC: "SDVOSB",
-  VOSBC: "VOSB",
-  HZC: "HUBZone",
-};
-
-function normalizeSetAsideValue(raw: string | null | undefined): string {
-  if (!raw || raw === "NONE") return "Full & Open";
-  return SET_ASIDE_RAW_TO_LABEL[raw] || raw;
-}
-
-function parseValueToNumeric(val: string): number | null {
-  if (!val || val === "TBD" || val === "N/A") return null;
-  const clean = val.replace(/[^0-9.MKBmkb]/g, "");
-  const num = parseFloat(clean) || 0;
-  if (/[Mm]/.test(val)) return num * 1_000_000;
-  if (/[Kk]/.test(val)) return num * 1_000;
-  if (/[Bb]/.test(val)) return num * 1_000_000_000;
-  return num;
-}
-
-/** Search contracts from the local cached_contracts table */
+/** Search contracts from the shared global contracts table */
 export type SortOption = "match_score" | "deadline" | "value" | "posted_date";
 
 export function useCachedSearch() {
@@ -122,9 +96,8 @@ export function useCachedSearch() {
     setIsSearching(true);
     try {
       let query = supabase
-        .from("cached_contracts")
-        .select("*", { count: "exact" })
-        .eq("user_id", user.id);
+        .from("contracts" as any)
+        .select("*", { count: "exact" });
 
       // Keyword filter — search title and description
       if (filters.keywords && filters.keywords.length > 0) {
@@ -145,7 +118,6 @@ export function useCachedSearch() {
 
       // Agency
       if (filters.agencies && filters.agencies.length > 0) {
-        // Use ilike for flexible matching
         const agencyConditions = filters.agencies.map(a => `agency.ilike.%${a}%`).join(",");
         query = query.or(agencyConditions);
       }
@@ -187,13 +159,13 @@ export function useCachedSearch() {
 
       if (error) throw error;
 
-      const mapped = (data || []).map(row => toSearchResult(row as CachedContract));
+      const mapped = (data || []).map(row => toSearchResult(row as unknown as CachedContract));
       setResults(mapped);
       setTotal(count || 0);
       return { results: mapped, total: count || 0 };
     } catch (err) {
-      console.error("Local cache search error:", err);
-      toast.error("Failed to search cached contracts");
+      console.error("Contract search error:", err);
+      toast.error("Failed to search contracts");
     } finally {
       setIsSearching(false);
     }
@@ -202,17 +174,15 @@ export function useCachedSearch() {
   return { results, total, isSearching, searchLocal, currentSort, setCurrentSort };
 }
 
-/** Get the count of cached contracts for the current user */
+/** Get the total count of contracts in the shared cache */
 export function useCacheCount() {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ["cached-contracts-count", user?.id],
+    queryKey: ["contracts-count"],
     queryFn: async () => {
-      if (!user) return 0;
       const { count, error } = await supabase
-        .from("cached_contracts")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id);
+        .from("contracts" as any)
+        .select("*", { count: "exact", head: true });
       if (error) throw error;
       return count || 0;
     },
@@ -220,7 +190,7 @@ export function useCacheCount() {
   });
 }
 
-/** Sync contracts from the SAM API into the local cache */
+/** Trigger an incremental sync from SAM.gov into the shared contracts table */
 export function useSyncFromApi() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -237,62 +207,28 @@ export function useSyncFromApi() {
     }) => {
       if (!user) throw new Error("Must be logged in");
 
-      // 1. Call the SAM search edge function
-      const { data, error } = await supabase.functions.invoke("sam-search", {
-        body: { filters, page, limit },
+      // Call the incremental sync edge function
+      const { data, error } = await supabase.functions.invoke("sam-sync-incremental", {
+        body: { source: "manual" },
       });
 
-      if (error) throw new Error(error.message || "SAM API search failed");
+      if (error) throw new Error(error.message || "Sync failed");
+      if (data?.error) throw new Error(data.error);
 
-      const results = (data?.results || []) as SearchResult[];
-      const warning = data?.warning;
-
-      if (results.length === 0) {
-        return { synced: 0, apiTotal: data?.total || 0, warning };
-      }
-
-      // 2. Upsert into cached_contracts
-      const rows = results.map((r) => ({
-        user_id: user.id,
-        contract_id: r.id,
-        title: r.title,
-        agency: r.agency,
-        description: r.description || null,
-        location: r.location || null,
-        value: parseValueToNumeric(r.value),
-        deadline: r.deadline || null,
-        posted_date: r.postedDate || null,
-        naics_code: r.naicsCode || null,
-        set_aside: normalizeSetAsideValue(r.setAside),
-        contract_type: r.type || null,
-        sector: null,
-        source: "SAM.gov",
-        url: r.link || null,
-        match_score: r.matchScore || null,
-        resource_links: r.resourceLinks || [],
-        solicitation_number: r.solicitationNumber || null,
-        raw_data: r as any,
-        fetched_at: new Date().toISOString(),
-      }));
-
-      const { error: upsertError } = await supabase
-        .from("cached_contracts")
-        .upsert(rows, { onConflict: "contract_id,user_id" });
-
-      if (upsertError) {
-        console.error("Cache upsert error:", upsertError);
-        throw new Error("Failed to cache contracts");
-      }
-
-      return { synced: results.length, apiTotal: data?.total || 0, warning };
+      return {
+        synced: data?.synced || 0,
+        apiTotal: data?.synced || 0,
+        warning: null,
+      };
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["cached-contracts-count"] });
+      queryClient.invalidateQueries({ queryKey: ["contracts-count"] });
       queryClient.invalidateQueries({ queryKey: ["rate-limit"] });
-      if (data.warning) {
-        toast.warning(data.warning, { duration: 6000 });
+      if (data.synced > 0) {
+        toast.success(`Synced ${data.synced} new contracts from SAM.gov`);
+      } else {
+        toast.info("No new contracts found since last sync");
       }
-      toast.success(`Synced ${data.synced} contracts from SAM.gov`);
     },
     onError: (error: Error) => {
       if (error.message?.includes("Rate limit") || error.message?.includes("daily limit")) {
@@ -329,40 +265,32 @@ export function useRefreshContract() {
       const r = data?.result;
       if (!r) throw new Error("No data returned from SAM.gov");
 
-      // Update the cached row
-      const { error: updateError } = await supabase
-        .from("cached_contracts")
-        .update({
-          title: r.title,
-          agency: r.agency,
-          description: r.description || null,
-          location: r.location || null,
-          value: parseValueToNumeric(r.value),
-          deadline: r.deadline || null,
-          posted_date: r.postedDate || null,
-          naics_code: r.naicsCode || null,
-          set_aside: normalizeSetAsideValue(r.setAside),
-          contract_type: r.type || null,
-          url: r.link || null,
-          match_score: r.matchScore || null,
-          resource_links: r.resourceLinks || [],
-          solicitation_number: r.solicitationNumber || null,
-          raw_data: r,
-          fetched_at: new Date().toISOString(),
-        })
-        .eq("contract_id", contractId)
-        .eq("user_id", user.id);
-
-      if (updateError) throw new Error("Failed to update cache");
-
       return r;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["cached-contracts-count"] });
+      queryClient.invalidateQueries({ queryKey: ["contracts-count"] });
       toast.success("Contract refreshed with latest data");
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to refresh contract");
     },
+  });
+}
+
+/** Get sync metadata (last synced time, total count) */
+export function useSyncMetadata() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["sync-metadata"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sync_metadata" as any)
+        .select("*")
+        .eq("id", "sam_sync")
+        .single();
+      if (error) throw error;
+      return data as { last_synced_at: string; total_synced: number };
+    },
+    enabled: !!user,
   });
 }
