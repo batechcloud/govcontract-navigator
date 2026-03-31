@@ -56,6 +56,7 @@ serve(async (req) => {
     const postedFrom = formatSamDate(lastSyncedAt);
     const postedTo = formatSamDate(now);
 
+    const diagnostics: any[] = [];
     console.log(`Incremental sync: fetching contracts posted from ${postedFrom} to ${postedTo}`);
 
     let totalSynced = 0;
