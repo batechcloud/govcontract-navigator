@@ -1044,8 +1044,6 @@ export type Database = {
         Args: { _feature_code: string; _increment?: number; _user_id: string }
         Returns: number
       }
-      show_limit: { Args: never; Returns: number }
-      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user" | "superadmin"
