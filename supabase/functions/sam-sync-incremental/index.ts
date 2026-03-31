@@ -153,6 +153,7 @@ serve(async (req) => {
       synced: totalSynced,
       from: postedFrom,
       to: postedTo,
+      diagnostics: diagnostics.length > 0 ? diagnostics : undefined,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
