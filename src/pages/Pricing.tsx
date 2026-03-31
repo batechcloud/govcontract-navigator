@@ -7,6 +7,11 @@ import { Helmet } from "react-helmet-async";
 export default function Pricing() {
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>Pricing – GC Navigator Plans for Government Contracting</title>
+        <meta name="description" content="Choose a GC Navigator plan to find and win government contracts. Free tier available. AI search, proposals, and pipeline tracking." />
+        <link rel="canonical" href="https://gc-navigator.lovable.app/pricing" />
+      </Helmet>
       <Navbar />
       
       <main className="pt-24 pb-16">

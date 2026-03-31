@@ -48,6 +48,11 @@ const solutions = [
 export default function Solutions() {
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>Solutions – AI Tools for Government Contracting</title>
+        <meta name="description" content="Explore GC Navigator solutions: AI-powered search, contract intelligence, proposal generation, and competitive analysis for government contractors." />
+        <link rel="canonical" href="https://gc-navigator.lovable.app/solutions" />
+      </Helmet>
       <Navbar />
       
       <main className="pt-24 pb-16">

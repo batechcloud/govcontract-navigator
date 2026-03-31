@@ -57,6 +57,11 @@ const team = [
 export default function About() {
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>About GC Navigator – AI Government Contract Platform</title>
+        <meta name="description" content="Learn about GC Navigator's mission to democratize government contracting for small businesses using AI-powered tools." />
+        <link rel="canonical" href="https://gc-navigator.lovable.app/about" />
+      </Helmet>
       <Navbar />
       
       <main className="pt-24 pb-16">
