@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Search, FileText, Brain, TrendingUp, Users, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 
 const solutions = [
   {
