@@ -452,19 +452,18 @@ const SearchHub = () => {
 
   const buildSubawardKeyword = (query: string, filters: string[]) => {
     const filterTerms = filters
-      .map(key => quickFilters.find(f => f.label === key)?.subKeyword || "")
+      .map(key => quickFilterMap[key]?.subKeyword || "")
       .filter(Boolean);
     const parts = [query.trim(), ...filterTerms].filter(Boolean);
     return parts.join(" ");
   };
 
-  const handleQuickFilter = async (filter: typeof quickFilters[0]) => {
-    const filterKey = filter.label;
+  const handleQuickFilter = async (filterLabel: string) => {
     let newActiveFilters: string[];
-    if (activeFilters.includes(filterKey)) {
-      newActiveFilters = activeFilters.filter(f => f !== filterKey);
+    if (activeFilters.includes(filterLabel)) {
+      newActiveFilters = activeFilters.filter(f => f !== filterLabel);
     } else {
-      newActiveFilters = [...activeFilters, filterKey];
+      newActiveFilters = [...activeFilters, filterLabel];
     }
     setActiveFilters(newActiveFilters);
     setCurrentPage(0);
@@ -492,33 +491,44 @@ const SearchHub = () => {
       return;
     }
 
+    // Re-run search with updated filters (buildCombinedFilters uses activeFilters state, but we need newActiveFilters)
     const quickSetAsides = newActiveFilters.flatMap(key => {
-      const qf = quickFilters.find(f => f.label === key);
-      return qf?.filter.set_aside || [];
+      const qf = quickFilterMap[key];
+      return qf?.set_aside || [];
     });
     const mergedSetAsides = [...new Set([...quickSetAsides, ...advSetAside])];
     let quickOpportunityType: string | null = null;
     newActiveFilters.forEach(key => {
-      const qf = quickFilters.find(f => f.label === key);
-      if (qf?.filter.opportunity_type) quickOpportunityType = qf.filter.opportunity_type;
+      const qf = quickFilterMap[key];
+      if (qf?.opportunity_type) quickOpportunityType = qf.opportunity_type;
     });
 
-    const deadlineDays = advDeadline ? parseInt(advDeadline) : null;
-    const deadlineDate = deadlineDays
-      ? new Date(Date.now() + deadlineDays * 24 * 60 * 60 * 1000).toISOString()
+    const deadlineDaysVal = advDeadline ? parseInt(advDeadline) : null;
+    const deadlineDate = deadlineDaysVal
+      ? new Date(Date.now() + deadlineDaysVal * 24 * 60 * 60 * 1000).toISOString()
       : null;
 
-    const combinedFilters: SearchFilters & { deadline_before?: string } = {
+    let minVal = advMinValue ? parseInt(advMinValue) : null;
+    let maxVal = advMaxValue ? parseInt(advMaxValue) : null;
+    if (budgetKey) {
+      const [bMin, bMax] = budgetKey.split("|");
+      if (bMin) minVal = parseInt(bMin);
+      if (bMax) maxVal = parseInt(bMax);
+    }
+
+    const combinedFilters = {
       keywords: searchQuery.trim() ? searchQuery.trim().split(/\s+/) : [],
       naics_codes: advNaics,
       psc_codes: advPsc,
       set_aside: mergedSetAsides,
       agencies: advAgency ? [advAgency] : [],
-      min_value: advMinValue ? parseInt(advMinValue) : null,
-      max_value: advMaxValue ? parseInt(advMaxValue) : null,
+      min_value: minVal,
+      max_value: maxVal,
       location: advState || null,
       opportunity_type: advType || quickOpportunityType || null,
       ...(deadlineDate ? { deadline_before: deadlineDate } : {}),
+      active_only: activeOnly,
+      expiring_soon: expiringSoon,
     };
 
     await cachedSearch.searchLocal(combinedFilters as any, 0, 25);
