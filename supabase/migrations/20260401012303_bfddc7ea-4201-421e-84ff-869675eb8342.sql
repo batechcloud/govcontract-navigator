@@ -1,0 +1,1 @@
+UPDATE public.sync_metadata SET last_synced_at = now() - interval '6 months', total_synced = 0 WHERE id = 'sam_sync';
