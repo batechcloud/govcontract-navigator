@@ -268,6 +268,9 @@ export function FilterSection(props: FilterSectionProps) {
             <Pill active={expiringSoon} onClick={() => setExpiringSoon(!expiringSoon)} icon={<Clock className="w-3 h-3" />}>
               ⏰ Expiring Soon
             </Pill>
+            <Pill active={newThisWeek} onClick={() => setNewThisWeek(!newThisWeek)} icon={<Zap className="w-3 h-3" />}>
+              🆕 New This Week
+            </Pill>
           </div>
         </div>
 
