@@ -259,7 +259,11 @@ const ContractDetail = () => {
     setSummarizing(prev => ({ ...prev, [url]: true }));
     try {
       const { data, error } = await supabase.functions.invoke('ai-document-summary', {
-        body: { documentUrl: url },
+        body: { 
+          documentUrl: url,
+          contractTitle: contract?.title,
+          contractAgency: contract?.agency,
+        },
       });
       if (error) throw error;
       setSummaries(prev => ({ ...prev, [url]: data.summary }));
@@ -707,8 +711,8 @@ const ContractDetail = () => {
                         </div>
                       </div>
                       {summary && (
-                        <div className="bg-muted/30 rounded-md p-3 text-sm text-muted-foreground whitespace-pre-wrap border border-border/30">
-                          {summary}
+                        <div className="bg-muted/30 rounded-md p-4 text-sm border border-border/30 prose prose-sm dark:prose-invert max-w-none">
+                          <ReactMarkdown>{summary}</ReactMarkdown>
                         </div>
                       )}
                     </div>
