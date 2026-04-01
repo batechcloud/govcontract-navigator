@@ -245,6 +245,7 @@ const SearchHub = () => {
       ...(deadlineDate ? { deadline_before: deadlineDate } : {}),
       active_only: activeOnly,
       expiring_soon: expiringSoon,
+      new_this_week: newThisWeek,
     };
   };
 
