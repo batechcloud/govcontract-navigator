@@ -143,78 +143,7 @@ const SearchHub = () => {
   const [advSetAside, setAdvSetAside] = useState<string[]>([]);
   const [advContractType, setAdvContractType] = useState("");
 
-  const setAsideOptions = [
-    { value: "Small Business", label: "Small Businesses Only" },
-    { value: "8(a)", label: "Minority-Owned (8a)" },
-    { value: "WOSB", label: "Woman-Owned" },
-    { value: "EDWOSB", label: "Economically Disadvantaged Woman-Owned" },
-    { value: "HUBZone", label: "HUBZone Area" },
-    { value: "SDVOSB", label: "Veteran-Owned (Service-Disabled)" },
-    { value: "VOSB", label: "Veteran-Owned" },
-    { value: "SDB", label: "Small Disadvantaged" },
-  ];
-
-  const contractTypeOptions = [
-    { value: "FFP", label: "Fixed Price" },
-    { value: "IDIQ", label: "Flexible Quantity" },
-    { value: "BPA", label: "Blanket Agreement" },
-    { value: "T&M", label: "Hourly + Materials" },
-    { value: "Cost-Plus", label: "Cost + Fee" },
-  ];
-
   const hasAdvancedFilters = !!(advNaics.length > 0 || advPsc.length > 0 || advMinValue || advMaxValue || advAgency || advDeadline || advState || advType || advSetAside.length > 0 || advContractType);
-
-  const agencyOptions = [
-    "Department of Defense",
-    "Department of Homeland Security",
-    "Department of Veterans Affairs",
-    "General Services Administration",
-    "Department of Health and Human Services",
-    "Department of Transportation",
-    "Department of Energy",
-    "Department of Justice",
-    "NASA",
-    "Department of State",
-  ];
-
-  const valueRanges = [
-    { min: "", max: "25000", label: "Under $25K" },
-    { min: "25000", max: "100000", label: "$25K – $100K" },
-    { min: "100000", max: "500000", label: "$100K – $500K" },
-    { min: "500000", max: "1000000", label: "$500K – $1M" },
-    { min: "1000000", max: "5000000", label: "$1M – $5M" },
-    { min: "5000000", max: "25000000", label: "$5M – $25M" },
-    { min: "25000000", max: "", label: "Over $25M" },
-  ];
-
-  const deadlineOptions = [
-    { value: "7", label: "Due within 7 days" },
-    { value: "14", label: "Due within 14 days" },
-    { value: "30", label: "Due within 30 days" },
-    { value: "60", label: "Due within 60 days" },
-    { value: "90", label: "Due within 90 days" },
-  ];
-
-  const stateOptions = [
-    "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut",
-    "Delaware","Florida","Georgia","Hawaii","Idaho","Illinois","Indiana","Iowa",
-    "Kansas","Kentucky","Louisiana","Maine","Maryland","Massachusetts","Michigan",
-    "Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada","New Hampshire",
-    "New Jersey","New Mexico","New York","North Carolina","North Dakota","Ohio",
-    "Oklahoma","Oregon","Pennsylvania","Rhode Island","South Carolina","South Dakota",
-    "Tennessee","Texas","Utah","Vermont","Virginia","Washington","West Virginia",
-    "Wisconsin","Wyoming","District of Columbia",
-  ];
-
-  const opportunityTypeOptions = [
-    { value: "Solicitation", label: "Solicitation" },
-    { value: "Presolicitation", label: "Presolicitation" },
-    { value: "Sources Sought", label: "Sources Sought" },
-    { value: "Combined Synopsis/Solicitation", label: "Combined Synopsis/Solicitation" },
-    { value: "Award Notice", label: "Award Notice" },
-    { value: "Special Notice", label: "Special Notice" },
-    { value: "Intent to Bundle", label: "Intent to Bundle" },
-  ];
 
   const clearAdvancedFilters = () => {
     setAdvNaics([]);
