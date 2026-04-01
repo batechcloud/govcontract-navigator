@@ -156,6 +156,9 @@ const SearchHub = () => {
     setAdvType("");
     setAdvSetAside([]);
     setAdvContractType("");
+    setActiveOnly(false);
+    setExpiringSoon(false);
+    setBudgetKey("");
   };
 
   const clearSubFilters = () => {
@@ -165,26 +168,66 @@ const SearchHub = () => {
     setSubAgency("");
   };
 
-  const activeFilterCount = (hasAdvancedFilters ? 1 : 0) + (hasSubFilters && activeTab === "subcontracts" ? 1 : 0);
+  const clearAllFilters = () => {
+    clearAdvancedFilters();
+    clearSubFilters();
+    setActiveFilters([]);
+    setCurrentPage(0);
+    cachedSearch.searchLocal({
+      keywords: searchQuery.trim() ? searchQuery.trim().split(/\s+/) : [],
+      naics_codes: [],
+      psc_codes: [],
+      set_aside: [],
+      agencies: [],
+      min_value: null,
+      max_value: null,
+      location: null,
+      opportunity_type: null,
+    } as any, 0, 25);
+  };
+
+  const totalActiveFilterCount =
+    (activeOnly ? 1 : 0) +
+    (expiringSoon ? 1 : 0) +
+    (advDeadline ? 1 : 0) +
+    activeFilters.length +
+    (budgetKey ? 1 : 0) +
+    (advAgency ? 1 : 0) +
+    (advState ? 1 : 0) +
+    (advType ? 1 : 0) +
+    (advContractType ? 1 : 0) +
+    advSetAside.length +
+    advNaics.length +
+    advPsc.length +
+    (hasSubFilters && activeTab === "subcontracts" ? 1 : 0);
 
   // Unified filter builder
-  const buildCombinedFilters = (): SearchFilters & { deadline_before?: string } => {
+  const buildCombinedFilters = (): SearchFilters & { deadline_before?: string; active_only?: boolean; expiring_soon?: boolean } => {
     const deadlineDays = advDeadline ? parseInt(advDeadline) : null;
     const deadlineDate = deadlineDays
       ? new Date(Date.now() + deadlineDays * 24 * 60 * 60 * 1000).toISOString()
       : null;
 
     const quickSetAsides = activeFilters.flatMap(key => {
-      const qf = quickFilters.find(f => f.label === key);
-      return qf?.filter.set_aside || [];
+      const qf = quickFilterMap[key];
+      return qf?.set_aside || [];
     });
     const mergedSetAsides = [...new Set([...quickSetAsides, ...advSetAside])];
 
     let quickOpportunityType: string | null = null;
     activeFilters.forEach(key => {
-      const qf = quickFilters.find(f => f.label === key);
-      if (qf?.filter.opportunity_type) quickOpportunityType = qf.filter.opportunity_type;
+      const qf = quickFilterMap[key];
+      if (qf?.opportunity_type) quickOpportunityType = qf.opportunity_type;
     });
+
+    // Budget key -> min/max
+    let minVal = advMinValue ? parseInt(advMinValue) : null;
+    let maxVal = advMaxValue ? parseInt(advMaxValue) : null;
+    if (budgetKey) {
+      const [bMin, bMax] = budgetKey.split("|");
+      if (bMin) minVal = parseInt(bMin);
+      if (bMax) maxVal = parseInt(bMax);
+    }
 
     return {
       keywords: searchQuery.trim() ? searchQuery.trim().split(/\s+/) : [],
@@ -192,17 +235,18 @@ const SearchHub = () => {
       psc_codes: advPsc,
       set_aside: mergedSetAsides,
       agencies: advAgency ? [advAgency] : [],
-      min_value: advMinValue ? parseInt(advMinValue) : null,
-      max_value: advMaxValue ? parseInt(advMaxValue) : null,
+      min_value: minVal,
+      max_value: maxVal,
       location: advState || null,
       opportunity_type: advType || quickOpportunityType || null,
       ...(deadlineDate ? { deadline_before: deadlineDate } : {}),
+      active_only: activeOnly,
+      expiring_soon: expiringSoon,
     };
   };
 
   const handleApplyAdvancedFilters = async () => {
     setCurrentPage(0);
-    setFiltersOpen(false);
     await cachedSearch.searchLocal(buildCombinedFilters() as any, 0, 25);
   };
 
