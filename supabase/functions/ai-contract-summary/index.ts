@@ -88,13 +88,14 @@ serve(async (req) => {
     const contractContext = [
       title && `Title: ${title}`,
       agency && `Agency: ${agency}`,
+      solicitationNumber && `Solicitation Number: ${solicitationNumber}`,
       value && `Estimated Value: ${value}`,
       type && `Contract Type: ${type}`,
       setAside && setAside !== "None" && `Set-Aside: ${setAside}`,
       naicsCode && `NAICS Code: ${naicsCode}`,
       deadline && `Response Deadline: ${deadline}`,
-      location && `Location: ${location}`,
-      description && `Full Description: ${description}`,
+      location && `Place of Performance: ${location}`,
+      description && `Full Description / Statement of Work:\n${description}`,
     ]
       .filter(Boolean)
       .join("\n");
