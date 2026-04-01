@@ -58,7 +58,7 @@ serve(async (req) => {
       });
     }
 
-    const { title, agency, description, value, setAside, naicsCode, deadline, type, location, contractId, forceRegenerate } = parsed.data;
+    const { title, agency, description, value, setAside, naicsCode, deadline, type, location, contractId, solicitationNumber, forceRegenerate } = parsed.data;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
