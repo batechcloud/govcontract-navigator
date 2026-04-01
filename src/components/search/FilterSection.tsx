@@ -51,6 +51,8 @@ export interface FilterSectionProps {
   setActiveOnly: (v: boolean) => void;
   expiringSoon: boolean;
   setExpiringSoon: (v: boolean) => void;
+  newThisWeek: boolean;
+  setNewThisWeek: (v: boolean) => void;
 
   // Due Date (single-select days string or "")
   deadlineDays: string;
@@ -216,6 +218,7 @@ export function FilterSection(props: FilterSectionProps) {
   const {
     activeOnly, setActiveOnly,
     expiringSoon, setExpiringSoon,
+    newThisWeek, setNewThisWeek,
     deadlineDays, setDeadlineDays,
     activeQuickFilters, onToggleQuickFilter,
     budgetKey, setBudgetKey,
@@ -264,6 +267,9 @@ export function FilterSection(props: FilterSectionProps) {
             </Pill>
             <Pill active={expiringSoon} onClick={() => setExpiringSoon(!expiringSoon)} icon={<Clock className="w-3 h-3" />}>
               ⏰ Expiring Soon
+            </Pill>
+            <Pill active={newThisWeek} onClick={() => setNewThisWeek(!newThisWeek)} icon={<Zap className="w-3 h-3" />}>
+              🆕 New This Week
             </Pill>
           </div>
         </div>

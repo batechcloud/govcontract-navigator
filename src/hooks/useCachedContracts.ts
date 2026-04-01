@@ -90,7 +90,7 @@ export function useCachedSearch() {
   const [isSearching, setIsSearching] = useState(false);
   const [currentSort, setCurrentSort] = useState<SortOption>("match_score");
 
-  const searchLocal = async (filters: SearchFilters & { active_only?: boolean; expiring_soon?: boolean }, page = 0, limit = 25, sortBy?: SortOption) => {
+  const searchLocal = async (filters: SearchFilters & { active_only?: boolean; expiring_soon?: boolean; new_this_week?: boolean }, page = 0, limit = 25, sortBy?: SortOption) => {
     const effectiveSort = sortBy ?? currentSort;
     if (!user) return;
     setIsSearching(true);
@@ -111,7 +111,12 @@ export function useCachedSearch() {
         query = query.gt("deadline", now).lt("deadline", twoWeeks);
       }
 
-      // Keyword filter — search title and description
+      // New this week — posted within last 7 days
+      if (filters.new_this_week) {
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        query = query.gte("posted_date", sevenDaysAgo);
+      }
+
       if (filters.keywords && filters.keywords.length > 0) {
         const keyword = filters.keywords.join(" ");
         query = query.or(`title.ilike.%${keyword}%,description.ilike.%${keyword}%,agency.ilike.%${keyword}%`);

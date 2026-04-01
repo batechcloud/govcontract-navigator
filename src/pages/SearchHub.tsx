@@ -78,6 +78,7 @@ const SearchHub = () => {
   const [filtersOpen, setFiltersOpen] = useState(false); // kept for compat
   const [activeOnly, setActiveOnly] = useState(false);
   const [expiringSoon, setExpiringSoon] = useState(false);
+  const [newThisWeek, setNewThisWeek] = useState(false);
   const [budgetKey, setBudgetKey] = useState("");
   const [activeSector, setActiveSector] = useState<string | null>(null);
   const sectorSearchDone = useRef(false);
@@ -158,6 +159,7 @@ const SearchHub = () => {
     setAdvContractType("");
     setActiveOnly(false);
     setExpiringSoon(false);
+    setNewThisWeek(false);
     setBudgetKey("");
   };
 
@@ -189,6 +191,7 @@ const SearchHub = () => {
   const totalActiveFilterCount =
     (activeOnly ? 1 : 0) +
     (expiringSoon ? 1 : 0) +
+    (newThisWeek ? 1 : 0) +
     (advDeadline ? 1 : 0) +
     activeFilters.length +
     (budgetKey ? 1 : 0) +
@@ -202,7 +205,7 @@ const SearchHub = () => {
     (hasSubFilters && activeTab === "subcontracts" ? 1 : 0);
 
   // Unified filter builder
-  const buildCombinedFilters = (): SearchFilters & { deadline_before?: string; active_only?: boolean; expiring_soon?: boolean } => {
+  const buildCombinedFilters = (): SearchFilters & { deadline_before?: string; active_only?: boolean; expiring_soon?: boolean; new_this_week?: boolean } => {
     const deadlineDays = advDeadline ? parseInt(advDeadline) : null;
     const deadlineDate = deadlineDays
       ? new Date(Date.now() + deadlineDays * 24 * 60 * 60 * 1000).toISOString()
@@ -242,6 +245,7 @@ const SearchHub = () => {
       ...(deadlineDate ? { deadline_before: deadlineDate } : {}),
       active_only: activeOnly,
       expiring_soon: expiringSoon,
+      new_this_week: newThisWeek,
     };
   };
 
@@ -732,6 +736,8 @@ const SearchHub = () => {
           setActiveOnly={(v) => { setActiveOnly(v); setTimeout(() => handleApplyAdvancedFilters(), 0); }}
           expiringSoon={expiringSoon}
           setExpiringSoon={(v) => { setExpiringSoon(v); setTimeout(() => handleApplyAdvancedFilters(), 0); }}
+          newThisWeek={newThisWeek}
+          setNewThisWeek={(v) => { setNewThisWeek(v); setTimeout(() => handleApplyAdvancedFilters(), 0); }}
           deadlineDays={advDeadline}
           setDeadlineDays={(v) => { setAdvDeadline(v); setTimeout(() => handleApplyAdvancedFilters(), 0); }}
           activeQuickFilters={activeFilters}
