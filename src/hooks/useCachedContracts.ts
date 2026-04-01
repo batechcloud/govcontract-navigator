@@ -90,7 +90,7 @@ export function useCachedSearch() {
   const [isSearching, setIsSearching] = useState(false);
   const [currentSort, setCurrentSort] = useState<SortOption>("match_score");
 
-  const searchLocal = async (filters: SearchFilters, page = 0, limit = 25, sortBy?: SortOption) => {
+  const searchLocal = async (filters: SearchFilters & { active_only?: boolean; expiring_soon?: boolean }, page = 0, limit = 25, sortBy?: SortOption) => {
     const effectiveSort = sortBy ?? currentSort;
     if (!user) return;
     setIsSearching(true);
@@ -98,6 +98,18 @@ export function useCachedSearch() {
       let query = supabase
         .from("contracts" as any)
         .select("*", { count: "exact" });
+
+      // Active only — deadline in the future
+      if (filters.active_only) {
+        query = query.gt("deadline", new Date().toISOString());
+      }
+
+      // Expiring soon — deadline within 14 days
+      if (filters.expiring_soon) {
+        const now = new Date().toISOString();
+        const twoWeeks = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+        query = query.gt("deadline", now).lt("deadline", twoWeeks);
+      }
 
       // Keyword filter — search title and description
       if (filters.keywords && filters.keywords.length > 0) {

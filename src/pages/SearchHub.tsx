@@ -8,15 +8,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -30,19 +21,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
   Search,
   FileText,
   Building2,
@@ -50,12 +28,10 @@ import {
   Clock,
   DollarSign,
   MapPin,
-  Save,
   X,
   Bookmark,
   ExternalLink,
   Heart,
-  SlidersHorizontal,
   RotateCcw,
   MessageSquare,
   RefreshCw,
@@ -72,9 +48,6 @@ import { useSearchRateLimit } from "@/hooks/useRateLimit";
 import { toast } from "sonner";
 import { SECTOR_NAICS, SECTOR_CONFIG } from "@/config/sectors";
 import { useWinProbability, ContractScoreInput, ContractScoreResult } from "@/hooks/useWinProbability";
-import { NaicsCodeSelector } from "@/components/company/NaicsCodeSelector";
-import { PscCodeSelector } from "@/components/company/PscCodeSelector";
-import { Checkbox } from "@/components/ui/checkbox";
 import { WinScoreModal } from "@/components/search/WinScoreModal";
 import { useCompanyProfile } from "@/hooks/useProfile";
 import { computeHeuristicScore, getScoreColor } from "@/lib/heuristic-score";
@@ -83,15 +56,16 @@ import { GuidedTour } from "@/components/search/GuidedTour";
 import { useSavedSearches, SavedSearch } from "@/hooks/useSavedSearches";
 import { SaveSearchModal } from "@/components/search/SaveSearchModal";
 import { SavedSearchesList } from "@/components/search/SavedSearchesList";
+import { FilterSection } from "@/components/search/FilterSection";
 
-const quickFilters = [
-  { label: "Small Business", filter: { set_aside: ["Small Business"] }, subKeyword: "small business", tooltip: "Contracts only small companies can bid on" },
-  { label: "Veteran-Owned", filter: { set_aside: ["SDVOSB", "VOSB"] }, subKeyword: "veteran", tooltip: "Reserved for businesses owned by military veterans" },
-  { label: "Woman-Owned", filter: { set_aside: ["WOSB", "EDWOSB"] }, subKeyword: "woman", tooltip: "Reserved for businesses owned by women" },
-  { label: "Minority-Owned", filter: { set_aside: ["8(a)", "SDB"] }, subKeyword: "minority", tooltip: "Reserved for minority-owned or disadvantaged businesses" },
-  { label: "HUBZone", filter: { set_aside: ["HUBZone"] }, subKeyword: "hubzone", tooltip: "For businesses in historically underutilized areas" },
-  { label: "Federal", filter: { opportunity_type: "Federal" }, subKeyword: "", tooltip: "Contracts from U.S. federal government agencies" },
-];
+const quickFilterMap: Record<string, { set_aside?: string[]; opportunity_type?: string; subKeyword: string }> = {
+  "Small Business": { set_aside: ["Small Business"], subKeyword: "small business" },
+  "Veteran-Owned": { set_aside: ["SDVOSB", "VOSB"], subKeyword: "veteran" },
+  "Woman-Owned": { set_aside: ["WOSB", "EDWOSB"], subKeyword: "woman" },
+  "Minority-Owned": { set_aside: ["8(a)", "SDB"], subKeyword: "minority" },
+  "HUBZone": { set_aside: ["HUBZone"], subKeyword: "hubzone" },
+  "Federal": { opportunity_type: "Federal", subKeyword: "" },
+};
 
 const SearchHub = () => {
   const navigate = useNavigate();
@@ -101,7 +75,10 @@ const SearchHub = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const [syncPage, setSyncPage] = useState(0);
   const [apiTotal, setApiTotal] = useState<number | null>(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false); // kept for compat
+  const [activeOnly, setActiveOnly] = useState(false);
+  const [expiringSoon, setExpiringSoon] = useState(false);
+  const [budgetKey, setBudgetKey] = useState("");
   const [activeSector, setActiveSector] = useState<string | null>(null);
   const sectorSearchDone = useRef(false);
   const [activeTab, setActiveTab] = useState<"prime" | "subcontracts">("prime");
@@ -166,78 +143,7 @@ const SearchHub = () => {
   const [advSetAside, setAdvSetAside] = useState<string[]>([]);
   const [advContractType, setAdvContractType] = useState("");
 
-  const setAsideOptions = [
-    { value: "Small Business", label: "Small Businesses Only" },
-    { value: "8(a)", label: "Minority-Owned (8a)" },
-    { value: "WOSB", label: "Woman-Owned" },
-    { value: "EDWOSB", label: "Economically Disadvantaged Woman-Owned" },
-    { value: "HUBZone", label: "HUBZone Area" },
-    { value: "SDVOSB", label: "Veteran-Owned (Service-Disabled)" },
-    { value: "VOSB", label: "Veteran-Owned" },
-    { value: "SDB", label: "Small Disadvantaged" },
-  ];
-
-  const contractTypeOptions = [
-    { value: "FFP", label: "Fixed Price" },
-    { value: "IDIQ", label: "Flexible Quantity" },
-    { value: "BPA", label: "Blanket Agreement" },
-    { value: "T&M", label: "Hourly + Materials" },
-    { value: "Cost-Plus", label: "Cost + Fee" },
-  ];
-
   const hasAdvancedFilters = !!(advNaics.length > 0 || advPsc.length > 0 || advMinValue || advMaxValue || advAgency || advDeadline || advState || advType || advSetAside.length > 0 || advContractType);
-
-  const agencyOptions = [
-    "Department of Defense",
-    "Department of Homeland Security",
-    "Department of Veterans Affairs",
-    "General Services Administration",
-    "Department of Health and Human Services",
-    "Department of Transportation",
-    "Department of Energy",
-    "Department of Justice",
-    "NASA",
-    "Department of State",
-  ];
-
-  const valueRanges = [
-    { min: "", max: "25000", label: "Under $25K" },
-    { min: "25000", max: "100000", label: "$25K – $100K" },
-    { min: "100000", max: "500000", label: "$100K – $500K" },
-    { min: "500000", max: "1000000", label: "$500K – $1M" },
-    { min: "1000000", max: "5000000", label: "$1M – $5M" },
-    { min: "5000000", max: "25000000", label: "$5M – $25M" },
-    { min: "25000000", max: "", label: "Over $25M" },
-  ];
-
-  const deadlineOptions = [
-    { value: "7", label: "Due within 7 days" },
-    { value: "14", label: "Due within 14 days" },
-    { value: "30", label: "Due within 30 days" },
-    { value: "60", label: "Due within 60 days" },
-    { value: "90", label: "Due within 90 days" },
-  ];
-
-  const stateOptions = [
-    "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut",
-    "Delaware","Florida","Georgia","Hawaii","Idaho","Illinois","Indiana","Iowa",
-    "Kansas","Kentucky","Louisiana","Maine","Maryland","Massachusetts","Michigan",
-    "Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada","New Hampshire",
-    "New Jersey","New Mexico","New York","North Carolina","North Dakota","Ohio",
-    "Oklahoma","Oregon","Pennsylvania","Rhode Island","South Carolina","South Dakota",
-    "Tennessee","Texas","Utah","Vermont","Virginia","Washington","West Virginia",
-    "Wisconsin","Wyoming","District of Columbia",
-  ];
-
-  const opportunityTypeOptions = [
-    { value: "Solicitation", label: "Solicitation" },
-    { value: "Presolicitation", label: "Presolicitation" },
-    { value: "Sources Sought", label: "Sources Sought" },
-    { value: "Combined Synopsis/Solicitation", label: "Combined Synopsis/Solicitation" },
-    { value: "Award Notice", label: "Award Notice" },
-    { value: "Special Notice", label: "Special Notice" },
-    { value: "Intent to Bundle", label: "Intent to Bundle" },
-  ];
 
   const clearAdvancedFilters = () => {
     setAdvNaics([]);
@@ -250,6 +156,9 @@ const SearchHub = () => {
     setAdvType("");
     setAdvSetAside([]);
     setAdvContractType("");
+    setActiveOnly(false);
+    setExpiringSoon(false);
+    setBudgetKey("");
   };
 
   const clearSubFilters = () => {
@@ -259,26 +168,66 @@ const SearchHub = () => {
     setSubAgency("");
   };
 
-  const activeFilterCount = (hasAdvancedFilters ? 1 : 0) + (hasSubFilters && activeTab === "subcontracts" ? 1 : 0);
+  const clearAllFilters = () => {
+    clearAdvancedFilters();
+    clearSubFilters();
+    setActiveFilters([]);
+    setCurrentPage(0);
+    cachedSearch.searchLocal({
+      keywords: searchQuery.trim() ? searchQuery.trim().split(/\s+/) : [],
+      naics_codes: [],
+      psc_codes: [],
+      set_aside: [],
+      agencies: [],
+      min_value: null,
+      max_value: null,
+      location: null,
+      opportunity_type: null,
+    } as any, 0, 25);
+  };
+
+  const totalActiveFilterCount =
+    (activeOnly ? 1 : 0) +
+    (expiringSoon ? 1 : 0) +
+    (advDeadline ? 1 : 0) +
+    activeFilters.length +
+    (budgetKey ? 1 : 0) +
+    (advAgency ? 1 : 0) +
+    (advState ? 1 : 0) +
+    (advType ? 1 : 0) +
+    (advContractType ? 1 : 0) +
+    advSetAside.length +
+    advNaics.length +
+    advPsc.length +
+    (hasSubFilters && activeTab === "subcontracts" ? 1 : 0);
 
   // Unified filter builder
-  const buildCombinedFilters = (): SearchFilters & { deadline_before?: string } => {
+  const buildCombinedFilters = (): SearchFilters & { deadline_before?: string; active_only?: boolean; expiring_soon?: boolean } => {
     const deadlineDays = advDeadline ? parseInt(advDeadline) : null;
     const deadlineDate = deadlineDays
       ? new Date(Date.now() + deadlineDays * 24 * 60 * 60 * 1000).toISOString()
       : null;
 
     const quickSetAsides = activeFilters.flatMap(key => {
-      const qf = quickFilters.find(f => f.label === key);
-      return qf?.filter.set_aside || [];
+      const qf = quickFilterMap[key];
+      return qf?.set_aside || [];
     });
     const mergedSetAsides = [...new Set([...quickSetAsides, ...advSetAside])];
 
     let quickOpportunityType: string | null = null;
     activeFilters.forEach(key => {
-      const qf = quickFilters.find(f => f.label === key);
-      if (qf?.filter.opportunity_type) quickOpportunityType = qf.filter.opportunity_type;
+      const qf = quickFilterMap[key];
+      if (qf?.opportunity_type) quickOpportunityType = qf.opportunity_type;
     });
+
+    // Budget key -> min/max
+    let minVal = advMinValue ? parseInt(advMinValue) : null;
+    let maxVal = advMaxValue ? parseInt(advMaxValue) : null;
+    if (budgetKey) {
+      const [bMin, bMax] = budgetKey.split("|");
+      if (bMin) minVal = parseInt(bMin);
+      if (bMax) maxVal = parseInt(bMax);
+    }
 
     return {
       keywords: searchQuery.trim() ? searchQuery.trim().split(/\s+/) : [],
@@ -286,17 +235,18 @@ const SearchHub = () => {
       psc_codes: advPsc,
       set_aside: mergedSetAsides,
       agencies: advAgency ? [advAgency] : [],
-      min_value: advMinValue ? parseInt(advMinValue) : null,
-      max_value: advMaxValue ? parseInt(advMaxValue) : null,
+      min_value: minVal,
+      max_value: maxVal,
       location: advState || null,
       opportunity_type: advType || quickOpportunityType || null,
       ...(deadlineDate ? { deadline_before: deadlineDate } : {}),
+      active_only: activeOnly,
+      expiring_soon: expiringSoon,
     };
   };
 
   const handleApplyAdvancedFilters = async () => {
     setCurrentPage(0);
-    setFiltersOpen(false);
     await cachedSearch.searchLocal(buildCombinedFilters() as any, 0, 25);
   };
 
@@ -502,19 +452,18 @@ const SearchHub = () => {
 
   const buildSubawardKeyword = (query: string, filters: string[]) => {
     const filterTerms = filters
-      .map(key => quickFilters.find(f => f.label === key)?.subKeyword || "")
+      .map(key => quickFilterMap[key]?.subKeyword || "")
       .filter(Boolean);
     const parts = [query.trim(), ...filterTerms].filter(Boolean);
     return parts.join(" ");
   };
 
-  const handleQuickFilter = async (filter: typeof quickFilters[0]) => {
-    const filterKey = filter.label;
+  const handleQuickFilter = async (filterLabel: string) => {
     let newActiveFilters: string[];
-    if (activeFilters.includes(filterKey)) {
-      newActiveFilters = activeFilters.filter(f => f !== filterKey);
+    if (activeFilters.includes(filterLabel)) {
+      newActiveFilters = activeFilters.filter(f => f !== filterLabel);
     } else {
-      newActiveFilters = [...activeFilters, filterKey];
+      newActiveFilters = [...activeFilters, filterLabel];
     }
     setActiveFilters(newActiveFilters);
     setCurrentPage(0);
@@ -542,33 +491,44 @@ const SearchHub = () => {
       return;
     }
 
+    // Re-run search with updated filters (buildCombinedFilters uses activeFilters state, but we need newActiveFilters)
     const quickSetAsides = newActiveFilters.flatMap(key => {
-      const qf = quickFilters.find(f => f.label === key);
-      return qf?.filter.set_aside || [];
+      const qf = quickFilterMap[key];
+      return qf?.set_aside || [];
     });
     const mergedSetAsides = [...new Set([...quickSetAsides, ...advSetAside])];
     let quickOpportunityType: string | null = null;
     newActiveFilters.forEach(key => {
-      const qf = quickFilters.find(f => f.label === key);
-      if (qf?.filter.opportunity_type) quickOpportunityType = qf.filter.opportunity_type;
+      const qf = quickFilterMap[key];
+      if (qf?.opportunity_type) quickOpportunityType = qf.opportunity_type;
     });
 
-    const deadlineDays = advDeadline ? parseInt(advDeadline) : null;
-    const deadlineDate = deadlineDays
-      ? new Date(Date.now() + deadlineDays * 24 * 60 * 60 * 1000).toISOString()
+    const deadlineDaysVal = advDeadline ? parseInt(advDeadline) : null;
+    const deadlineDate = deadlineDaysVal
+      ? new Date(Date.now() + deadlineDaysVal * 24 * 60 * 60 * 1000).toISOString()
       : null;
 
-    const combinedFilters: SearchFilters & { deadline_before?: string } = {
+    let minVal = advMinValue ? parseInt(advMinValue) : null;
+    let maxVal = advMaxValue ? parseInt(advMaxValue) : null;
+    if (budgetKey) {
+      const [bMin, bMax] = budgetKey.split("|");
+      if (bMin) minVal = parseInt(bMin);
+      if (bMax) maxVal = parseInt(bMax);
+    }
+
+    const combinedFilters = {
       keywords: searchQuery.trim() ? searchQuery.trim().split(/\s+/) : [],
       naics_codes: advNaics,
       psc_codes: advPsc,
       set_aside: mergedSetAsides,
       agencies: advAgency ? [advAgency] : [],
-      min_value: advMinValue ? parseInt(advMinValue) : null,
-      max_value: advMaxValue ? parseInt(advMaxValue) : null,
+      min_value: minVal,
+      max_value: maxVal,
       location: advState || null,
       opportunity_type: advType || quickOpportunityType || null,
       ...(deadlineDate ? { deadline_before: deadlineDate } : {}),
+      active_only: activeOnly,
+      expiring_soon: expiringSoon,
     };
 
     await cachedSearch.searchLocal(combinedFilters as any, 0, 25);
@@ -766,96 +726,46 @@ const SearchHub = () => {
           )}
         </AnimatePresence>
 
-        {/* Quick Filters Row */}
-        <div data-tour="quick-filters" className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
-            Quick Filters
-            {activeFilters.length > 0 && (
-              <span className="bg-accent text-card rounded-full min-w-[18px] h-[18px] px-1 text-[10px] flex items-center justify-center font-bold">
-                {activeFilters.length}
-              </span>
-            )}
-          </span>
-          <TooltipProvider delayDuration={300}>
-            {quickFilters.map((filter) => (
-              <Tooltip key={filter.label}>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => handleQuickFilter(filter)}
-                    className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium transition-all border ${
-                      activeFilters.includes(filter.label)
-                        ? "bg-accent/20 border-accent/50 text-accent"
-                        : "bg-secondary/50 border-border/50 text-muted-foreground hover:text-foreground hover:border-border"
-                    }`}
-                  >
-                    {activeFilters.includes(filter.label) && <X className="w-3 h-3" />}
-                    {filter.label}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs max-w-[200px]">
-                  {filter.tooltip}
-                </TooltipContent>
-              </Tooltip>
-            ))}
-          </TooltipProvider>
-
-          {activeFilters.length > 0 && (
-            <button
-              onClick={async () => {
-                setActiveFilters([]);
-                setCurrentPage(0);
-                if (activeTab === "subcontracts") {
-                  const keyword = searchQuery.trim();
-                  if (keyword || hasSubFilters) {
-                    const res = await subawardSearch.mutateAsync({
-                      keyword: keyword || "",
-                      page: 1,
-                      limit: 25,
-                      prime_contractor: subPrimeContractor.trim() || undefined,
-                      min_amount: subMinAmount ? parseInt(subMinAmount) : undefined,
-                      max_amount: subMaxAmount ? parseInt(subMaxAmount) : undefined,
-                      agency: subAgency || undefined,
-                    });
-                    setSubawardResults(res.results);
-                    setSubawardPage(1);
-                    setSubawardHasNext(res.page_metadata?.hasNext ?? false);
-                    setSubawardTotal(res.page_metadata?.total ?? res.results.length);
-                  } else {
-                    setSubawardResults([]);
-                    setSubawardTotal(0);
-                  }
-                } else {
-                  const filters = buildCombinedFilters();
-                  // Clear quick filter set-asides from the combined filters
-                  await cachedSearch.searchLocal({
-                    ...filters,
-                    set_aside: advSetAside.length > 0 ? advSetAside : [],
-                  } as any, 0, 25);
-                }
-              }}
-              className="text-[10px] text-muted-foreground hover:text-foreground underline ml-1"
-            >
-              Clear all
-            </button>
-          )}
-
-          <button
-            onClick={() => setFiltersOpen(true)}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all border ml-auto ${
-              hasAdvancedFilters || (hasSubFilters && activeTab === "subcontracts")
-                ? "bg-accent/20 border-accent/50 text-accent"
-                : "bg-secondary/50 border-border/50 text-muted-foreground hover:text-foreground hover:border-border"
-            }`}
-          >
-            <SlidersHorizontal className="w-3 h-3" />
-            More Filters
-            {(hasAdvancedFilters || (hasSubFilters && activeTab === "subcontracts")) && (
-              <span className="bg-accent text-card rounded-full w-4 h-4 text-[10px] flex items-center justify-center font-bold">
-                !
-              </span>
-            )}
-          </button>
-        </div>
+        {/* Inline Filter Section */}
+        <FilterSection
+          activeOnly={activeOnly}
+          setActiveOnly={(v) => { setActiveOnly(v); setTimeout(() => handleApplyAdvancedFilters(), 0); }}
+          expiringSoon={expiringSoon}
+          setExpiringSoon={(v) => { setExpiringSoon(v); setTimeout(() => handleApplyAdvancedFilters(), 0); }}
+          deadlineDays={advDeadline}
+          setDeadlineDays={(v) => { setAdvDeadline(v); setTimeout(() => handleApplyAdvancedFilters(), 0); }}
+          activeQuickFilters={activeFilters}
+          onToggleQuickFilter={(label) => handleQuickFilter(label)}
+          budgetKey={budgetKey}
+          setBudgetKey={(v) => { setBudgetKey(v); setTimeout(() => handleApplyAdvancedFilters(), 0); }}
+          advAgency={advAgency}
+          setAdvAgency={setAdvAgency}
+          advState={advState}
+          setAdvState={setAdvState}
+          advType={advType}
+          setAdvType={setAdvType}
+          advContractType={advContractType}
+          setAdvContractType={setAdvContractType}
+          advSetAside={advSetAside}
+          setAdvSetAside={setAdvSetAside}
+          advNaics={advNaics}
+          setAdvNaics={setAdvNaics}
+          advPsc={advPsc}
+          setAdvPsc={setAdvPsc}
+          activeTab={activeTab}
+          subPrimeContractor={subPrimeContractor}
+          setSubPrimeContractor={setSubPrimeContractor}
+          subMinAmount={subMinAmount}
+          setSubMinAmount={setSubMinAmount}
+          subMaxAmount={subMaxAmount}
+          setSubMaxAmount={setSubMaxAmount}
+          subAgency={subAgency}
+          setSubAgency={setSubAgency}
+          onApplyAdvanced={handleApplyAdvancedFilters}
+          onClearAll={clearAllFilters}
+          totalActiveCount={totalActiveFilterCount}
+          isSearching={cachedSearch.isSearching}
+        />
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={async (v) => {
@@ -1354,254 +1264,6 @@ const SearchHub = () => {
         </Tabs>
       </motion.div>
 
-      {/* More Filters Sheet */}
-      <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <SlidersHorizontal className="w-4 h-4 text-accent" />
-              Refine Your Search
-            </SheetTitle>
-            <SheetDescription>
-              Narrow down results to find exactly what you need.
-            </SheetDescription>
-          </SheetHeader>
-
-          <div className="space-y-6 mt-6">
-            {/* Contract Value */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Contract Value</Label>
-              <Select
-                value={advMinValue || advMaxValue ? `${advMinValue}|${advMaxValue}` : "any"}
-                onValueChange={(val) => {
-                  if (val === "any") { setAdvMinValue(""); setAdvMaxValue(""); return; }
-                  const [mn, mx] = val.split("|");
-                  setAdvMinValue(mn || "");
-                  setAdvMaxValue(mx || "");
-                }}
-              >
-                <SelectTrigger className="h-10 text-sm">
-                  <SelectValue placeholder="Any value" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="any">Any value</SelectItem>
-                  {valueRanges.map(r => (
-                    <SelectItem key={r.label} value={`${r.min}|${r.max}`}>{r.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Who can bid? */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Who can bid?</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {setAsideOptions.map(opt => (
-                  <label key={opt.value} className="flex items-center gap-2 cursor-pointer text-sm">
-                    <Checkbox
-                      checked={advSetAside.includes(opt.value)}
-                      onCheckedChange={(checked) => {
-                        setAdvSetAside(prev =>
-                          checked
-                            ? [...prev, opt.value]
-                            : prev.filter(v => v !== opt.value)
-                        );
-                      }}
-                    />
-                    {opt.label}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Agency */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Agency</Label>
-              <Select value={advAgency || "any"} onValueChange={(val) => setAdvAgency(val === "any" ? "" : val)}>
-                <SelectTrigger className="h-10 text-sm">
-                  <SelectValue placeholder="Any agency" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="any">Any agency</SelectItem>
-                  {agencyOptions.map(a => (
-                    <SelectItem key={a} value={a}>{a}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Opportunity Type */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Opportunity Type</Label>
-              <Select value={advType || "any"} onValueChange={(val) => setAdvType(val === "any" ? "" : val)}>
-                <SelectTrigger className="h-10 text-sm">
-                  <SelectValue placeholder="Any type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="any">Any type</SelectItem>
-                  {opportunityTypeOptions.map(t => (
-                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Payment Type */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Payment Type</Label>
-              <Select value={advContractType || "any"} onValueChange={(val) => setAdvContractType(val === "any" ? "" : val)}>
-                <SelectTrigger className="h-10 text-sm">
-                  <SelectValue placeholder="Any contract type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="any">Any contract type</SelectItem>
-                  {contractTypeOptions.map(t => (
-                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Deadline */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Deadline</Label>
-              <Select value={advDeadline || "any"} onValueChange={(val) => setAdvDeadline(val === "any" ? "" : val)}>
-                <SelectTrigger className="h-10 text-sm">
-                  <SelectValue placeholder="Any deadline" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="any">Any deadline</SelectItem>
-                  {deadlineOptions.map(d => (
-                    <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Location */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Location</Label>
-              <Select value={advState || "any"} onValueChange={(val) => setAdvState(val === "any" ? "" : val)}>
-                <SelectTrigger className="h-10 text-sm">
-                  <SelectValue placeholder="Any state" />
-                </SelectTrigger>
-                <SelectContent className="max-h-60">
-                  <SelectItem value="any">Any state</SelectItem>
-                  {stateOptions.map(s => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Industry Codes (optional) */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Industry Codes <span className="text-muted-foreground font-normal">(advanced, optional)</span></Label>
-              <p className="text-xs text-muted-foreground">These are government classification codes. Skip this if you're not sure.</p>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">NAICS Code</p>
-                  <NaicsCodeSelector selected={advNaics} onChange={setAdvNaics} />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">PSC Code</p>
-                  <PscCodeSelector selected={advPsc} onChange={setAdvPsc} />
-                </div>
-              </div>
-            </div>
-
-            {/* Subcontract Options - only when Subcontracts tab is active */}
-            {activeTab === "subcontracts" && (
-              <div className="space-y-4 pt-4 border-t border-border/50">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">Team-Up Options</Label>
-                  {hasSubFilters && (
-                    <Button variant="ghost" size="sm" onClick={clearSubFilters} className="text-xs h-7 gap-1 text-muted-foreground">
-                      <RotateCcw className="w-3 h-3" /> Clear
-                    </Button>
-                  )}
-                </div>
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <p className="text-xs text-muted-foreground">Prime Contractor Name</p>
-                    <Input
-                      placeholder="e.g., Lockheed Martin"
-                      value={subPrimeContractor}
-                      onChange={(e) => setSubPrimeContractor(e.target.value)}
-                      className="h-10 text-sm"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <p className="text-xs text-muted-foreground">Min Amount</p>
-                      <div className="relative">
-                        <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                        <Input
-                          type="number"
-                          placeholder="0"
-                          value={subMinAmount}
-                          onChange={(e) => setSubMinAmount(e.target.value)}
-                          className="h-10 text-sm pl-7"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <p className="text-xs text-muted-foreground">Max Amount</p>
-                      <div className="relative">
-                        <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                        <Input
-                          type="number"
-                          placeholder="No max"
-                          value={subMaxAmount}
-                          onChange={(e) => setSubMaxAmount(e.target.value)}
-                          className="h-10 text-sm pl-7"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <p className="text-xs text-muted-foreground">Awarding Agency</p>
-                    <Select value={subAgency || "any"} onValueChange={(val) => setSubAgency(val === "any" ? "" : val)}>
-                      <SelectTrigger className="h-10 text-sm">
-                        <SelectValue placeholder="Any agency" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="any">Any agency</SelectItem>
-                        {agencyOptions.map(a => (
-                          <SelectItem key={a} value={a}>{a}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Action buttons */}
-            <div className="flex gap-3 pt-4 border-t border-border/50">
-              {(hasAdvancedFilters || hasSubFilters) && (
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => { clearAdvancedFilters(); clearSubFilters(); }}
-                >
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  Clear All
-                </Button>
-              )}
-              <Button
-                variant="hero"
-                className="flex-1"
-                onClick={handleApplyAdvancedFilters}
-                disabled={isSearching}
-              >
-                <Search className="w-4 h-4 mr-2" />
-                Search with Filters
-              </Button>
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
 
       {/* Save Search Modal */}
       <SaveSearchModal
