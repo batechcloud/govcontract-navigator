@@ -51,6 +51,8 @@ export interface FilterSectionProps {
   setActiveOnly: (v: boolean) => void;
   expiringSoon: boolean;
   setExpiringSoon: (v: boolean) => void;
+  newThisWeek: boolean;
+  setNewThisWeek: (v: boolean) => void;
 
   // Due Date (single-select days string or "")
   deadlineDays: string;
