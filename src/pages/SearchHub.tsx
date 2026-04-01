@@ -191,6 +191,7 @@ const SearchHub = () => {
   const totalActiveFilterCount =
     (activeOnly ? 1 : 0) +
     (expiringSoon ? 1 : 0) +
+    (newThisWeek ? 1 : 0) +
     (advDeadline ? 1 : 0) +
     activeFilters.length +
     (budgetKey ? 1 : 0) +
