@@ -1,146 +1,87 @@
 
 
-## Plan: Global Contract Cache + Daily Incremental Sync
+# Search Hub Redesign — Simple, Pretty, 5th-Grader Friendly
 
-### Problem
-Currently, contracts are cached per-user in `cached_contracts` (each row has a `user_id`). Every user who searches the same terms triggers a separate SAM.gov API call and stores their own copy. This wastes API quota, increases load times, and creates redundant data.
+## What We're Changing
 
-### Solution Overview
+The current search section (search bar, quick filters, more filters sheet, tabs, sort) will be redesigned into a cleaner, more visual layout that any beginner can navigate instantly.
 
-1. **Create a shared `contracts` table** — a global cache of SAM.gov opportunities (no `user_id`), keyed by `contract_id`. All users search from this single table.
-2. **Create a `sam-sync-incremental` edge function** — fetches only newly posted/modified opportunities from SAM.gov since the last sync.
-3. **Set up a daily `pg_cron` job** — invokes the sync function once per day automatically.
-4. **Update the search flow** — `useCachedSearch` queries the shared `contracts` table instead of per-user `cached_contracts`. The "Sync from API" action becomes a manual trigger of the same incremental logic.
+## Design Overview
 
----
-
-### Technical Details
-
-#### Step 1: New `contracts` table (migration)
-
-```sql
-CREATE TABLE public.contracts (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  contract_id text NOT NULL UNIQUE,
-  title text,
-  agency text,
-  description text,
-  location text,
-  value numeric,
-  deadline timestamptz,
-  posted_date timestamptz,
-  naics_code text,
-  set_aside text,
-  contract_type text,
-  sector text,
-  source text DEFAULT 'SAM.gov',
-  url text,
-  match_score integer,
-  resource_links text[] DEFAULT '{}',
-  solicitation_number text,
-  raw_data jsonb DEFAULT '{}',
-  fetched_at timestamptz NOT NULL DEFAULT now(),
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE INDEX idx_contracts_naics ON public.contracts (naics_code);
-CREATE INDEX idx_contracts_set_aside ON public.contracts (set_aside);
-CREATE INDEX idx_contracts_agency ON public.contracts USING gin (agency gin_trgm_ops);
-CREATE INDEX idx_contracts_deadline ON public.contracts (deadline);
-CREATE INDEX idx_contracts_posted ON public.contracts (posted_date DESC);
-CREATE INDEX idx_contracts_value ON public.contracts (value DESC);
-CREATE INDEX idx_contracts_title_desc ON public.contracts 
-  USING gin (to_tsvector('english', coalesce(title,'') || ' ' || coalesce(description,'')));
-
--- Enable pg_trgm for fuzzy agency search
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-
-ALTER TABLE public.contracts ENABLE ROW LEVEL SECURITY;
-
--- All authenticated users can read
-CREATE POLICY "Authenticated users can read contracts"
-  ON public.contracts FOR SELECT TO authenticated USING (true);
-
--- Only service_role can write (sync function uses service role)
-CREATE POLICY "Service role manages contracts"
-  ON public.contracts FOR ALL TO service_role
-  USING (true) WITH CHECK (true);
-
--- Track last sync metadata
-CREATE TABLE public.sync_metadata (
-  id text PRIMARY KEY DEFAULT 'sam_sync',
-  last_synced_at timestamptz NOT NULL DEFAULT now(),
-  last_posted_date timestamptz,
-  total_synced integer DEFAULT 0,
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-
-ALTER TABLE public.sync_metadata ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated can read sync metadata"
-  ON public.sync_metadata FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Service role manages sync metadata"
-  ON public.sync_metadata FOR ALL TO service_role
-  USING (true) WITH CHECK (true);
-
-INSERT INTO public.sync_metadata (id, last_synced_at, total_synced)
-VALUES ('sam_sync', now() - interval '1 day', 0);
+```text
+┌─────────────────────────────────────────────────────────┐
+│  🔍 [What does your business do? ............] [Search] │
+│     [⏱ Saved Searches]  [💾 Save This Search]          │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  ── Filter By ──────────────────────────────────────    │
+│                                                         │
+│  Status:   [🟢 Active Only] [⏰ Expiring Soon]         │
+│                                                         │
+│  Due Date: [7 days] [14 days] [30 days] [60 days] [90] │
+│                                                         │
+│  Who Can Bid:                                           │
+│  [Small Biz] [Veteran] [Woman-Owned] [Minority] [Hub]  │
+│                                                         │
+│  Budget:                                                │
+│  [Under $25K] [$25K-100K] [$100K-500K] [...] [Over $25M│
+│                                                         │
+│  [⚙ More Options]  [↺ Clear All Filters]               │
+├─────────────────────────────────────────────────────────┤
+│  Direct Contracts  |  Team-Up Opportunities             │
+│  Showing 25 of 10,000 results     [Sort: Match Score ▾]│
+└─────────────────────────────────────────────────────────┘
 ```
 
-#### Step 2: `sam-sync-incremental` edge function
+## Key Changes
 
-New edge function at `supabase/functions/sam-sync-incremental/index.ts`:
+### 1. Inline Filter Section (replaces Quick Filters row)
+Instead of a single row of pills + hidden "More Filters" sheet, show the most-used filters **inline** in a clean card below the search bar, organized by category:
 
-- Reads `sync_metadata` to get `last_synced_at`
-- Calls SAM.gov API with `postedFrom = last_synced_at` and `postedTo = today`
-- Paginates through all results (up to 1000 per call, loops with offset)
-- Upserts into `contracts` table (on conflict `contract_id`)
-- Updates `sync_metadata` with new timestamp and count
-- Uses service role client (no user auth needed — called by cron)
-- Validates incoming request with a shared secret or the anon key from cron
-- Rate-limit aware: stays within SAM.gov's 450/day limit by batching
+- **Status row**: "Active Only" toggle pill (filters to active contracts), "Expiring Soon" pill (due within 14 days)
+- **Due Date row**: Pill chips for 7 / 14 / 30 / 60 / 90 days — single-select, click to toggle
+- **Who Can Bid row**: Keep existing quick filter pills (Small Business, Veteran, Woman-Owned, Minority, HUBZone) but with icons and tooltips
+- **Budget row**: Clickable pill chips for value ranges (Under $25K, $25K-100K, etc.) — single-select
 
-#### Step 3: Daily cron job (pg_cron + pg_net)
+Each row has a simple label with a small help icon tooltip explaining what it means.
 
-Enable `pg_cron` and `pg_net` extensions, then schedule:
+### 2. Collapsible "More Options" Section
+The remaining advanced filters (Agency, Location/State, Opportunity Type, Payment Type, NAICS/PSC codes) move into a collapsible section at the bottom of the filter card — visible when "More Options" is clicked. This replaces the slide-out Sheet.
 
-```sql
-SELECT cron.schedule(
-  'sam-daily-sync',
-  '0 6 * * *',  -- 6 AM UTC daily
-  $$
-  SELECT net.http_post(
-    url := 'https://omyrlnrqvfofijxwozop.supabase.co/functions/v1/sam-sync-incremental',
-    headers := '{"Content-Type":"application/json","Authorization":"Bearer <anon_key>"}'::jsonb,
-    body := '{"source":"cron"}'::jsonb
-  ) AS request_id;
-  $$
-);
-```
+### 3. Visual Polish
+- Filter card uses glassmorphic styling (`variant="glass"`) with subtle section dividers
+- Active pills glow with the accent color and show a checkmark icon
+- Each filter category row uses a simple icon + label (e.g., 📅 Due Date, 💰 Budget)
+- "Clear All Filters" button appears only when filters are active, with a count badge
+- Smooth expand/collapse animation for "More Options"
 
-#### Step 4: Update search hooks
+### 4. "Active Only" Filter
+Add a new filter that checks `response_deadline > now()` to only show contracts that haven't expired. This is the most requested quick action.
 
-- **`useCachedSearch`**: Change queries from `cached_contracts` with `user_id` filter to `contracts` (no user filter). Remove user-scoped logic.
-- **`useSyncFromApi`**: Instead of per-user caching, call the sync function or upsert into the shared table.
-- **`useCacheCount`**: Query shared `contracts` table count.
-- **Search Hub UI**: "Sync from API" button triggers the incremental sync. Search is instant against the local shared table.
-- Keep per-user `tracked_contracts` for pipeline management (bookmarking/status/notes) — unchanged.
+## Files Modified
 
-#### Step 5: Backfill initial data
+### `src/pages/SearchHub.tsx`
+- Replace the Quick Filters row (lines 769-858) and the More Filters Sheet (lines 1357-1604) with a new inline `FilterSection` component
+- Add `advActiveOnly` and `advExpiringSoon` state variables
+- Update `buildCombinedFilters()` to include active-only and expiring-soon logic
+- Add budget pill selection state (single-select value range)
+- Move "More Options" (Agency, State, Opportunity Type, Payment Type, NAICS/PSC) into a collapsible `<Collapsible>` within the filter card
+- Remove the `<Sheet>` for filters entirely
 
-The first cron run will use a wider date range (e.g., 6 months) to populate the initial dataset. Subsequent runs will be incremental (last 24-48 hours).
+### `src/components/search/FilterSection.tsx` (new file)
+- Extracted component for the inline filter card
+- Props: all filter states + setters, onApply callback, active filter count
+- Sections: Status, Due Date, Who Can Bid, Budget, collapsible More Options
+- Each pill is a styled button with icon, tooltip, and active state
+- Responsive: stacks vertically on mobile, wraps on tablet/desktop
 
----
+### `src/hooks/useCachedContracts.ts`
+- Update the `searchLocal` query builder to support `active_only: boolean` and `expiring_soon: boolean` filter params (adds `response_deadline > now()` and `response_deadline < now() + 14 days` WHERE clauses)
 
-### What stays the same
-- `tracked_contracts` table (per-user pipeline tracking)
-- `contractStore` (Zustand for local UI state)
-- Contract Detail page fallback chain
-- All existing RLS on other tables
-
-### Benefits
-- Search is instant — no API call needed per user search
-- SAM.gov quota used efficiently (one daily sync vs. per-user calls)
-- All users see the same comprehensive dataset
-- Fresh data automatically every day
+## Technical Notes
+- The "Active Only" filter adds a `.gt('response_deadline', new Date().toISOString())` to the Supabase query
+- "Expiring Soon" adds `.gt('response_deadline', now).lt('response_deadline', now + 14 days)`
+- Budget pills map to the existing `valueRanges` array and set `advMinValue`/`advMaxValue`
+- Filters auto-apply on click (no separate "Apply" button needed for inline filters) — triggers `cachedSearch.searchLocal()` immediately
+- The collapsible "More Options" section still has an "Apply" button since those filters are more complex
 
