@@ -726,96 +726,46 @@ const SearchHub = () => {
           )}
         </AnimatePresence>
 
-        {/* Quick Filters Row */}
-        <div data-tour="quick-filters" className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
-            Quick Filters
-            {activeFilters.length > 0 && (
-              <span className="bg-accent text-card rounded-full min-w-[18px] h-[18px] px-1 text-[10px] flex items-center justify-center font-bold">
-                {activeFilters.length}
-              </span>
-            )}
-          </span>
-          <TooltipProvider delayDuration={300}>
-            {quickFilters.map((filter) => (
-              <Tooltip key={filter.label}>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => handleQuickFilter(filter)}
-                    className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium transition-all border ${
-                      activeFilters.includes(filter.label)
-                        ? "bg-accent/20 border-accent/50 text-accent"
-                        : "bg-secondary/50 border-border/50 text-muted-foreground hover:text-foreground hover:border-border"
-                    }`}
-                  >
-                    {activeFilters.includes(filter.label) && <X className="w-3 h-3" />}
-                    {filter.label}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs max-w-[200px]">
-                  {filter.tooltip}
-                </TooltipContent>
-              </Tooltip>
-            ))}
-          </TooltipProvider>
-
-          {activeFilters.length > 0 && (
-            <button
-              onClick={async () => {
-                setActiveFilters([]);
-                setCurrentPage(0);
-                if (activeTab === "subcontracts") {
-                  const keyword = searchQuery.trim();
-                  if (keyword || hasSubFilters) {
-                    const res = await subawardSearch.mutateAsync({
-                      keyword: keyword || "",
-                      page: 1,
-                      limit: 25,
-                      prime_contractor: subPrimeContractor.trim() || undefined,
-                      min_amount: subMinAmount ? parseInt(subMinAmount) : undefined,
-                      max_amount: subMaxAmount ? parseInt(subMaxAmount) : undefined,
-                      agency: subAgency || undefined,
-                    });
-                    setSubawardResults(res.results);
-                    setSubawardPage(1);
-                    setSubawardHasNext(res.page_metadata?.hasNext ?? false);
-                    setSubawardTotal(res.page_metadata?.total ?? res.results.length);
-                  } else {
-                    setSubawardResults([]);
-                    setSubawardTotal(0);
-                  }
-                } else {
-                  const filters = buildCombinedFilters();
-                  // Clear quick filter set-asides from the combined filters
-                  await cachedSearch.searchLocal({
-                    ...filters,
-                    set_aside: advSetAside.length > 0 ? advSetAside : [],
-                  } as any, 0, 25);
-                }
-              }}
-              className="text-[10px] text-muted-foreground hover:text-foreground underline ml-1"
-            >
-              Clear all
-            </button>
-          )}
-
-          <button
-            onClick={() => setFiltersOpen(true)}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all border ml-auto ${
-              hasAdvancedFilters || (hasSubFilters && activeTab === "subcontracts")
-                ? "bg-accent/20 border-accent/50 text-accent"
-                : "bg-secondary/50 border-border/50 text-muted-foreground hover:text-foreground hover:border-border"
-            }`}
-          >
-            <SlidersHorizontal className="w-3 h-3" />
-            More Filters
-            {(hasAdvancedFilters || (hasSubFilters && activeTab === "subcontracts")) && (
-              <span className="bg-accent text-card rounded-full w-4 h-4 text-[10px] flex items-center justify-center font-bold">
-                !
-              </span>
-            )}
-          </button>
-        </div>
+        {/* Inline Filter Section */}
+        <FilterSection
+          activeOnly={activeOnly}
+          setActiveOnly={(v) => { setActiveOnly(v); setTimeout(() => handleApplyAdvancedFilters(), 0); }}
+          expiringSoon={expiringSoon}
+          setExpiringSoon={(v) => { setExpiringSoon(v); setTimeout(() => handleApplyAdvancedFilters(), 0); }}
+          deadlineDays={advDeadline}
+          setDeadlineDays={(v) => { setAdvDeadline(v); setTimeout(() => handleApplyAdvancedFilters(), 0); }}
+          activeQuickFilters={activeFilters}
+          onToggleQuickFilter={(label) => handleQuickFilter(label)}
+          budgetKey={budgetKey}
+          setBudgetKey={(v) => { setBudgetKey(v); setTimeout(() => handleApplyAdvancedFilters(), 0); }}
+          advAgency={advAgency}
+          setAdvAgency={setAdvAgency}
+          advState={advState}
+          setAdvState={setAdvState}
+          advType={advType}
+          setAdvType={setAdvType}
+          advContractType={advContractType}
+          setAdvContractType={setAdvContractType}
+          advSetAside={advSetAside}
+          setAdvSetAside={setAdvSetAside}
+          advNaics={advNaics}
+          setAdvNaics={setAdvNaics}
+          advPsc={advPsc}
+          setAdvPsc={setAdvPsc}
+          activeTab={activeTab}
+          subPrimeContractor={subPrimeContractor}
+          setSubPrimeContractor={setSubPrimeContractor}
+          subMinAmount={subMinAmount}
+          setSubMinAmount={setSubMinAmount}
+          subMaxAmount={subMaxAmount}
+          setSubMaxAmount={setSubMaxAmount}
+          subAgency={subAgency}
+          setSubAgency={setSubAgency}
+          onApplyAdvanced={handleApplyAdvancedFilters}
+          onClearAll={clearAllFilters}
+          totalActiveCount={totalActiveFilterCount}
+          isSearching={cachedSearch.isSearching}
+        />
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={async (v) => {
