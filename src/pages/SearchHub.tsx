@@ -78,6 +78,7 @@ const SearchHub = () => {
   const [filtersOpen, setFiltersOpen] = useState(false); // kept for compat
   const [activeOnly, setActiveOnly] = useState(false);
   const [expiringSoon, setExpiringSoon] = useState(false);
+  const [newThisWeek, setNewThisWeek] = useState(false);
   const [budgetKey, setBudgetKey] = useState("");
   const [activeSector, setActiveSector] = useState<string | null>(null);
   const sectorSearchDone = useRef(false);
