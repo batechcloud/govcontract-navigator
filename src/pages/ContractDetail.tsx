@@ -32,7 +32,22 @@ function getDaysLeft(deadline: string | null) {
   return { text: `${days} days left`, cls: "text-success", days };
 }
 
-interface ContractData {
+function CopySummaryButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    toast.success("Summary copied to clipboard");
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <Button variant="ghost" size="sm" onClick={handleCopy} className="gap-1.5 text-xs text-muted-foreground">
+      {copied ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
+      {copied ? "Copied" : "Copy"}
+    </Button>
+  );
+}
+
   id: string;
   title: string;
   agency: string;
