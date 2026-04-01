@@ -48,6 +48,7 @@ function CopySummaryButton({ text }: { text: string }) {
   );
 }
 
+interface ContractData {
   id: string;
   title: string;
   agency: string;
