@@ -259,7 +259,11 @@ const ContractDetail = () => {
     setSummarizing(prev => ({ ...prev, [url]: true }));
     try {
       const { data, error } = await supabase.functions.invoke('ai-document-summary', {
-        body: { documentUrl: url },
+        body: { 
+          documentUrl: url,
+          contractTitle: contract?.title,
+          contractAgency: contract?.agency,
+        },
       });
       if (error) throw error;
       setSummaries(prev => ({ ...prev, [url]: data.summary }));
