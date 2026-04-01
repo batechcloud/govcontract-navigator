@@ -159,6 +159,7 @@ const SearchHub = () => {
     setAdvContractType("");
     setActiveOnly(false);
     setExpiringSoon(false);
+    setNewThisWeek(false);
     setBudgetKey("");
   };
 
