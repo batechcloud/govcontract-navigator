@@ -176,7 +176,7 @@ serve(async (req) => {
       detailParams.append("noticeid", body.noticeId);
       detailParams.append("limit", "1");
       // SAM.gov requires date range even for noticeId lookups
-      detailParams.append("postedFrom", getDateMonthsAgo(24));
+      detailParams.append("postedFrom", getDateMonthsAgo(12));
       detailParams.append("postedTo", getTodayFormatted());
 
       const detailUrl = `${SAM_API_BASE}?${detailParams.toString()}`;
