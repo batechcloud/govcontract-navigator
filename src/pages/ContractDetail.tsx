@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   ArrowLeft, Building2, Clock, DollarSign, MapPin, FileText, Heart,
   ExternalLink, MessageSquare, Sparkles, Hash, Calendar, Globe, Tag,
-  StickyNote, Shield, Save, Paperclip, Download, Brain, Loader2, RefreshCw,
+  StickyNote, Shield, Save, Paperclip, Download, Brain, Loader2, RefreshCw, Copy, Check,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTrackedContracts, useTrackContract, useUpdateContractNotes, useUpdateContractStatus, TrackedContract } from "@/hooks/useTrackedContracts";
@@ -30,6 +30,22 @@ function getDaysLeft(deadline: string | null) {
   if (days <= 3) return { text: `${days} days left`, cls: "text-destructive", days };
   if (days <= 7) return { text: `${days} days left`, cls: "text-accent", days };
   return { text: `${days} days left`, cls: "text-success", days };
+}
+
+function CopySummaryButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    toast.success("Summary copied to clipboard");
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <Button variant="ghost" size="sm" onClick={handleCopy} className="gap-1.5 text-xs text-muted-foreground">
+      {copied ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
+      {copied ? "Copied" : "Copy"}
+    </Button>
+  );
 }
 
 interface ContractData {
@@ -534,16 +550,19 @@ const ContractDetail = () => {
                 <Sparkles className="w-4 h-4 text-accent" /> Quick Summary
               </h2>
               {aiSummary && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => fetchSummary(true)}
-                  disabled={summaryLoading}
-                  className="gap-1.5 text-xs text-muted-foreground"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${summaryLoading ? "animate-spin" : ""}`} />
-                  Regenerate
-                </Button>
+                <div className="flex items-center gap-1">
+                  <CopySummaryButton text={aiSummary} />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => fetchSummary(true)}
+                    disabled={summaryLoading}
+                    className="gap-1.5 text-xs text-muted-foreground"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${summaryLoading ? "animate-spin" : ""}`} />
+                    Regenerate
+                  </Button>
+                </div>
               )}
             </div>
 
