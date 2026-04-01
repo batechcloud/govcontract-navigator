@@ -47,6 +47,7 @@ serve(async (req) => {
       type: z.string().max(100).optional(),
       location: z.string().max(200).optional(),
       contractId: z.string().max(200).optional(),
+      solicitationNumber: z.string().max(200).optional(),
       forceRegenerate: z.boolean().default(false),
     });
 
