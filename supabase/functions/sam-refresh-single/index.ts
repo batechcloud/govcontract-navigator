@@ -7,7 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const SAM_API_BASE = "https://api.sam.gov/opportunities/v2/search";
+const SAM_API_BASE = "https://api.sam.gov/prod/opportunities/v1/search";
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
