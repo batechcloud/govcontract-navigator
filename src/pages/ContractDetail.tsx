@@ -534,16 +534,19 @@ const ContractDetail = () => {
                 <Sparkles className="w-4 h-4 text-accent" /> Quick Summary
               </h2>
               {aiSummary && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => fetchSummary(true)}
-                  disabled={summaryLoading}
-                  className="gap-1.5 text-xs text-muted-foreground"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${summaryLoading ? "animate-spin" : ""}`} />
-                  Regenerate
-                </Button>
+                <div className="flex items-center gap-1">
+                  <CopySummaryButton text={aiSummary} />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => fetchSummary(true)}
+                    disabled={summaryLoading}
+                    className="gap-1.5 text-xs text-muted-foreground"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${summaryLoading ? "animate-spin" : ""}`} />
+                    Regenerate
+                  </Button>
+                </div>
               )}
             </div>
 
