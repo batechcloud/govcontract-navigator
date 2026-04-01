@@ -8,15 +8,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -30,19 +21,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
   Search,
   FileText,
   Building2,
@@ -50,12 +28,10 @@ import {
   Clock,
   DollarSign,
   MapPin,
-  Save,
   X,
   Bookmark,
   ExternalLink,
   Heart,
-  SlidersHorizontal,
   RotateCcw,
   MessageSquare,
   RefreshCw,
@@ -72,9 +48,6 @@ import { useSearchRateLimit } from "@/hooks/useRateLimit";
 import { toast } from "sonner";
 import { SECTOR_NAICS, SECTOR_CONFIG } from "@/config/sectors";
 import { useWinProbability, ContractScoreInput, ContractScoreResult } from "@/hooks/useWinProbability";
-import { NaicsCodeSelector } from "@/components/company/NaicsCodeSelector";
-import { PscCodeSelector } from "@/components/company/PscCodeSelector";
-import { Checkbox } from "@/components/ui/checkbox";
 import { WinScoreModal } from "@/components/search/WinScoreModal";
 import { useCompanyProfile } from "@/hooks/useProfile";
 import { computeHeuristicScore, getScoreColor } from "@/lib/heuristic-score";
@@ -83,15 +56,16 @@ import { GuidedTour } from "@/components/search/GuidedTour";
 import { useSavedSearches, SavedSearch } from "@/hooks/useSavedSearches";
 import { SaveSearchModal } from "@/components/search/SaveSearchModal";
 import { SavedSearchesList } from "@/components/search/SavedSearchesList";
+import { FilterSection } from "@/components/search/FilterSection";
 
-const quickFilters = [
-  { label: "Small Business", filter: { set_aside: ["Small Business"] }, subKeyword: "small business", tooltip: "Contracts only small companies can bid on" },
-  { label: "Veteran-Owned", filter: { set_aside: ["SDVOSB", "VOSB"] }, subKeyword: "veteran", tooltip: "Reserved for businesses owned by military veterans" },
-  { label: "Woman-Owned", filter: { set_aside: ["WOSB", "EDWOSB"] }, subKeyword: "woman", tooltip: "Reserved for businesses owned by women" },
-  { label: "Minority-Owned", filter: { set_aside: ["8(a)", "SDB"] }, subKeyword: "minority", tooltip: "Reserved for minority-owned or disadvantaged businesses" },
-  { label: "HUBZone", filter: { set_aside: ["HUBZone"] }, subKeyword: "hubzone", tooltip: "For businesses in historically underutilized areas" },
-  { label: "Federal", filter: { opportunity_type: "Federal" }, subKeyword: "", tooltip: "Contracts from U.S. federal government agencies" },
-];
+const quickFilterMap: Record<string, { set_aside?: string[]; opportunity_type?: string; subKeyword: string }> = {
+  "Small Business": { set_aside: ["Small Business"], subKeyword: "small business" },
+  "Veteran-Owned": { set_aside: ["SDVOSB", "VOSB"], subKeyword: "veteran" },
+  "Woman-Owned": { set_aside: ["WOSB", "EDWOSB"], subKeyword: "woman" },
+  "Minority-Owned": { set_aside: ["8(a)", "SDB"], subKeyword: "minority" },
+  "HUBZone": { set_aside: ["HUBZone"], subKeyword: "hubzone" },
+  "Federal": { opportunity_type: "Federal", subKeyword: "" },
+};
 
 const SearchHub = () => {
   const navigate = useNavigate();
