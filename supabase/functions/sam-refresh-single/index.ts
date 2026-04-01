@@ -68,7 +68,7 @@ serve(async (req) => {
     const params = new URLSearchParams();
     params.append("api_key", SAM_API_KEY);
     params.append("limit", "1");
-    params.append("postedFrom", getDateMonthsAgo(12));
+    params.append("postedFrom", getDateMonthsAgo(6));
     params.append("postedTo", getTodayFormatted());
 
     if (noticeId) {
