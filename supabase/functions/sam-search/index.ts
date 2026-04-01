@@ -173,7 +173,7 @@ serve(async (req) => {
       }
       const detailParams = new URLSearchParams();
       detailParams.append("api_key", SAM_API_KEY);
-      detailParams.append("noticeId", body.noticeId);
+      detailParams.append("noticeid", body.noticeId);
       detailParams.append("limit", "1");
       // SAM.gov requires date range even for noticeId lookups
       detailParams.append("postedFrom", getDateMonthsAgo(24));
