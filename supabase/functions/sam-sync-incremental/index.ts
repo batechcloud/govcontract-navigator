@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const SAM_API_BASE = "https://api.sam.gov/prod/opportunities/v1/search";
+const SAM_API_BASE = "https://api.sam.gov/opportunities/v2/search";
 const MAX_PER_PAGE = 1000;
 const MAX_PAGES = 10; // Safety limit: 10,000 contracts per sync run
 
