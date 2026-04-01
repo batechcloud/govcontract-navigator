@@ -736,6 +736,8 @@ const SearchHub = () => {
           setActiveOnly={(v) => { setActiveOnly(v); setTimeout(() => handleApplyAdvancedFilters(), 0); }}
           expiringSoon={expiringSoon}
           setExpiringSoon={(v) => { setExpiringSoon(v); setTimeout(() => handleApplyAdvancedFilters(), 0); }}
+          newThisWeek={newThisWeek}
+          setNewThisWeek={(v) => { setNewThisWeek(v); setTimeout(() => handleApplyAdvancedFilters(), 0); }}
           deadlineDays={advDeadline}
           setDeadlineDays={(v) => { setAdvDeadline(v); setTimeout(() => handleApplyAdvancedFilters(), 0); }}
           activeQuickFilters={activeFilters}
