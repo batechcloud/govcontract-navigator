@@ -218,6 +218,7 @@ export function FilterSection(props: FilterSectionProps) {
   const {
     activeOnly, setActiveOnly,
     expiringSoon, setExpiringSoon,
+    newThisWeek, setNewThisWeek,
     deadlineDays, setDeadlineDays,
     activeQuickFilters, onToggleQuickFilter,
     budgetKey, setBudgetKey,
