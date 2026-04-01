@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 // SAM.gov API base URL
-const SAM_API_BASE = "https://api.sam.gov/opportunities/v2/search";
+const SAM_API_BASE = "https://api.sam.gov/prod/opportunities/v1/search";
 
 interface SearchFilters {
   keywords: string[];
