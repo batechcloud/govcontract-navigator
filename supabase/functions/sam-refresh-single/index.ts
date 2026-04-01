@@ -68,27 +68,29 @@ serve(async (req) => {
     const params = new URLSearchParams();
     params.append("api_key", SAM_API_KEY);
     params.append("limit", "1");
-    params.append("postedFrom", getDateMonthsAgo(24));
+    params.append("postedFrom", getDateMonthsAgo(6));
     params.append("postedTo", getTodayFormatted());
 
     if (noticeId) {
-      params.append("noticeId", noticeId);
+      params.append("noticeid", noticeId);
     } else if (solicitationNumber) {
       params.append("solnum", solicitationNumber);
     }
 
-    const url = `${SAM_API_BASE}?${params.toString()}`;
-    console.log("Refreshing single contract:", noticeId || solicitationNumber);
+    const url = `${SAM_API_BASE}?${params.toString().replace(SAM_API_KEY, "***")}`;
+    console.log("Refreshing single contract URL pattern:", url);
 
-    const resp = await fetch(url, {
+    const fullUrl = `${SAM_API_BASE}?${params.toString()}`;
+    const resp = await fetch(fullUrl, {
       method: "GET",
       headers: { Accept: "application/json" },
     });
 
     if (!resp.ok) {
-      console.error("SAM.gov error:", resp.status);
+      const errBody = await resp.text();
+      console.error("SAM.gov error:", resp.status, errBody);
       return new Response(
-        JSON.stringify({ error: "SAM.gov API error" }),
+        JSON.stringify({ error: "SAM.gov API error", detail: errBody }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
