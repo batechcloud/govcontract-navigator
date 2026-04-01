@@ -205,7 +205,7 @@ const SearchHub = () => {
     (hasSubFilters && activeTab === "subcontracts" ? 1 : 0);
 
   // Unified filter builder
-  const buildCombinedFilters = (): SearchFilters & { deadline_before?: string; active_only?: boolean; expiring_soon?: boolean } => {
+  const buildCombinedFilters = (): SearchFilters & { deadline_before?: string; active_only?: boolean; expiring_soon?: boolean; new_this_week?: boolean } => {
     const deadlineDays = advDeadline ? parseInt(advDeadline) : null;
     const deadlineDate = deadlineDays
       ? new Date(Date.now() + deadlineDays * 24 * 60 * 60 * 1000).toISOString()
