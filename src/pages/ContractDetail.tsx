@@ -290,6 +290,7 @@ const ContractDetail = () => {
           deadline: contract.deadline,
           type: contract.type,
           location: contract.location,
+          solicitationNumber: contract.solicitationNumber,
         },
       });
       if (error) throw error;

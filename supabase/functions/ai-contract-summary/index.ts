@@ -47,6 +47,7 @@ serve(async (req) => {
       type: z.string().max(100).optional(),
       location: z.string().max(200).optional(),
       contractId: z.string().max(200).optional(),
+      solicitationNumber: z.string().max(200).optional(),
       forceRegenerate: z.boolean().default(false),
     });
 
@@ -57,7 +58,7 @@ serve(async (req) => {
       });
     }
 
-    const { title, agency, description, value, setAside, naicsCode, deadline, type, location, contractId, forceRegenerate } = parsed.data;
+    const { title, agency, description, value, setAside, naicsCode, deadline, type, location, contractId, solicitationNumber, forceRegenerate } = parsed.data;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -87,38 +88,57 @@ serve(async (req) => {
     const contractContext = [
       title && `Title: ${title}`,
       agency && `Agency: ${agency}`,
+      solicitationNumber && `Solicitation Number: ${solicitationNumber}`,
       value && `Estimated Value: ${value}`,
       type && `Contract Type: ${type}`,
       setAside && setAside !== "None" && `Set-Aside: ${setAside}`,
       naicsCode && `NAICS Code: ${naicsCode}`,
       deadline && `Response Deadline: ${deadline}`,
-      location && `Location: ${location}`,
-      description && `Full Description: ${description}`,
+      location && `Place of Performance: ${location}`,
+      description && `Full Description / Statement of Work:\n${description}`,
     ]
       .filter(Boolean)
       .join("\n");
 
-    const systemPrompt = `You are a government contracting advisor explaining contracts to someone who has never done government contracting before. Write a clear, concise summary using simple language, short sentences, and bullet points. Structure your response with these exact markdown headings:
+    const systemPrompt = `You are a senior government contracting advisor. Your job is to give a 100% accurate, thorough summary of a federal contract opportunity. Use ONLY the facts provided — never guess, infer, or fabricate details. If a detail is missing, explicitly say "Not specified in the listing."
+
+Write in simple language a non-expert can understand. Use bullet points. Structure your response with these exact markdown headings:
 
 ## 📋 What They're Buying
-Brief plain-English explanation of what this contract is for.
+- Plain-English explanation of exactly what the government needs (goods, services, or both).
+- Mention the NAICS code and what industry it maps to.
+- Include the solicitation number if provided.
 
 ## 📝 What's Required
-Key requirements, deliverables, or qualifications needed.
+- Specific deliverables, tasks, or scope of work extracted from the description.
+- Any certifications, clearances, experience levels, or technical qualifications mentioned.
+- Performance standards or service levels if stated.
 
 ## 👤 Who Can Bid
-Eligibility info — set-asides, certifications, size standards.
+- Set-aside type (e.g., Small Business, 8(a), WOSB, HUBZone, SDVOSB) and what it means.
+- SBA size standard for the NAICS code if you know it.
+- Any other eligibility requirements from the listing.
 
 ## 💰 Value & Pricing
-Contract value, pricing structure, and financial considerations.
+- Estimated contract value (exact figure if provided).
+- Contract type (FFP, T&M, IDIQ, BPA, Cost-Plus) and what it means for pricing risk.
+- Whether this is a single award or multiple award.
 
-## 📅 Key Dates
-Important deadlines and timeline info.
+## 📍 Location & Performance
+- Place of performance (city, state, or remote/nationwide).
+- Any travel requirements mentioned.
 
-## ✅ Should You Bid?
-Honest assessment — who this contract is ideal for, potential risks, and a clear recommendation for small businesses.
+## 📅 Key Dates & Timeline
+- Response/proposal deadline with how many days remain from today.
+- Expected period of performance or contract duration if stated.
+- Any pre-bid conference or Q&A deadlines.
 
-Keep each section to 2-4 bullet points max. If information is missing for a section, say "Not specified in the listing" rather than guessing.`;
+## ✅ Bid / No-Bid Recommendation
+- Who this contract is ideal for (company size, capabilities, industry).
+- Potential risks or red flags (tight deadline, complex requirements, incumbent advantage).
+- Clear bottom-line recommendation for a small business considering this opportunity.
+
+Be thorough but concise — 3-5 bullets per section. Accuracy is paramount: quote specifics from the description rather than paraphrasing loosely.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
