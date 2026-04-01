@@ -72,7 +72,7 @@ serve(async (req) => {
     params.append("postedTo", getTodayFormatted());
 
     if (noticeId) {
-      params.append("noticeId", noticeId);
+      params.append("noticeid", noticeId);
     } else if (solicitationNumber) {
       params.append("solnum", solicitationNumber);
     }
