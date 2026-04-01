@@ -75,7 +75,10 @@ const SearchHub = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const [syncPage, setSyncPage] = useState(0);
   const [apiTotal, setApiTotal] = useState<number | null>(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false); // kept for compat
+  const [activeOnly, setActiveOnly] = useState(false);
+  const [expiringSoon, setExpiringSoon] = useState(false);
+  const [budgetKey, setBudgetKey] = useState("");
   const [activeSector, setActiveSector] = useState<string | null>(null);
   const sectorSearchDone = useRef(false);
   const [activeTab, setActiveTab] = useState<"prime" | "subcontracts">("prime");
