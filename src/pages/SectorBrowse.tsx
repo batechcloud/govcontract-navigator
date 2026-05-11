@@ -39,17 +39,14 @@ function getSectorCounts(contracts) {
 }
 
 async function fetchSamContracts() {
-  // Broad search — no keyword/NAICS filter — to get a sample across sectors
-  const { data, error } = await supabase.functions.invoke("sam-search", {
-    body: {
-      filters: { keywords: [], naics_codes: [], set_aside: [], agencies: [], min_value: null, max_value: null, location: null, opportunity_type: null },
-      page: 0,
-      limit: 1000,
-    },
-  });
+  // Read directly from the local contracts cache — no live SAM.gov call.
+  const { data, error, count } = await supabase
+    .from("contracts" as any)
+    .select("naics_code", { count: "exact" })
+    .limit(1000);
   if (error) throw error;
-  if (data?.error) throw new Error(data.error);
-  return data;
+  const results = (data || []).map((r: any) => ({ naicsCode: r.naics_code }));
+  return { results, total: count || results.length };
 }
 
 export default function SectorBrowse() {

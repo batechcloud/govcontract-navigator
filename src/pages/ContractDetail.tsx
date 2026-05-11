@@ -231,14 +231,13 @@ const ContractDetail = () => {
     const fetchLinks = async () => {
       setFetchingLinks(true);
       try {
-        const { data, error } = await supabase.functions.invoke('sam-search', {
-          body: { mode: 'detail', noticeId: contractId },
-        });
-        if (!error && data?.resourceLinks?.length) {
-          setFetchedLinks(data.resourceLinks);
-        } else {
-          setFetchedLinks([]);
-        }
+        // Read attachments from local contracts cache only.
+        const { data } = await supabase
+          .from("contracts" as any)
+          .select("resource_links")
+          .eq("contract_id", contractId)
+          .maybeSingle();
+        setFetchedLinks(((data as any)?.resource_links as string[]) || []);
       } catch {
         setFetchedLinks([]);
       } finally {

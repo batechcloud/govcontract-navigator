@@ -686,6 +686,134 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          details: Json
+          id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+        }
+        Relationships: []
+      }
+      sync_failed_records: {
+        Row: {
+          attempts: number
+          contract_id: string | null
+          created_at: string
+          error: string | null
+          id: string
+          job_id: string | null
+          payload: Json | null
+          resolved: boolean
+        }
+        Insert: {
+          attempts?: number
+          contract_id?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          job_id?: string | null
+          payload?: Json | null
+          resolved?: boolean
+        }
+        Update: {
+          attempts?: number
+          contract_id?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          job_id?: string | null
+          payload?: Json | null
+          resolved?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_failed_records_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "sync_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sync_jobs: {
+        Row: {
+          cancel_requested: boolean
+          checkpoint: Json
+          created_at: string
+          current_offset: number
+          finished_at: string | null
+          id: string
+          job_type: Database["public"]["Enums"]["sync_job_type"]
+          last_error: string | null
+          posted_from: string | null
+          posted_to: string | null
+          records_failed: number
+          records_inserted: number
+          records_updated: number
+          started_at: string
+          status: Database["public"]["Enums"]["sync_job_status"]
+          total_records: number | null
+          triggered_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          cancel_requested?: boolean
+          checkpoint?: Json
+          created_at?: string
+          current_offset?: number
+          finished_at?: string | null
+          id?: string
+          job_type: Database["public"]["Enums"]["sync_job_type"]
+          last_error?: string | null
+          posted_from?: string | null
+          posted_to?: string | null
+          records_failed?: number
+          records_inserted?: number
+          records_updated?: number
+          started_at?: string
+          status?: Database["public"]["Enums"]["sync_job_status"]
+          total_records?: number | null
+          triggered_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cancel_requested?: boolean
+          checkpoint?: Json
+          created_at?: string
+          current_offset?: number
+          finished_at?: string | null
+          id?: string
+          job_type?: Database["public"]["Enums"]["sync_job_type"]
+          last_error?: string | null
+          posted_from?: string | null
+          posted_to?: string | null
+          records_failed?: number
+          records_inserted?: number
+          records_updated?: number
+          started_at?: string
+          status?: Database["public"]["Enums"]["sync_job_status"]
+          total_records?: number | null
+          triggered_by?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sync_metadata: {
         Row: {
           id: string
@@ -1047,6 +1175,13 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user" | "superadmin"
+      sync_job_status:
+        | "queued"
+        | "running"
+        | "completed"
+        | "failed"
+        | "cancelled"
+      sync_job_type: "full" | "incremental" | "manual"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1175,6 +1310,14 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user", "superadmin"],
+      sync_job_status: [
+        "queued",
+        "running",
+        "completed",
+        "failed",
+        "cancelled",
+      ],
+      sync_job_type: ["full", "incremental", "manual"],
     },
   },
 } as const
