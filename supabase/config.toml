@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.admin-audit-login]
 verify_jwt = false
+
+[functions.admin-setup]
+verify_jwt = false
