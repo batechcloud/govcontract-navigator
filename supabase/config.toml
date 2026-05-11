@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.admin-sync-allowlist]
 verify_jwt = false
+
+[functions.admin-invite]
+verify_jwt = false
