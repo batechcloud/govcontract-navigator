@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.ai-contract-summary]
 verify_jwt = false
+
+[functions.sam-sync-control]
+verify_jwt = false
