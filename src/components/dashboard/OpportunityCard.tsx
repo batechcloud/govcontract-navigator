@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Link } from "react-router-dom";
 import { FileText, Clock, Star, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ interface OpportunityCardProps {
   showRemove?: boolean;
 }
 
-export const OpportunityCard = ({ contract, onRemove, showRemove }: OpportunityCardProps) => {
+const OpportunityCardImpl = ({ contract, onRemove, showRemove }: OpportunityCardProps) => {
   const deadline = contract.response_deadline 
     ? new Date(contract.response_deadline) 
     : null;
@@ -81,3 +82,5 @@ export const OpportunityCard = ({ contract, onRemove, showRemove }: OpportunityC
     </div>
   );
 };
+
+export const OpportunityCard = memo(OpportunityCardImpl);
