@@ -46,6 +46,7 @@ const AIOpportunityChat = lazy(() => import("./pages/AIOpportunityChat"));
 const USASpendingIntel = lazy(() => import("./pages/USASpendingIntel"));
 const Settings = lazy(() => import("./pages/Settings"));
 const ContractDetail = lazy(() => import("./pages/ContractDetail"));
+const AdminSync = lazy(() => import("./pages/AdminSync"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -102,6 +103,7 @@ const App = () => (
               <Route path="/dashboard/sectors" element={<ProtectedRoute><ErrorBoundary><SectorBrowse /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/dashboard/usaspending" element={<ProtectedRoute><ErrorBoundary><USASpendingIntel /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/dashboard/contract/:contractId" element={<ProtectedRoute><ErrorBoundary><ContractDetail /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/dashboard/admin/sync" element={<ProtectedRoute><ErrorBoundary><AdminSync /></ErrorBoundary></ProtectedRoute>} />
               
               {/* Redirects from old routes */}
               <Route path="/dashboard/journey" element={<Navigate to="/dashboard/tracked" replace />} />

@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { Database } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const sidebarItems = [
@@ -33,8 +35,13 @@ export const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => 
   const location = useLocation();
   const { signOut } = useAuth();
   const { data: profile } = useProfile();
+  const { data: isAdmin } = useIsAdmin();
 
   const userName = profile?.first_name || "User";
+
+  const items = isAdmin
+    ? [...sidebarItems, { icon: Database, label: "Sync Console", href: "/dashboard/admin/sync" }]
+    : sidebarItems;
 
   return (
     <aside
@@ -65,7 +72,7 @@ export const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => 
         <nav className="flex-1 overflow-y-auto p-4">
           <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3 px-3">Menu</p>
           <ul className="space-y-1">
-            {sidebarItems.map((item) => {
+            {items.map((item) => {
               const isActive = location.pathname === item.href;
               return (
                 <li key={item.label}>
