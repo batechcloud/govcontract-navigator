@@ -174,11 +174,16 @@ export default function AdminSync() {
   return (
     <DashboardLayout title="SAM.gov Sync Console">
       <div className="max-w-7xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-3xl font-heading font-bold text-foreground">SAM.gov Sync Console</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage contract data ingestion. The platform serves users from this internal database — never from a live SAM.gov call.
-          </p>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-3xl font-heading font-bold text-foreground">SAM.gov Sync Console</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage contract data ingestion. The platform serves users from this internal database — never from a live SAM.gov call.
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => navigate("/admin/audit")}>
+            <Activity className="w-4 h-4 mr-2" /> View Audit
+          </Button>
         </div>
 
         {/* Top metrics */}
