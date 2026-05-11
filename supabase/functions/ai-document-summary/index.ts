@@ -269,6 +269,13 @@ CRITICAL RULES:
     if (!aiResponse.ok) {
       const errText = await aiResponse.text();
       console.error("AI gateway error:", aiResponse.status, errText);
+      // Common case: provider rejects the file (e.g. "document has no pages").
+      // Return a friendly summary instead of a 500 so the UI stays usable.
+      if (/no pages|invalid|unsupported|cannot process/i.test(errText)) {
+        return new Response(JSON.stringify({
+          summary: "AI couldn't read this attachment (the file may be empty, image-only, or in an unsupported format). Please open it directly from SAM.gov.",
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
       return new Response(JSON.stringify({ error: "Failed to generate summary" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
