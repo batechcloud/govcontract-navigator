@@ -49,6 +49,7 @@ const Settings = lazy(() => import("./pages/Settings"));
 const ContractDetail = lazy(() => import("./pages/ContractDetail"));
 const AdminSync = lazy(() => import("./pages/AdminSync"));
 const AdminSyncJobDetail = lazy(() => import("./pages/AdminSyncJobDetail"));
+const AdminAudit = lazy(() => import("./pages/AdminAudit"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 
 const queryClient = new QueryClient({
