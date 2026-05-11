@@ -113,17 +113,36 @@ serve(async (req) => {
         : runIncrementalImport(supabase, job.id, apiKey);
 
       EdgeRuntime.waitUntil(
-        worker.catch(async (err) => {
-          console.error("Sync worker error:", err);
-          await supabase
-            .from("sync_jobs")
-            .update({
-              status: "failed",
-              finished_at: new Date().toISOString(),
-              last_error: err instanceof Error ? err.message : String(err),
-            })
-            .eq("id", job.id);
-        }),
+        worker
+          .then(async () => {
+            const { data: finished } = await supabase
+              .from("sync_jobs")
+              .select("status, records_inserted, records_updated, records_failed")
+              .eq("id", job.id)
+              .maybeSingle();
+            await supabase.from("sync_audit_log").insert({
+              actor_id: actorId,
+              action: "sync_job_completed",
+              details: { job_id: job.id, ...finished },
+            });
+          })
+          .catch(async (err) => {
+            console.error("Sync worker error:", err);
+            const message = err instanceof Error ? err.message : String(err);
+            await supabase
+              .from("sync_jobs")
+              .update({
+                status: "failed",
+                finished_at: new Date().toISOString(),
+                last_error: message,
+              })
+              .eq("id", job.id);
+            await supabase.from("sync_audit_log").insert({
+              actor_id: actorId,
+              action: "sync_job_failed",
+              details: { job_id: job.id, error: message },
+            });
+          }),
       );
 
       return json({ ok: true, job_id: job.id });

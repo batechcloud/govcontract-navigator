@@ -47,12 +47,21 @@ const AdminLogin = () => {
     })();
   }, [navigate]);
 
+  const auditLogin = async (success: boolean, stage?: "password" | "allowlist", reason?: string) => {
+    try {
+      await supabase.functions.invoke("admin-audit-login", {
+        body: { email, success, stage, reason },
+      });
+    } catch { /* never block sign-in on audit failure */ }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error || !data.user) {
+        await auditLogin(false, "password", error?.message || "Invalid credentials");
         toast.error("Invalid credentials");
         setLoading(false);
         return;
@@ -65,6 +74,7 @@ const AdminLogin = () => {
       );
 
       if (syncErr || !syncRes?.is_admin) {
+        await auditLogin(false, "allowlist", syncErr?.message || "Not in ADMIN_EMAILS");
         await supabase.auth.signOut();
         toast.error("Access denied", {
           description: "This account is not authorized for admin access.",
@@ -73,9 +83,11 @@ const AdminLogin = () => {
         return;
       }
 
+      await auditLogin(true);
       toast.success("Welcome, admin");
       navigate("/admin/sync", { replace: true });
     } catch (err: any) {
+      await auditLogin(false, "password", err?.message);
       toast.error("Sign-in failed", { description: err?.message });
     } finally {
       setLoading(false);
