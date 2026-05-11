@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { motion } from "framer-motion";
@@ -87,6 +87,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default function AdminSync() {
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [confirmFullOpen, setConfirmFullOpen] = useState(false);
   const [progressStartedAt, setProgressStartedAt] = useState<number | null>(null);
 
@@ -318,7 +319,11 @@ export default function AdminSync() {
                         )
                       : null;
                   return (
-                    <TableRow key={j.id}>
+                    <TableRow
+                      key={j.id}
+                      className="cursor-pointer hover:bg-muted/40 transition-colors"
+                      onClick={() => navigate(`/admin/sync/jobs/${j.id}`)}
+                    >
                       <TableCell className="capitalize">{j.job_type}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className={STATUS_COLORS[j.status]}>

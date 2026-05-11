@@ -23,6 +23,7 @@ const BodySchema = z.object({
     "status",
     "list_jobs",
     "list_failed",
+    "get_job",
   ]),
   job_id: z.string().uuid().optional(),
   failed_record_ids: z.array(z.string().uuid()).max(100).optional(),
@@ -255,6 +256,34 @@ serve(async (req) => {
         .order("created_at", { ascending: false })
         .limit(50);
       return json({ failed: data ?? [] });
+    }
+
+    case "get_job": {
+      if (!body.job_id) return json({ error: "job_id required" }, 400);
+
+      const { data: job } = await supabase
+        .from("sync_jobs")
+        .select("*")
+        .eq("id", body.job_id)
+        .maybeSingle();
+      if (!job) return json({ error: "Job not found" }, 404);
+
+      // Audit-log entries that reference this job
+      const { data: audit } = await supabase
+        .from("sync_audit_log")
+        .select("id, action, details, created_at, actor_id")
+        .filter("details->>job_id", "eq", body.job_id)
+        .order("created_at", { ascending: true })
+        .limit(500);
+
+      const { data: failed } = await supabase
+        .from("sync_failed_records")
+        .select("id, contract_id, error, attempts, resolved, created_at, payload")
+        .eq("job_id", body.job_id)
+        .order("created_at", { ascending: true })
+        .limit(200);
+
+      return json({ job, audit: audit ?? [], failed: failed ?? [] });
     }
   }
 
