@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute, PublicOnlyRoute } from "@/components/auth/ProtectedRoute";
+import { AdminRoute } from "@/components/auth/AdminRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // Lightweight loading fallback
@@ -47,6 +48,7 @@ const USASpendingIntel = lazy(() => import("./pages/USASpendingIntel"));
 const Settings = lazy(() => import("./pages/Settings"));
 const ContractDetail = lazy(() => import("./pages/ContractDetail"));
 const AdminSync = lazy(() => import("./pages/AdminSync"));
+const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -103,7 +105,11 @@ const App = () => (
               <Route path="/dashboard/sectors" element={<ProtectedRoute><ErrorBoundary><SectorBrowse /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/dashboard/usaspending" element={<ProtectedRoute><ErrorBoundary><USASpendingIntel /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/dashboard/contract/:contractId" element={<ProtectedRoute><ErrorBoundary><ContractDetail /></ErrorBoundary></ProtectedRoute>} />
-              <Route path="/dashboard/admin/sync" element={<ProtectedRoute><ErrorBoundary><AdminSync /></ErrorBoundary></ProtectedRoute>} />
+              {/* Separate admin area with its own login */}
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin" element={<Navigate to="/admin/sync" replace />} />
+              <Route path="/admin/sync" element={<AdminRoute><ErrorBoundary><AdminSync /></ErrorBoundary></AdminRoute>} />
+              <Route path="/dashboard/admin/sync" element={<Navigate to="/admin/sync" replace />} />
               
               {/* Redirects from old routes */}
               <Route path="/dashboard/journey" element={<Navigate to="/dashboard/tracked" replace />} />

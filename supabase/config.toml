@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.sam-sync-control]
 verify_jwt = false
+
+[functions.admin-sync-allowlist]
+verify_jwt = false
