@@ -196,18 +196,45 @@ CRITICAL RULES:
       ];
     } else {
       // For PDFs and binary docs, validate before sending to the AI gateway.
-      // SAM.gov sometimes returns an HTML error page with a PDF content-type,
-      // or a 0-page placeholder — both make Gemini error with "document has no pages".
+      // Detect actual file type from magic bytes (don't trust Content-Type header).
+      const header4 = Array.from(bytes.slice(0, 4)).map(b => b.toString(16).padStart(2, "0")).join("");
+      const headerAscii = new TextDecoder().decode(bytes.slice(0, 8));
+      const urlLower = documentUrl.toLowerCase();
+
+      // ZIP / Office archives we can't process here
+      if (header4 === "504b0304" && !urlLower.endsWith(".docx") && !urlLower.endsWith(".pptx") && !urlLower.endsWith(".xlsx")) {
+        return new Response(JSON.stringify({
+          summary: "📦 This attachment is a ZIP archive. AI summary works on PDF, Word, and text files. Please download it from SAM.gov to view its contents.",
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      // Image files (JPG/PNG/GIF/TIFF) — Gemini can read them, but they're usually not contract docs
+      const isJpeg = header4.startsWith("ffd8ff");
+      const isPng = header4 === "89504e47";
+      const isGif = headerAscii.startsWith("GIF8");
+      const isTiff = header4 === "49492a00" || header4 === "4d4d002a";
+      if (isJpeg || isPng || isGif || isTiff) {
+        return new Response(JSON.stringify({
+          summary: "🖼️ This attachment is an image file, not a readable document. AI summary requires a PDF, Word, or text document. Please open it directly from SAM.gov.",
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      // HTML masquerading as a document (SAM.gov error pages)
+      if (headerAscii.toLowerCase().startsWith("<!doctype") || headerAscii.toLowerCase().startsWith("<html")) {
+        return new Response(JSON.stringify({
+          summary: "⚠️ The source returned a webpage instead of a document — the file may have been removed or requires a SAM.gov login. Please open it directly from SAM.gov.",
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
       if (mimeType === "application/pdf") {
-        const header = new TextDecoder().decode(bytes.slice(0, 5));
-        if (header !== "%PDF-") {
+        if (!headerAscii.startsWith("%PDF-")) {
           return new Response(JSON.stringify({
-            summary: "This attachment couldn't be opened as a PDF (the source returned an empty or non-PDF file). Please open it directly from SAM.gov.",
+            summary: "📄 This attachment isn't a valid PDF (the file header is missing or corrupted). Please open it directly from SAM.gov.",
           }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
         if (bytes.length < 1024) {
           return new Response(JSON.stringify({
-            summary: "This attachment appears to be empty or a placeholder. Please open it directly from SAM.gov.",
+            summary: "📄 This PDF appears to be empty or a placeholder (under 1 KB). Please open it directly from SAM.gov.",
           }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
       }
@@ -255,7 +282,7 @@ CRITICAL RULES:
     });
 
     if (aiResponse.status === 429) {
-      return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
+      return new Response(JSON.stringify({ error: "Too many requests right now. Please wait a moment and try again." }), {
         status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -269,17 +296,39 @@ CRITICAL RULES:
     if (!aiResponse.ok) {
       const errText = await aiResponse.text();
       console.error("AI gateway error:", aiResponse.status, errText);
-      // Common case: provider rejects the file (e.g. "document has no pages").
-      // Return a friendly summary instead of a 500 so the UI stays usable.
-      if (/no pages|invalid|unsupported|cannot process/i.test(errText)) {
+      const lower = errText.toLowerCase();
+
+      // Map common AI provider errors to specific, friendly messages
+      if (/no pages|0 pages|empty document/i.test(lower)) {
         return new Response(JSON.stringify({
-          summary: "AI couldn't read this attachment (the file may be empty, image-only, or in an unsupported format). Please open it directly from SAM.gov.",
+          summary: "📄 The AI couldn't read any pages from this document. It may be empty, corrupted, or a placeholder file. Please open it directly from SAM.gov.",
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      return new Response(JSON.stringify({ error: "Failed to generate summary" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (/scanned|image[- ]only|ocr|no (extractable )?text/i.test(lower)) {
+        return new Response(JSON.stringify({
+          summary: "🖨️ This appears to be a scanned PDF (image-only, no extractable text). AI summary requires a text-based PDF. Please open it directly from SAM.gov to read it.",
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      if (/unsupported|invalid (file|format|mime)|cannot process|not supported/i.test(lower)) {
+        return new Response(JSON.stringify({
+          summary: "📎 This file format isn't supported for AI analysis. Supported formats: PDF (text-based), Word (.docx), and plain text. Please open it directly from SAM.gov.",
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      if (/password|encrypted|protected/i.test(lower)) {
+        return new Response(JSON.stringify({
+          summary: "🔒 This document appears to be password-protected or encrypted. Please open it directly from SAM.gov.",
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      if (/too large|size limit|exceeds/i.test(lower)) {
+        return new Response(JSON.stringify({
+          summary: "📦 This document is too large for AI analysis. Please download and review it directly from SAM.gov.",
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({
+        summary: "⚠️ AI analysis is temporarily unavailable for this document. Please try again in a moment, or open it directly from SAM.gov.",
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
 
     const aiData = await aiResponse.json();
     const summary = aiData.choices?.[0]?.message?.content || "Unable to generate summary.";
