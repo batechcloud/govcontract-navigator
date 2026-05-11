@@ -1,87 +1,89 @@
+## Goal
 
+Convert SAM.gov access to a fully database-first, admin-controlled ingestion system. Frontend reads only from the local `contracts` table. Admins manage full imports, incremental syncs, and failed records from a new admin console.
 
-# Search Hub Redesign — Simple, Pretty, 5th-Grader Friendly
+## What already exists (will be reused)
 
-## What We're Changing
+- `contracts` table — global cache, GIN-indexed (already feeds `useCachedSearch`)
+- `sync_metadata` table — tracks last run timestamp
+- `sam-sync-incremental` edge function — pulls recent SAM.gov pages and upserts
+- Daily `pg_cron` job at 06:00 UTC
+- `user_roles` table + `has_role(uid, 'admin')` security-definer function
+- Per-user 50/day rate limit on `sam-search`
 
-The current search section (search bar, quick filters, more filters sheet, tabs, sort) will be redesigned into a cleaner, more visual layout that any beginner can navigate instantly.
+## What's missing (to build)
 
-## Design Overview
+### 1. Database schema additions (migration)
 
 ```text
-┌─────────────────────────────────────────────────────────┐
-│  🔍 [What does your business do? ............] [Search] │
-│     [⏱ Saved Searches]  [💾 Save This Search]          │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  ── Filter By ──────────────────────────────────────    │
-│                                                         │
-│  Status:   [🟢 Active Only] [⏰ Expiring Soon]         │
-│                                                         │
-│  Due Date: [7 days] [14 days] [30 days] [60 days] [90] │
-│                                                         │
-│  Who Can Bid:                                           │
-│  [Small Biz] [Veteran] [Woman-Owned] [Minority] [Hub]  │
-│                                                         │
-│  Budget:                                                │
-│  [Under $25K] [$25K-100K] [$100K-500K] [...] [Over $25M│
-│                                                         │
-│  [⚙ More Options]  [↺ Clear All Filters]               │
-├─────────────────────────────────────────────────────────┤
-│  Direct Contracts  |  Team-Up Opportunities             │
-│  Showing 25 of 10,000 results     [Sort: Match Score ▾]│
-└─────────────────────────────────────────────────────────┘
+sync_jobs            One row per import/sync run
+  id, job_type ('full' | 'incremental' | 'manual'),
+  status ('queued' | 'running' | 'completed' | 'failed' | 'cancelled'),
+  triggered_by (uuid, nullable for cron),
+  started_at, finished_at,
+  posted_from, posted_to, current_offset,
+  total_records (api-reported), records_inserted, records_updated, records_failed,
+  last_error, cancel_requested (bool), checkpoint (jsonb)
+
+sync_failed_records  Dead-letter queue
+  id, job_id, contract_id, payload (jsonb), error, attempts, created_at
+
+sync_audit_log       Admin actions
+  id, actor_id, action, details (jsonb), created_at
 ```
 
-## Key Changes
+RLS:
+- All three tables: only `has_role(auth.uid(),'admin')` can SELECT/INSERT/UPDATE; service role full.
+- Admin policies use the existing `has_role` security-definer function (no recursion risk).
 
-### 1. Inline Filter Section (replaces Quick Filters row)
-Instead of a single row of pills + hidden "More Filters" sheet, show the most-used filters **inline** in a clean card below the search bar, organized by category:
+Indexes already on `contracts` (GIN on title/description, btree on naics_code, set_aside, deadline, posted_date) — confirmed sufficient for the search filters in `useCachedSearch`.
 
-- **Status row**: "Active Only" toggle pill (filters to active contracts), "Expiring Soon" pill (due within 14 days)
-- **Due Date row**: Pill chips for 7 / 14 / 30 / 60 / 90 days — single-select, click to toggle
-- **Who Can Bid row**: Keep existing quick filter pills (Small Business, Veteran, Woman-Owned, Minority, HUBZone) but with icons and tooltips
-- **Budget row**: Clickable pill chips for value ranges (Under $25K, $25K-100K, etc.) — single-select
+### 2. New edge functions (all `verify_jwt = false`, manual JWT + admin check inside)
 
-Each row has a simple label with a small help icon tooltip explaining what it means.
+- **`sam-sync-full`** — full historical import.
+  - Admin-gated. Creates a `sync_jobs` row, returns `job_id` immediately, then runs in the background via `EdgeRuntime.waitUntil(...)`.
+  - Walks SAM.gov in 1000-record pages within rolling 6-month windows (SAM.gov hard limit), stepping window-by-window backwards.
+  - Saves `current_offset` + `posted_from/to` to `sync_jobs.checkpoint` after every page → resumable.
+  - Exponential backoff (1s, 2s, 4s, 8s, max 30s) on 429/5xx; 3 retries per page; failed pages logged to `sync_failed_records`.
+  - Checks `cancel_requested` between pages → graceful stop.
+  - Bulk upsert into `contracts` (`onConflict: contract_id`).
 
-### 2. Collapsible "More Options" Section
-The remaining advanced filters (Agency, Location/State, Opportunity Type, Payment Type, NAICS/PSC codes) move into a collapsible section at the bottom of the filter card — visible when "More Options" is clicked. This replaces the slide-out Sheet.
+- **`sam-sync-control`** — admin actions: `start_full`, `start_incremental`, `cancel`, `retry_failed`, `status`. Returns job rows + aggregate metrics.
 
-### 3. Visual Polish
-- Filter card uses glassmorphic styling (`variant="glass"`) with subtle section dividers
-- Active pills glow with the accent color and show a checkmark icon
-- Each filter category row uses a simple icon + label (e.g., 📅 Due Date, 💰 Budget)
-- "Clear All Filters" button appears only when filters are active, with a count badge
-- Smooth expand/collapse animation for "More Options"
+- Update **`sam-sync-incremental`** to also write a `sync_jobs` row (so cron + manual runs share the same dashboard view).
 
-### 4. "Active Only" Filter
-Add a new filter that checks `response_deadline > now()` to only show contracts that haven't expired. This is the most requested quick action.
+- **Lock down `sam-search`**: keep the function for the admin-driven sync only — frontend stops calling it. (Alternatively gate it admin-only; we'll gate admin-only to keep API budget for sync.)
 
-## Files Modified
+### 3. Frontend changes
 
-### `src/pages/SearchHub.tsx`
-- Replace the Quick Filters row (lines 769-858) and the More Filters Sheet (lines 1357-1604) with a new inline `FilterSection` component
-- Add `advActiveOnly` and `advExpiringSoon` state variables
-- Update `buildCombinedFilters()` to include active-only and expiring-soon logic
-- Add budget pill selection state (single-select value range)
-- Move "More Options" (Agency, State, Opportunity Type, Payment Type, NAICS/PSC) into a collapsible `<Collapsible>` within the filter card
-- Remove the `<Sheet>` for filters entirely
+- **`SearchHub.tsx`**: remove `useSmartSearch` (which calls `sam-search`); route smart/natural-language search through `parse-search-query` → then `useCachedSearch` (DB only). Subaward search via USAspending stays.
+- **`SectorBrowse.tsx`** and **`ContractDetail.tsx`**: replace `sam-search` invocations with queries against `contracts` table (and `contract_summaries` for AI summary).
+- New **`/dashboard/admin/sync`** route, guarded by `useAuth` + a new `useIsAdmin()` hook (`SELECT has_role`). Sidebar link visible only to admins.
 
-### `src/components/search/FilterSection.tsx` (new file)
-- Extracted component for the inline filter card
-- Props: all filter states + setters, onApply callback, active filter count
-- Sections: Status, Due Date, Who Can Bid, Budget, collapsible More Options
-- Each pill is a styled button with icon, tooltip, and active state
-- Responsive: stacks vertically on mobile, wraps on tablet/desktop
+### 4. Admin Sync Console UI (`src/pages/AdminSync.tsx`)
 
-### `src/hooks/useCachedContracts.ts`
-- Update the `searchLocal` query builder to support `active_only: boolean` and `expiring_soon: boolean` filter params (adds `response_deadline > now()` and `response_deadline < now() + 14 days` WHERE clauses)
+Sections:
+- **Top metrics**: total contracts in DB, last sync at, last duration, currently-running job badge.
+- **Action buttons**: Run Full Import · Run Incremental Sync · Stop Current Job · Retry Failed Records.
+- **Live progress card** (polls `sam-sync-control?action=status` every 3s while a job is running): progress bar (`current_offset / total_records`), records/sec, ETA, current window.
+- **Recent jobs table**: type, status, started, duration, inserted/updated/failed, triggered_by.
+- **Failed records drawer**: paginated list with error + retry button (single or bulk).
+- Toast notifications for start/stop/retry; confirmation dialog before "Run Full Import".
 
-## Technical Notes
-- The "Active Only" filter adds a `.gt('response_deadline', new Date().toISOString())` to the Supabase query
-- "Expiring Soon" adds `.gt('response_deadline', now).lt('response_deadline', now + 14 days)`
-- Budget pills map to the existing `valueRanges` array and set `advMinValue`/`advMaxValue`
-- Filters auto-apply on click (no separate "Apply" button needed for inline filters) — triggers `cachedSearch.searchLocal()` immediately
-- The collapsible "More Options" section still has an "Apply" button since those filters are more complex
+### 5. Cron job update
 
+Existing `pg_cron` daily call already hits `sam-sync-incremental`; no change needed beyond letting it write a `sync_jobs` row.
+
+## Out of scope
+
+- Switching to Redis/BullMQ — Supabase edge runtime + `sync_jobs` checkpoint table provides equivalent durability for our scale; not introducing new infra.
+- New `agencies` / `naics_codes` / `vendors` tables — current `contracts` schema with text columns + indexes is sufficient for the search/filter UI we have. Can be added later if normalized lookups are needed.
+- Soft-delete of disappeared SAM records (low priority, can be added in a follow-up by diffing per window).
+
+## Acceptance criteria
+
+1. Frontend never invokes `sam-search` for normal users.
+2. Non-admins get 403 from any sync edge function and cannot see the Admin Sync route.
+3. Admin can launch a full import, watch it progress, cancel it, and resume after an interruption (verified by killing the function mid-run and re-launching — checkpoint picks up).
+4. Failed pages land in `sync_failed_records` and can be retried from the UI.
+5. Daily cron sync still runs and shows up in the recent jobs table.
