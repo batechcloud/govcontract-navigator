@@ -23,6 +23,7 @@ const BodySchema = z.object({
     "status",
     "list_jobs",
     "list_failed",
+    "get_job",
   ]),
   job_id: z.string().uuid().optional(),
   failed_record_ids: z.array(z.string().uuid()).max(100).optional(),
