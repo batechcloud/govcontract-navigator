@@ -319,7 +319,11 @@ export default function AdminSync() {
                         )
                       : null;
                   return (
-                    <TableRow key={j.id}>
+                    <TableRow
+                      key={j.id}
+                      className="cursor-pointer hover:bg-muted/40 transition-colors"
+                      onClick={() => navigate(`/admin/sync/jobs/${j.id}`)}
+                    >
                       <TableCell className="capitalize">{j.job_type}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className={STATUS_COLORS[j.status]}>
