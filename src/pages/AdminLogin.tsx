@@ -15,6 +15,27 @@ const AdminLogin = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviting, setInviting] = useState(false);
+
+  const handleInvite = async () => {
+    setInviting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-invite", {
+        body: { email: inviteEmail, redirect_to: `${window.location.origin}/admin/login` },
+      });
+      if (error || data?.error) {
+        toast.error("Invite failed", { description: data?.error || error?.message });
+      } else {
+        toast.success(data.message || "Invite sent");
+        setInviteEmail("");
+      }
+    } catch (err: any) {
+      toast.error("Invite failed", { description: err?.message });
+    } finally {
+      setInviting(false);
+    }
+  };
 
   // If already signed in AND admin, jump straight to console
   useEffect(() => {
@@ -145,9 +166,32 @@ const AdminLogin = () => {
               </Button>
             </form>
 
-            <p className="text-center text-xs text-muted-foreground mt-6">
-              Admin access is granted via the ADMIN_EMAILS allowlist managed by the platform team.
-            </p>
+            <div className="mt-6 pt-6 border-t border-border space-y-3">
+              <p className="text-xs text-muted-foreground">
+                No account yet? Send yourself an invite email — only addresses
+                in the ADMIN_EMAILS allowlist are accepted.
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  type="email"
+                  placeholder="admin@company.com"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleInvite}
+                  disabled={inviting || !inviteEmail}
+                >
+                  {inviting ? (
+                    <div className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                  ) : (
+                    "Send invite"
+                  )}
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </motion.div>
