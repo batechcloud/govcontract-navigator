@@ -77,73 +77,89 @@ export function useParseSearchQuery() {
   });
 }
 
-// Search contracts using filters
-export function useSearchContracts() {
-  const queryClient = useQueryClient();
+// Search contracts — reads ONLY from the local `contracts` table.
+// Live SAM.gov calls happen via the admin-managed sync pipeline.
+const SET_ASIDE_LABEL_TO_RAW: Record<string, string[]> = {
+  "Small Business": ["SBP"],
+  "8(a)": ["SBA"],
+  "SDVOSB": ["SDVOSBC"],
+  "VOSB": ["VOSBC"],
+  "HUBZone": ["HZC"],
+  "WOSB": ["WOSB"],
+  "EDWOSB": ["EDWOSB"],
+};
 
+function formatVal(v: number | null): string {
+  if (!v) return "TBD";
+  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
+  if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`;
+  return `$${v}`;
+}
+
+export function useSearchContracts() {
   return useMutation({
-    mutationFn: async ({ 
-      filters, 
-      page = 0, 
-      limit = 10 
-    }: { 
-      filters: SearchFilters; 
-      page?: number; 
+    mutationFn: async ({
+      filters,
+      page = 0,
+      limit = 10,
+    }: {
+      filters: SearchFilters;
+      page?: number;
       limit?: number;
     }) => {
-      // Build a stable cache key from the search params
-      const cacheKey = ['sam-search', JSON.stringify(filters), page, limit];
+      let query = supabase.from("contracts" as any).select("*", { count: "exact" });
 
-      // Return cached result if available (avoids burning a rate-limited API call)
-      const cached = queryClient.getQueryData<{
-        results: SearchResult[];
-        total: number;
-        page: number;
-        limit: number;
-      }>(cacheKey);
-
-      if (cached) {
-        console.log('Using cached SAM search results');
-        return cached;
+      if (filters.keywords && filters.keywords.length > 0) {
+        const kw = filters.keywords.join(" ");
+        query = query.or(`title.ilike.%${kw}%,description.ilike.%${kw}%,agency.ilike.%${kw}%`);
       }
-
-      const { data, error } = await supabase.functions.invoke('sam-search', {
-        body: { filters, page, limit }
-      });
-
-      if (error) {
-        console.error("Search error:", error);
-        throw new Error(error.message || "Failed to search contracts");
+      if (filters.naics_codes?.length) query = query.in("naics_code", filters.naics_codes);
+      if (filters.set_aside?.length) {
+        const expanded = new Set<string>();
+        filters.set_aside.forEach((s) => {
+          expanded.add(s);
+          (SET_ASIDE_LABEL_TO_RAW[s] || []).forEach((c) => expanded.add(c));
+        });
+        query = query.in("set_aside", Array.from(expanded));
       }
-
-      const result = data as {
-        results: SearchResult[];
-        total: number;
-        page: number;
-        limit: number;
-        warning?: string;
-      };
-
-      // Show warning toast if the API returned fallback/sample data
-      if (result.warning) {
-        toast.warning(result.warning, { duration: 6000 });
+      if (filters.agencies?.length) {
+        query = query.or(filters.agencies.map((a) => `agency.ilike.%${a}%`).join(","));
       }
+      if (filters.min_value) query = query.gte("value", filters.min_value);
+      if (filters.max_value) query = query.lte("value", filters.max_value);
+      if (filters.location) query = query.ilike("location", `%${filters.location}%`);
 
-      // Cache for 10 minutes to prevent duplicate API calls for identical searches
-      queryClient.setQueryData(cacheKey, result);
+      query = query
+        .order("match_score", { ascending: false, nullsFirst: false })
+        .order("posted_date", { ascending: false, nullsFirst: false })
+        .range(page * limit, (page + 1) * limit - 1);
 
-      // Refresh the rate limit counter so the UI updates
-      queryClient.invalidateQueries({ queryKey: ['rate-limit'] });
+      const { data, error, count } = await query;
+      if (error) throw new Error(error.message);
 
-      return result;
+      const results: SearchResult[] = ((data || []) as any[]).map((r) => ({
+        id: r.contract_id,
+        title: r.title || "Untitled",
+        agency: r.agency || "Federal Agency",
+        type: r.contract_type || "Solicitation",
+        setAside: r.set_aside || "Full & Open",
+        value: formatVal(r.value),
+        deadline: r.deadline || "",
+        postedDate: r.posted_date || "",
+        location: r.location || "Various",
+        naicsCode: r.naics_code || "",
+        matchScore: r.match_score || 70,
+        description: r.description || "",
+        solicitationNumber: r.solicitation_number || "",
+        link: r.url || "",
+        resourceLinks: r.resource_links || [],
+      }));
+
+      return { results, total: count || 0, page, limit };
     },
     onError: (error: Error) => {
-      if (error.message?.includes('Rate limit exceeded') || error.message?.includes('daily limit')) {
-        toast.error("Daily search limit reached. Your limit resets at midnight UTC.");
-      } else {
-        toast.error(error.message || "Search failed. Please try again.");
-      }
-    }
+      toast.error(error.message || "Search failed. Please try again.");
+    },
   });
 }
 
