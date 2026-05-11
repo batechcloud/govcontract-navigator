@@ -87,6 +87,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default function AdminSync() {
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [confirmFullOpen, setConfirmFullOpen] = useState(false);
   const [progressStartedAt, setProgressStartedAt] = useState<number | null>(null);
 
