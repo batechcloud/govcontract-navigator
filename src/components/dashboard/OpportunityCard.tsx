@@ -82,3 +82,5 @@ const OpportunityCardImpl = ({ contract, onRemove, showRemove }: OpportunityCard
     </div>
   );
 };
+
+export const OpportunityCard = memo(OpportunityCardImpl);
