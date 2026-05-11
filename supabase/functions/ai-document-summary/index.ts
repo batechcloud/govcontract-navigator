@@ -195,8 +195,30 @@ CRITICAL RULES:
         { role: "user", content: `${userPrompt}\n\n--- DOCUMENT CONTENT ---\n${truncated}` },
       ];
     } else {
-      // For PDFs and binary docs, send as base64 inline data for Gemini multimodal
-      const base64 = btoa(String.fromCharCode(...bytes));
+      // For PDFs and binary docs, validate before sending to the AI gateway.
+      // SAM.gov sometimes returns an HTML error page with a PDF content-type,
+      // or a 0-page placeholder — both make Gemini error with "document has no pages".
+      if (mimeType === "application/pdf") {
+        const header = new TextDecoder().decode(bytes.slice(0, 5));
+        if (header !== "%PDF-") {
+          return new Response(JSON.stringify({
+            summary: "This attachment couldn't be opened as a PDF (the source returned an empty or non-PDF file). Please open it directly from SAM.gov.",
+          }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        if (bytes.length < 1024) {
+          return new Response(JSON.stringify({
+            summary: "This attachment appears to be empty or a placeholder. Please open it directly from SAM.gov.",
+          }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+      }
+
+      // Chunked base64 encode to avoid stack overflow on large buffers
+      let binary = "";
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+      }
+      const base64 = btoa(binary);
 
       messages = [
         { role: "system", content: systemPrompt },
@@ -210,10 +232,7 @@ CRITICAL RULES:
                 file_data: `data:${mimeType};base64,${base64}`,
               },
             },
-            {
-              type: "text",
-              text: userPrompt,
-            },
+            { type: "text", text: userPrompt },
           ],
         },
       ];
@@ -250,6 +269,13 @@ CRITICAL RULES:
     if (!aiResponse.ok) {
       const errText = await aiResponse.text();
       console.error("AI gateway error:", aiResponse.status, errText);
+      // Common case: provider rejects the file (e.g. "document has no pages").
+      // Return a friendly summary instead of a 500 so the UI stays usable.
+      if (/no pages|invalid|unsupported|cannot process/i.test(errText)) {
+        return new Response(JSON.stringify({
+          summary: "AI couldn't read this attachment (the file may be empty, image-only, or in an unsupported format). Please open it directly from SAM.gov.",
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
       return new Response(JSON.stringify({ error: "Failed to generate summary" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
