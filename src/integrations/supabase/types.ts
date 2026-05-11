@@ -14,6 +14,21 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_emails: {
+        Row: {
+          created_at: string
+          email: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+        }
+        Relationships: []
+      }
       api_rate_limits: {
         Row: {
           api_name: string
@@ -1172,6 +1187,7 @@ export type Database = {
         Args: { _feature_code: string; _increment?: number; _user_id: string }
         Returns: number
       }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user" | "superadmin"
