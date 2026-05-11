@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Draggable } from "@hello-pangea/dnd";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,7 +29,7 @@ interface Props {
   onCardClick: (contract: TrackedContract) => void;
 }
 
-export function KanbanCard({ contract, index, onDelete, onCardClick }: Props) {
+function KanbanCardImpl({ contract, index, onDelete, onCardClick }: Props) {
   const deadline = getDaysLeft(contract.response_deadline);
 
   return (
@@ -96,3 +97,5 @@ export function KanbanCard({ contract, index, onDelete, onCardClick }: Props) {
     </Draggable>
   );
 }
+
+export const KanbanCard = memo(KanbanCardImpl);
