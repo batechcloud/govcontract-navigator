@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.admin-invite]
 verify_jwt = false
+
+[functions.admin-audit-login]
+verify_jwt = false
