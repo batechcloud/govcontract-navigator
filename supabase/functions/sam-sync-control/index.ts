@@ -52,14 +52,12 @@ serve(async (req) => {
     if (error || !user) return json({ error: "Unauthorized" }, 401);
     actorId = user.id;
 
-    const admin = adminClient();
-    const { data: roleRow } = await admin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "admin")
-      .maybeSingle();
-    isAdmin = !!roleRow;
+    // Single source of truth: ADMIN_EMAILS env var (also synced to admin_emails table for RLS).
+    const allowed = (Deno.env.get("ADMIN_EMAILS") ?? "")
+      .split(/[,\s;]+/)
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+    isAdmin = !!user.email && allowed.includes(user.email.toLowerCase());
   }
 
   if (!isAdmin) return json({ error: "Admin role required" }, 403);

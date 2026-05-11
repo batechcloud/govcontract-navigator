@@ -13,8 +13,6 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
-import { useIsAdmin } from "@/hooks/useIsAdmin";
-import { Database } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const sidebarItems = [
@@ -35,13 +33,11 @@ export const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => 
   const location = useLocation();
   const { signOut } = useAuth();
   const { data: profile } = useProfile();
-  const { data: isAdmin } = useIsAdmin();
 
   const userName = profile?.first_name || "User";
 
-  const items = isAdmin
-    ? [...sidebarItems, { icon: Database, label: "Sync Console", href: "/dashboard/admin/sync" }]
-    : sidebarItems;
+  // Admin console lives at /admin (separate login). Not exposed in main sidebar.
+  const items = sidebarItems;
 
   return (
     <aside
