@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { toast } from "sonner";
+import { applyContractFilters } from "@/lib/contracts-query";
 
 export interface SearchFilters {
   keywords: string[];
@@ -20,6 +21,7 @@ export interface SearchResult {
   id: string;
   title: string;
   agency: string;
+  parentAgency?: string | null;
   type: string;
   setAside: string;
   value: string;
@@ -27,6 +29,7 @@ export interface SearchResult {
   postedDate: string;
   location: string;
   naicsCode: string;
+  pscCode?: string | null;
   matchScore: number;
   description: string;
   solicitationNumber?: string;
@@ -79,15 +82,6 @@ export function useParseSearchQuery() {
 
 // Search contracts — reads ONLY from the local `contracts` table.
 // Live SAM.gov calls happen via the admin-managed sync pipeline.
-const SET_ASIDE_LABEL_TO_RAW: Record<string, string[]> = {
-  "Small Business": ["SBP"],
-  "8(a)": ["SBA"],
-  "SDVOSB": ["SDVOSBC"],
-  "VOSB": ["VOSBC"],
-  "HUBZone": ["HZC"],
-  "WOSB": ["WOSB"],
-  "EDWOSB": ["EDWOSB"],
-};
 
 function formatVal(v: number | null): string {
   if (!v) return "TBD";
@@ -97,6 +91,11 @@ function formatVal(v: number | null): string {
 }
 
 export function useSearchContracts() {
+  // Drop stale responses if a newer request started while we were waiting.
+  // Without this, rapid clicks on Search can cause an earlier slow query's
+  // results to overwrite a later fast query's results.
+  const requestIdRef = useRef(0);
+
   return useMutation({
     mutationFn: async ({
       filters,
@@ -107,27 +106,9 @@ export function useSearchContracts() {
       page?: number;
       limit?: number;
     }) => {
+      const myReqId = ++requestIdRef.current;
       let query = supabase.from("contracts" as any).select("*", { count: "exact" });
-
-      if (filters.keywords && filters.keywords.length > 0) {
-        const kw = filters.keywords.join(" ");
-        query = query.or(`title.ilike.%${kw}%,description.ilike.%${kw}%,agency.ilike.%${kw}%`);
-      }
-      if (filters.naics_codes?.length) query = query.in("naics_code", filters.naics_codes);
-      if (filters.set_aside?.length) {
-        const expanded = new Set<string>();
-        filters.set_aside.forEach((s) => {
-          expanded.add(s);
-          (SET_ASIDE_LABEL_TO_RAW[s] || []).forEach((c) => expanded.add(c));
-        });
-        query = query.in("set_aside", Array.from(expanded));
-      }
-      if (filters.agencies?.length) {
-        query = query.or(filters.agencies.map((a) => `agency.ilike.%${a}%`).join(","));
-      }
-      if (filters.min_value) query = query.gte("value", filters.min_value);
-      if (filters.max_value) query = query.lte("value", filters.max_value);
-      if (filters.location) query = query.ilike("location", `%${filters.location}%`);
+      query = applyContractFilters(query, filters);
 
       query = query
         .order("match_score", { ascending: false, nullsFirst: false })
@@ -137,10 +118,17 @@ export function useSearchContracts() {
       const { data, error, count } = await query;
       if (error) throw new Error(error.message);
 
+      // Stale-response guard: if a newer request started while we were
+      // waiting on this one, throw so React Query treats it as cancelled.
+      if (requestIdRef.current !== myReqId) {
+        throw new Error("__superseded__");
+      }
+
       const results: SearchResult[] = ((data || []) as any[]).map((r) => ({
         id: r.contract_id,
         title: r.title || "Untitled",
         agency: r.agency || "Federal Agency",
+        parentAgency: r.parent_agency ?? null,
         type: r.contract_type || "Solicitation",
         setAside: r.set_aside || "Full & Open",
         value: formatVal(r.value),
@@ -148,6 +136,7 @@ export function useSearchContracts() {
         postedDate: r.posted_date || "",
         location: r.location || "Various",
         naicsCode: r.naics_code || "",
+        pscCode: r.psc_code ?? null,
         matchScore: r.match_score || 70,
         description: r.description || "",
         solicitationNumber: r.solicitation_number || "",
@@ -158,6 +147,7 @@ export function useSearchContracts() {
       return { results, total: count || 0, page, limit };
     },
     onError: (error: Error) => {
+      if (error.message === "__superseded__") return; // stale race, silent
       toast.error(error.message || "Search failed. Please try again.");
     },
   });
@@ -199,6 +189,10 @@ export function useSmartSearch() {
       setTotal(searchResults.total);
       return searchResults;
     } catch (error) {
+      // A superseded request means a newer search already replaced the state
+      // and we should NOT restore prev — restoring would clobber the winning
+      // (faster) request's results that already landed.
+      if ((error as Error)?.message === "__superseded__") return;
       // Restore previous results so the UI doesn't go blank on rate-limit errors
       setResults(prevResults);
       setAllResults(prevResults);
@@ -229,6 +223,7 @@ export function useSmartSearch() {
       setTotal(searchResults.total);
       return searchResults;
     } catch (error) {
+      if ((error as Error)?.message === "__superseded__") return;
       // Restore previous results so the UI doesn't go blank on rate-limit errors
       setResults(prevResults);
       setAllResults(prevResults);

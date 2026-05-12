@@ -1,8 +1,8 @@
 // Sends a Supabase Auth invite email to an admin candidate.
-// Bootstrap-friendly: the recipient email MUST be present in the
-// ADMIN_EMAILS allowlist. No existing admin or DB seed is required —
-// this is what lets you create the very first admin without touching
-// the Supabase dashboard.
+// The recipient email MUST already be present in the public.admin_emails
+// table. An existing admin adds the email via SQL first (single source of
+// truth), then the candidate (or anyone) can call this endpoint to send
+// the invite — no dashboard access needed.
 //
 // Uses supabase.auth.admin.inviteUserByEmail() which delivers a default
 // Supabase invite email (no custom email infra needed).
@@ -20,13 +20,6 @@ const BodySchema = z.object({
   email: z.string().email().max(255),
   redirect_to: z.string().url().optional(),
 });
-
-function adminEmails(): string[] {
-  return (Deno.env.get("ADMIN_EMAILS") ?? "")
-    .split(/[,\s;]+/)
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -47,28 +40,27 @@ serve(async (req) => {
   }
 
   const targetEmail = body.email.toLowerCase().trim();
-  const allowed = adminEmails();
-
-  // Hard requirement: invitee must be in the ADMIN_EMAILS allowlist.
-  // This makes the endpoint safe to call without auth (bootstrap path)
-  // because anyone can only invite addresses you've already authorized.
-  if (!allowed.includes(targetEmail)) {
-    return json(
-      { error: "Email not in ADMIN_EMAILS allowlist. Add it to the secret first." },
-      403,
-    );
-  }
 
   const admin = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  // Make sure the email is also in the public allowlist table so RLS
-  // policies (is_admin) recognize them once they sign in.
-  await admin
+  // Hard requirement: invitee must already be in the admin_emails table.
+  // Safe to leave this endpoint unauthenticated because anyone can only
+  // invite addresses an existing admin has authorized via SQL.
+  const { data: allowedRow } = await admin
     .from("admin_emails")
-    .upsert([{ email: targetEmail }], { onConflict: "email" });
+    .select("email")
+    .ilike("email", targetEmail)
+    .maybeSingle();
+
+  if (!allowedRow) {
+    return json(
+      { error: "Email not in admin_emails allowlist. An existing admin must add it via SQL first." },
+      403,
+    );
+  }
 
   const redirectTo = body.redirect_to ??
     `${req.headers.get("origin") ?? ""}/admin/login`;

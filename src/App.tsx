@@ -86,8 +86,8 @@ const App = () => (
                 <Route path="/terms" element={<ErrorBoundary><Terms /></ErrorBoundary>} />
                 <Route path="/forgot-password" element={<ErrorBoundary><ForgotPassword /></ErrorBoundary>} />
                 <Route path="/reset-password" element={<ErrorBoundary><ResetPassword /></ErrorBoundary>} />
-                <Route path="/capability-statement" element={<ErrorBoundary><CapabilityStatement /></ErrorBoundary>} />
-                <Route path="/sectors" element={<Navigate to="/dashboard/sectors" replace />} />
+                <Route path="/capability-statement" element={<ProtectedRoute><ErrorBoundary><CapabilityStatement /></ErrorBoundary></ProtectedRoute>} />
+                <Route path="/sectors" element={<ProtectedRoute><Navigate to="/dashboard/sectors" replace /></ProtectedRoute>} />
                 <Route path="/auth" element={<PublicOnlyRoute><ErrorBoundary><Auth /></ErrorBoundary></PublicOnlyRoute>} />
 
                 {/* /demo redirect */}

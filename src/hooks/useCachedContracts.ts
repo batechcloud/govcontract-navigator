@@ -1,21 +1,24 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { toast } from "sonner";
 import { SearchFilters, SearchResult } from "./useSearch";
+import { applyContractFilters } from "@/lib/contracts-query";
 
 export interface CachedContract {
   id: string;
   contract_id: string;
   title: string | null;
   agency: string | null;
+  parent_agency: string | null;
   description: string | null;
   location: string | null;
   value: number | null;
   deadline: string | null;
   posted_date: string | null;
   naics_code: string | null;
+  psc_code: string | null;
   set_aside: string | null;
   contract_type: string | null;
   sector: string | null;
@@ -36,6 +39,7 @@ function toSearchResult(row: CachedContract): SearchResult & { fetchedAt: string
     id: row.contract_id,
     title: row.title || "Untitled",
     agency: row.agency || "Federal Agency",
+    parentAgency: row.parent_agency ?? null,
     type: row.contract_type || "Solicitation",
     setAside: row.set_aside || "Full & Open",
     value: formatCachedValue(row.value),
@@ -43,6 +47,7 @@ function toSearchResult(row: CachedContract): SearchResult & { fetchedAt: string
     postedDate: row.posted_date || "",
     location: row.location || "Various",
     naicsCode: row.naics_code || "",
+    pscCode: row.psc_code ?? null,
     matchScore: row.match_score || 70,
     description: row.description || "",
     solicitationNumber: row.solicitation_number || "",
@@ -59,27 +64,6 @@ function formatCachedValue(v: number | null): string {
   return `$${v}`;
 }
 
-// Mapping from friendly labels to raw SAM codes (for backward-compat queries)
-const SET_ASIDE_LABEL_TO_RAW: Record<string, string[]> = {
-  "Small Business": ["SBP"],
-  "8(a)": ["SBA"],
-  "SDVOSB": ["SDVOSBC"],
-  "VOSB": ["VOSBC"],
-  "HUBZone": ["HZC"],
-  "WOSB": ["WOSB"],
-  "EDWOSB": ["EDWOSB"],
-};
-
-function expandSetAsideFilter(labels: string[]): string[] {
-  const expanded = new Set<string>();
-  for (const label of labels) {
-    expanded.add(label);
-    const rawCodes = SET_ASIDE_LABEL_TO_RAW[label];
-    if (rawCodes) rawCodes.forEach(c => expanded.add(c));
-  }
-  return Array.from(expanded);
-}
-
 /** Search contracts from the shared global contracts table */
 export type SortOption = "match_score" | "deadline" | "value" | "posted_date";
 
@@ -88,69 +72,47 @@ export function useCachedSearch() {
   const [results, setResults] = useState<(SearchResult & { fetchedAt: string })[]>([]);
   const [total, setTotal] = useState(0);
   const [isSearching, setIsSearching] = useState(false);
-  const [currentSort, setCurrentSort] = useState<SortOption>("match_score");
+  // Default to "deadline" (soonest first) since match_score is currently a
+  // static 70 from the sync — sorting by it is effectively random. Deadline
+  // surfaces actionable opportunities (the ones closing soon). When per-contract
+  // match scoring lands, this can move back to "match_score".
+  const [currentSort, setCurrentSort] = useState<SortOption>("deadline");
 
-  const searchLocal = async (filters: SearchFilters & { active_only?: boolean; expiring_soon?: boolean; new_this_week?: boolean }, page = 0, limit = 25, sortBy?: SortOption) => {
+  // Stale-response guard — see comment in useSearchContracts. Rapid Search
+  // clicks can race; we drop any result whose request was superseded.
+  const requestIdRef = useRef(0);
+
+  const searchLocal = async (
+    filters: SearchFilters & { active_only?: boolean; expiring_soon?: boolean; new_this_week?: boolean },
+    page = 0,
+    limit = 25,
+    sortBy?: SortOption,
+  ) => {
     const effectiveSort = sortBy ?? currentSort;
     if (!user) return;
+    const myReqId = ++requestIdRef.current;
     setIsSearching(true);
     try {
       let query = supabase
         .from("contracts" as any)
         .select("*", { count: "exact" });
 
-      // Active only — deadline in the future
+      // Date-toggle filters specific to this hook (not part of SearchFilters).
       if (filters.active_only) {
         query = query.gt("deadline", new Date().toISOString());
       }
-
-      // Expiring soon — deadline within 14 days
       if (filters.expiring_soon) {
         const now = new Date().toISOString();
         const twoWeeks = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
         query = query.gt("deadline", now).lt("deadline", twoWeeks);
       }
-
-      // New this week — posted within last 7 days
       if (filters.new_this_week) {
         const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
         query = query.gte("posted_date", sevenDaysAgo);
       }
 
-      if (filters.keywords && filters.keywords.length > 0) {
-        const keyword = filters.keywords.join(" ");
-        query = query.or(`title.ilike.%${keyword}%,description.ilike.%${keyword}%,agency.ilike.%${keyword}%`);
-      }
-
-      // NAICS
-      if (filters.naics_codes && filters.naics_codes.length > 0) {
-        query = query.in("naics_code", filters.naics_codes);
-      }
-
-      // Set-aside — expand to include raw SAM codes for backward compatibility
-      if (filters.set_aside && filters.set_aside.length > 0) {
-        const expanded = expandSetAsideFilter(filters.set_aside);
-        query = query.in("set_aside", expanded);
-      }
-
-      // Agency
-      if (filters.agencies && filters.agencies.length > 0) {
-        const agencyConditions = filters.agencies.map(a => `agency.ilike.%${a}%`).join(",");
-        query = query.or(agencyConditions);
-      }
-
-      // Value range
-      if (filters.min_value) {
-        query = query.gte("value", filters.min_value);
-      }
-      if (filters.max_value) {
-        query = query.lte("value", filters.max_value);
-      }
-
-      // Location
-      if (filters.location) {
-        query = query.ilike("location", `%${filters.location}%`);
-      }
+      // Standard contract filters (shared with useSearchContracts).
+      query = applyContractFilters(query, filters);
 
       // Pagination & ordering
       if (effectiveSort === "deadline") {
@@ -176,6 +138,11 @@ export function useCachedSearch() {
 
       if (error) throw error;
 
+      // If a newer request started while we were waiting, drop this result.
+      if (requestIdRef.current !== myReqId) {
+        return { results: [], total: 0, superseded: true };
+      }
+
       const mapped = (data || []).map(row => toSearchResult(row as unknown as CachedContract));
       setResults(mapped);
       setTotal(count || 0);
@@ -184,7 +151,8 @@ export function useCachedSearch() {
       console.error("Contract search error:", err);
       toast.error("Failed to search contracts");
     } finally {
-      setIsSearching(false);
+      // Only flip the spinner off if we're still the latest request.
+      if (requestIdRef.current === myReqId) setIsSearching(false);
     }
   };
 

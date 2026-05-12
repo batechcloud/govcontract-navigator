@@ -10,12 +10,27 @@ const SAM_API_BASE = "https://api.sam.gov/opportunities/v2/search";
 const MAX_PER_PAGE = 1000;
 const MAX_PAGES = 10; // Safety limit: 10,000 contracts per sync run
 
+// Kept in sync with _shared/sam-sync.ts. See that file for the source-of-truth
+// mapping and rationale (SBA is Total Small Business, not 8(a); SAM sometimes
+// returns typeOfSetAside as an array).
 const SET_ASIDE_RAW_TO_LABEL: Record<string, string> = {
+  SBA: "Small Business",
   SBP: "Small Business",
-  SBA: "8(a)",
+  "8A": "8(a)",
+  "8AN": "8(a)",
+  "8AS": "8(a)",
   SDVOSBC: "SDVOSB",
+  SDVOSBS: "SDVOSB",
   VOSBC: "VOSB",
+  VOSBS: "VOSB",
+  WOSB: "WOSB",
+  WOSBSS: "WOSB",
+  EDWOSB: "EDWOSB",
+  EDWOSBSS: "EDWOSB",
   HZC: "HUBZone",
+  HZS: "HUBZone",
+  IEE: "Indian Economic Enterprise",
+  ISBEE: "Indian Small Business",
 };
 
 serve(async (req) => {
@@ -23,19 +38,42 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+
+  // Create a sync_jobs row so the cron run is visible in the admin console.
+  // triggered_by is null because the invocation comes from pg_cron, not a user.
+  const { data: job } = await supabase
+    .from("sync_jobs")
+    .insert({
+      job_type: "incremental",
+      status: "running",
+      triggered_by: null,
+      started_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+
+  const finishJob = async (
+    patch: Record<string, unknown>,
+  ) => {
+    if (!job) return;
+    await supabase
+      .from("sync_jobs")
+      .update({ ...patch, finished_at: new Date().toISOString() })
+      .eq("id", job.id);
+  };
+
   try {
     const SAM_API_KEY = Deno.env.get("SAM_API_KEY");
     if (!SAM_API_KEY) {
+      await finishJob({ status: "failed", last_error: "SAM_API_KEY not configured" });
       return new Response(JSON.stringify({ error: "SAM_API_KEY not configured" }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    // Use service role for writes
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
 
     // Get last sync timestamp
     const { data: syncMeta, error: metaError } = await supabase
@@ -46,6 +84,7 @@ serve(async (req) => {
 
     if (metaError) {
       console.error("Failed to read sync_metadata:", metaError);
+      await finishJob({ status: "failed", last_error: `sync_metadata read: ${metaError.message}` });
       return new Response(JSON.stringify({ error: "Failed to read sync metadata" }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -56,10 +95,22 @@ serve(async (req) => {
     const postedFrom = formatSamDate(lastSyncedAt);
     const postedTo = formatSamDate(now);
 
+    if (job) {
+      await supabase
+        .from("sync_jobs")
+        .update({
+          posted_from: parseSamDate(postedFrom),
+          posted_to: parseSamDate(postedTo),
+          checkpoint: { postedFrom, postedTo, offset: 0 },
+        })
+        .eq("id", job.id);
+    }
+
     const diagnostics: any[] = [];
     console.log(`Incremental sync: fetching contracts posted from ${postedFrom} to ${postedTo}`);
 
     let totalSynced = 0;
+    let failedPages = 0;
     let offset = 0;
     let hasMore = true;
 
@@ -81,11 +132,18 @@ serve(async (req) => {
       });
 
       const responseText = await response.text();
-      
+
       if (!response.ok) {
         console.error(`SAM.gov API error at offset ${offset}: ${response.status}`, responseText.substring(0, 500));
-        // Include diagnostic info in response
         diagnostics.push({ offset, status: response.status, body: responseText.substring(0, 200) });
+        failedPages += 1;
+        if (job) {
+          await supabase.from("sync_failed_records").insert({
+            job_id: job.id,
+            payload: { postedFrom, postedTo, offset, status: response.status, body: responseText.substring(0, 500) },
+            error: `SAM page fetch failed (${response.status})`,
+          });
+        }
         break;
       }
 
@@ -95,9 +153,10 @@ serve(async (req) => {
       } catch {
         console.error("Failed to parse SAM.gov response:", responseText.substring(0, 300));
         diagnostics.push({ offset, error: "parse_error", body: responseText.substring(0, 200) });
+        failedPages += 1;
         break;
       }
-      
+
       console.log(`SAM.gov response keys: ${Object.keys(data).join(", ")}, totalRecords: ${data.totalRecords}`);
       const opportunities = data.opportunitiesData || data.data || data.results || [];
       console.log(`Got ${opportunities.length} opportunities (totalRecords: ${data.totalRecords})`);
@@ -117,11 +176,32 @@ serve(async (req) => {
 
       if (upsertError) {
         console.error(`Upsert error at offset ${offset}:`, upsertError);
+        failedPages += 1;
+        if (job) {
+          await supabase.from("sync_failed_records").insert({
+            job_id: job.id,
+            payload: { postedFrom, postedTo, offset, sample_ids: rows.slice(0, 5).map((r: any) => r.contract_id) },
+            error: `Upsert failed: ${upsertError.message}`,
+          });
+        }
         break;
       }
 
       totalSynced += rows.length;
       offset += MAX_PER_PAGE;
+
+      if (job) {
+        await supabase
+          .from("sync_jobs")
+          .update({
+            current_offset: offset,
+            total_records: data.totalRecords ?? null,
+            records_inserted: totalSynced,
+            records_failed: failedPages,
+            checkpoint: { postedFrom, postedTo, offset },
+          })
+          .eq("id", job.id);
+      }
 
       if (opportunities.length < MAX_PER_PAGE) {
         hasMore = false;
@@ -148,20 +228,27 @@ serve(async (req) => {
 
     console.log(`Sync complete: ${totalSynced} contracts synced`);
 
+    await finishJob({
+      status: failedPages > 0 && totalSynced === 0 ? "failed" : "completed",
+      records_inserted: totalSynced,
+      records_failed: failedPages,
+    });
+
     return new Response(JSON.stringify({
       success: true,
       synced: totalSynced,
       from: postedFrom,
       to: postedTo,
+      job_id: job?.id ?? null,
       diagnostics: diagnostics.length > 0 ? diagnostics : undefined,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
     console.error("Sync error:", error);
-    return new Response(JSON.stringify({
-      error: error instanceof Error ? error.message : "Unknown error",
-    }), {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    await finishJob({ status: "failed", last_error: message });
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -175,17 +262,40 @@ function formatSamDate(date: Date): string {
   return `${mm}/${dd}/${yyyy}`;
 }
 
-function extractAgency(opp: any): string {
-  if (opp.fullParentPathName) return opp.fullParentPathName.split(".").pop()?.trim() || opp.fullParentPathName;
-  if (opp.department) return opp.department;
-  if (opp.subtierName) return opp.subtierName;
-  if (opp.officeName) return opp.officeName;
-  return "Federal Agency";
+function parseSamDate(s: string): string {
+  // "MM/DD/YYYY" -> "YYYY-MM-DD"
+  const [mm, dd, yyyy] = s.split("/");
+  return `${yyyy}-${mm}-${dd}`;
 }
 
-function normalizeSetAside(raw: string | null | undefined): string {
-  if (!raw || raw === "NONE") return "Full & Open";
-  return SET_ASIDE_RAW_TO_LABEL[raw] || raw;
+function pathSegments(opp: any): string[] {
+  if (typeof opp.fullParentPathName !== "string") return [];
+  return opp.fullParentPathName.split(".").map((s: string) => s.trim()).filter(Boolean);
+}
+
+function extractAgency(opp: any): string {
+  const segs = pathSegments(opp);
+  return segs[segs.length - 1]
+    || opp.department
+    || opp.subtierName
+    || opp.officeName
+    || "Federal Agency";
+}
+
+function extractParentAgency(opp: any): string | null {
+  const segs = pathSegments(opp);
+  return segs[0] || opp.department || null;
+}
+
+function normalizeSetAside(raw: unknown): string {
+  let code: string | null = null;
+  if (Array.isArray(raw)) {
+    code = typeof raw[0] === "string" ? raw[0] : null;
+  } else if (typeof raw === "string") {
+    code = raw;
+  }
+  if (!code || code === "NONE") return "Full & Open";
+  return SET_ASIDE_RAW_TO_LABEL[code] ?? code;
 }
 
 function parseValue(amount: number | null | undefined): number | null {
@@ -204,6 +314,7 @@ function transformToRow(opp: any) {
     contract_id: opp.noticeId || opp.opportunityId || `SAM-${Date.now()}-${Math.random()}`,
     title: opp.title || "Untitled Opportunity",
     agency: extractAgency(opp),
+    parent_agency: extractParentAgency(opp),
     description,
     location: opp.placeOfPerformance?.city?.name
       ? `${opp.placeOfPerformance.city.name}, ${opp.placeOfPerformance?.state?.code || ""}`
@@ -212,11 +323,14 @@ function transformToRow(opp: any) {
     deadline: opp.responseDeadLine || null,
     posted_date: opp.postedDate || null,
     naics_code: opp.naics?.[0]?.code || opp.naicsCode || null,
+    psc_code: typeof opp.classificationCode === "string"
+      ? opp.classificationCode.trim() || null
+      : null,
     set_aside: normalizeSetAside(opp.typeOfSetAside),
     contract_type: opp.type || null,
     source: "SAM.gov",
     url: opp.uiLink || (opp.noticeId ? `https://sam.gov/opp/${opp.noticeId}/view` : null),
-    match_score: 70, // Base score — can be recalculated per-user later
+    match_score: 70,
     resource_links: opp.resourceLinks || [],
     solicitation_number: opp.solicitationNumber || null,
     raw_data: opp,

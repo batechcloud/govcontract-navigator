@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -62,9 +62,14 @@ const quickFilterMap: Record<string, { set_aside?: string[]; opportunity_type?: 
   "Small Business": { set_aside: ["Small Business"], subKeyword: "small business" },
   "Veteran-Owned": { set_aside: ["SDVOSB", "VOSB"], subKeyword: "veteran" },
   "Woman-Owned": { set_aside: ["WOSB", "EDWOSB"], subKeyword: "woman" },
-  "Minority-Owned": { set_aside: ["8(a)", "SDB"], subKeyword: "minority" },
+  // "8(a)" is SAM.gov's minority/disadvantaged business set-aside. Old map
+  // also listed "SDB" which isn't an actual SAM code, so the filter matched
+  // only the 8(a) family anyway.
+  "Minority-Owned": { set_aside: ["8(a)"], subKeyword: "minority" },
   "HUBZone": { set_aside: ["HUBZone"], subKeyword: "hubzone" },
-  "Federal": { opportunity_type: "Federal", subKeyword: "" },
+  // Removed: "Federal" — every contract in this DB is federal so the chip
+  // was a no-op label, and the old opportunity_type="Federal" filter never
+  // matched the contract_type column values (Solicitation, etc).
 };
 
 const SearchHub = () => {
@@ -76,11 +81,23 @@ const SearchHub = () => {
   const [syncPage, setSyncPage] = useState(0);
   const [apiTotal, setApiTotal] = useState<number | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false); // kept for compat
-  const [activeOnly, setActiveOnly] = useState(false);
+  // Default ON: hides expired contracts from the default view. Sort-by-deadline
+  // (the default sort) puts EARLIEST dates first — including expired ones —
+  // so without this filter the top of the page is dominated by closed
+  // opportunities the user can't bid on. They can remove the chip to see
+  // expired (e.g. for market research on who won).
+  const [activeOnly, setActiveOnly] = useState(true);
   const [expiringSoon, setExpiringSoon] = useState(false);
   const [newThisWeek, setNewThisWeek] = useState(false);
   const [budgetKey, setBudgetKey] = useState("");
   const [activeSector, setActiveSector] = useState<string | null>(null);
+  // Default-on industry filter: when the user's profile has NAICS codes, the
+  // search auto-restricts to contracts whose naics_code overlaps that list.
+  // Without this, "deadline soonest" surfaces a flood of unrelated DLA
+  // hardware contracts that match the user's set-aside cert but not their
+  // industry. The toggle is visible as a removable chip in the active-filters
+  // row, so users can clear it to browse outside their industry.
+  const [matchMyProfile, setMatchMyProfile] = useState(true);
   const sectorSearchDone = useRef(false);
   const [activeTab, setActiveTab] = useState<"prime" | "subcontracts">("prime");
 
@@ -174,6 +191,7 @@ const SearchHub = () => {
     clearAdvancedFilters();
     clearSubFilters();
     setActiveFilters([]);
+    setMatchMyProfile(false);
     setCurrentPage(0);
     cachedSearch.searchLocal({
       keywords: searchQuery.trim() ? searchQuery.trim().split(/\s+/) : [],
@@ -232,9 +250,17 @@ const SearchHub = () => {
       if (bMax) maxVal = parseInt(bMax);
     }
 
+    // Merge profile NAICS into the query when the user has the "Match my
+    // industry" toggle on AND hasn't manually overridden with advanced NAICS.
+    // Manual selection always wins (the user is explicitly looking elsewhere).
+    const profileNaics = (matchMyProfile && advNaics.length === 0)
+      ? (companyProfile?.naics_codes?.filter(Boolean) ?? [])
+      : [];
+    const effectiveNaics = advNaics.length > 0 ? advNaics : profileNaics;
+
     return {
       keywords: searchQuery.trim() ? searchQuery.trim().split(/\s+/) : [],
-      naics_codes: advNaics,
+      naics_codes: effectiveNaics,
       psc_codes: advPsc,
       set_aside: mergedSetAsides,
       agencies: advAgency ? [advAgency] : [],
@@ -247,6 +273,120 @@ const SearchHub = () => {
       expiring_soon: expiringSoon,
       new_this_week: newThisWeek,
     };
+  };
+
+  // Build a list of currently-active filters as removable chips. This is the
+  // single source-of-truth view of "what's filtering my results" — used both
+  // for the canonical chip row above the filter panel and for the smart
+  // empty-state ("try removing one of these"). Each chip carries its own
+  // remove handler that resets the relevant state and re-runs the search.
+  type ActiveChip = { key: string; label: string; onRemove: () => void };
+  const removeAndReapply = (mutate: () => void) => {
+    mutate();
+    setTimeout(() => handleApplyAdvancedFilters(), 0);
+  };
+  const getActiveFilterChips = (): ActiveChip[] => {
+    const chips: ActiveChip[] = [];
+
+    // Show the "match my industry" chip when the toggle is on AND the profile
+    // has NAICS to apply AND the user hasn't overridden with manual NAICS.
+    const profileNaicsCount = companyProfile?.naics_codes?.filter(Boolean).length ?? 0;
+    if (matchMyProfile && profileNaicsCount > 0 && advNaics.length === 0) {
+      chips.push({
+        key: "match_profile",
+        label: `My industry (${profileNaicsCount} NAICS)`,
+        onRemove: () => removeAndReapply(() => setMatchMyProfile(false)),
+      });
+    }
+
+    if (searchQuery.trim()) {
+      chips.push({
+        key: "keywords",
+        label: `Keywords: ${searchQuery.trim()}`,
+        onRemove: () => removeAndReapply(() => setSearchQuery("")),
+      });
+    }
+    if (activeSector && SECTOR_CONFIG[activeSector]) {
+      chips.push({
+        key: "sector",
+        label: `Sector: ${SECTOR_CONFIG[activeSector].label}`,
+        onRemove: () => setActiveSector(null),
+      });
+    }
+    for (const qf of activeFilters) {
+      chips.push({
+        key: `qf-${qf}`,
+        label: qf,
+        onRemove: () => handleQuickFilter(qf),
+      });
+    }
+    if (activeOnly) {
+      chips.push({ key: "active_only", label: "Active only", onRemove: () => removeAndReapply(() => setActiveOnly(false)) });
+    }
+    if (expiringSoon) {
+      chips.push({ key: "expiring_soon", label: "Expiring soon", onRemove: () => removeAndReapply(() => setExpiringSoon(false)) });
+    }
+    if (newThisWeek) {
+      chips.push({ key: "new_this_week", label: "New this week", onRemove: () => removeAndReapply(() => setNewThisWeek(false)) });
+    }
+    if (budgetKey) {
+      const [bMin, bMax] = budgetKey.split("|");
+      const fmt = (n: string) => n ? `$${(parseInt(n) / 1000).toLocaleString()}k` : "any";
+      chips.push({
+        key: "budget",
+        label: `Budget: ${fmt(bMin)} – ${fmt(bMax)}`,
+        onRemove: () => removeAndReapply(() => setBudgetKey("")),
+      });
+    }
+    if (advAgency) {
+      chips.push({ key: "agency", label: `Agency: ${advAgency}`, onRemove: () => removeAndReapply(() => setAdvAgency("")) });
+    }
+    if (advState) {
+      chips.push({ key: "state", label: `Location: ${advState}`, onRemove: () => removeAndReapply(() => setAdvState("")) });
+    }
+    if (advType) {
+      chips.push({ key: "type", label: `Type: ${advType}`, onRemove: () => removeAndReapply(() => setAdvType("")) });
+    }
+    if (advContractType) {
+      chips.push({ key: "contract_type", label: `Contract: ${advContractType}`, onRemove: () => removeAndReapply(() => setAdvContractType("")) });
+    }
+    for (const sa of advSetAside) {
+      chips.push({
+        key: `sa-${sa}`,
+        label: `Set-aside: ${sa}`,
+        onRemove: () => removeAndReapply(() => setAdvSetAside(prev => prev.filter(x => x !== sa))),
+      });
+    }
+    for (const naics of advNaics) {
+      chips.push({
+        key: `naics-${naics}`,
+        label: `NAICS ${naics}`,
+        onRemove: () => removeAndReapply(() => setAdvNaics(prev => prev.filter(x => x !== naics))),
+      });
+    }
+    for (const psc of advPsc) {
+      chips.push({
+        key: `psc-${psc}`,
+        label: `PSC ${psc}`,
+        onRemove: () => removeAndReapply(() => setAdvPsc(prev => prev.filter(x => x !== psc))),
+      });
+    }
+    if (advMinValue || advMaxValue) {
+      const fmt = (n: string) => n ? `$${(parseInt(n) / 1000).toLocaleString()}k` : "any";
+      chips.push({
+        key: "value",
+        label: `Value: ${fmt(advMinValue)} – ${fmt(advMaxValue)}`,
+        onRemove: () => removeAndReapply(() => { setAdvMinValue(""); setAdvMaxValue(""); }),
+      });
+    }
+    if (advDeadline) {
+      chips.push({
+        key: "deadline",
+        label: `Deadline ≤ ${advDeadline}d`,
+        onRemove: () => removeAndReapply(() => setAdvDeadline("")),
+      });
+    }
+    return chips;
   };
 
   const handleApplyAdvancedFilters = async () => {
@@ -268,20 +408,23 @@ const SearchHub = () => {
     isParsing,
   } = useSmartSearch();
 
-  const prevResultCount = useRef(0);
   const resultListRef = useRef<HTMLDivElement>(null);
-
+  // Caller sets this to the previous length right before triggering a
+  // load-more so the auto-scroll only fires for intentional appends.
+  // Filter changes / new searches replace results entirely and should NOT
+  // jump the viewport — that was the "jumpy scroll" bug.
+  const scrollToIndexAfterAppend = useRef<number | null>(null);
   useEffect(() => {
-    if (results.length > prevResultCount.current && prevResultCount.current > 0) {
-      const newItemIndex = prevResultCount.current;
+    const targetIndex = scrollToIndexAfterAppend.current;
+    if (targetIndex !== null && results.length > targetIndex) {
+      scrollToIndexAfterAppend.current = null;
       setTimeout(() => {
         const items = resultListRef.current?.children;
-        if (items && items[newItemIndex]) {
-          items[newItemIndex].scrollIntoView({ behavior: "smooth", block: "start" });
+        if (items && items[targetIndex]) {
+          items[targetIndex].scrollIntoView({ behavior: "smooth", block: "start" });
         }
       }, 100);
     }
-    prevResultCount.current = results.length;
   }, [results.length]);
 
   // Auto-search when arriving from sector browse
@@ -335,28 +478,21 @@ const SearchHub = () => {
     setSearchParams({}, { replace: true });
   }, [searchParams]);
 
-  // Auto-load from local cache on mount when no sector/q param is present
+  // Auto-load from local cache on mount when no sector/q param is present.
+  // Wait until companyProfile has resolved (undefined → null | row) so the
+  // "match my industry" filter can apply on the first page load instead of
+  // showing unfiltered results until the user re-searches.
   const initialLoadDone = useRef(false);
   useEffect(() => {
     if (initialLoadDone.current) return;
+    if (companyProfile === undefined) return; // wait for profile query to settle
     const hasSector = searchParams.get("sector");
     const hasQ = searchParams.get("q");
     if (hasSector || hasQ) return; // handled by other effects
     initialLoadDone.current = true;
 
-    // Search local cache first (no API call)
-    cachedSearch.searchLocal({
-      keywords: [],
-      naics_codes: [],
-      psc_codes: [],
-      set_aside: [],
-      agencies: [],
-      min_value: null,
-      max_value: null,
-      location: null,
-      opportunity_type: null,
-    }, 0, 25);
-  }, []);
+    cachedSearch.searchLocal(buildCombinedFilters() as any, 0, 25);
+  }, [companyProfile, searchParams]);
 
   // Re-query cache when sort order changes
   const sortInitialized = useRef(false);
@@ -368,6 +504,12 @@ const SearchHub = () => {
     if (cachedSearch.results.length > 0) {
       const filters = buildCombinedFilters();
       const currentLimit = Math.max(cachedSearch.results.length, 25);
+      // Reset pagination + the SAM-side total. Without these, "Showing N of X"
+      // keeps the apiTotal from before the sort, and "Load more from SAM.gov"
+      // would page from a stale offset.
+      setCurrentPage(0);
+      setSyncPage(0);
+      setApiTotal(null);
       cachedSearch.searchLocal(filters as any, 0, currentLimit);
     }
   }, [cachedSearch.currentSort]);
@@ -376,6 +518,24 @@ const SearchHub = () => {
   const { data: trackedContracts } = useTrackedContracts();
   const saveSearch = useSaveSearch();
   const trackedIds = new Set(trackedContracts?.map(c => c.contract_id) || []);
+
+  // Client-side re-sort by fit tier when the profile is populated. Server
+  // returned the page in the user's chosen order (e.g. deadline asc); this
+  // re-sort puts Great Fit ahead of Good Fit ahead of Low Fit. Ties (same
+  // score) preserve the server order — so the chosen sort acts as a
+  // tiebreaker within each fit tier.
+  const displayResults = useMemo(() => {
+    const canScore = !!companyProfile && (
+      (companyProfile.naics_codes?.filter(Boolean).length ?? 0) > 0
+      || (companyProfile.certifications?.filter(Boolean).length ?? 0) > 0
+      || (companyProfile.psc_codes?.filter(Boolean).length ?? 0) > 0
+    );
+    if (!canScore) return cachedSearch.results;
+    return [...cachedSearch.results]
+      .map((r, i) => ({ r, i, score: computeHeuristicScore(r, companyProfile) }))
+      .sort((a, b) => (b.score - a.score) || (a.i - b.i))
+      .map(({ r }) => r);
+  }, [cachedSearch.results, companyProfile]);
 
   const handleSearch = async (page = 0) => {
     try {
@@ -400,34 +560,29 @@ const SearchHub = () => {
         setSubawardHasNext(res.page_metadata?.hasNext ?? false);
         setSubawardTotal(res.page_metadata?.total ?? res.results.length);
       } else {
-        // Always sync from SAM.gov API for fresh results
+        // Search the local contracts table. We used to also call syncFromApi
+        // here, which fired the admin sam-sync-incremental function on every
+        // user click — but that function doesn't accept filters (it's a
+        // generic "what's new since last sync" pull), it ignores the user's
+        // query entirely, and the returned count was mislabeled as a
+        // "SAM.gov total" in the UI. Cron already keeps the DB fresh; the
+        // user search just reads from the DB.
         const filters = buildCombinedFilters();
         setSyncPage(0);
-        try {
-          const syncResult = await syncFromApi.mutateAsync({ filters: filters as any, page: 0, limit: 25 });
-          setApiTotal(syncResult.apiTotal);
-        } catch {
-          // Sync failed (rate limit, etc.) — fall back to cache
-        }
-        // Display results from cache
+        setApiTotal(null);
         await cachedSearch.searchLocal(filters as any, 0, 25);
       }
     } catch (error) {}
   };
 
   const handleLoadMoreFromApi = async () => {
+    // Same logic as before — bump the local query's limit by a page. No
+    // longer triggers an admin sync (which ignored the user's filters).
     const nextSyncPage = syncPage + 1;
     setSyncPage(nextSyncPage);
     const filters = buildCombinedFilters();
-    try {
-      const syncResult = await syncFromApi.mutateAsync({ filters: filters as any, page: nextSyncPage, limit: 25 });
-      setApiTotal(syncResult.apiTotal);
-      // Re-query local cache with increased limit to show all accumulated results
-      const newLimit = (nextSyncPage + 1) * 25;
-      await cachedSearch.searchLocal(filters as any, 0, newLimit);
-    } catch {
-      // Sync failed — keep showing current results
-    }
+    const newLimit = (nextSyncPage + 1) * 25;
+    await cachedSearch.searchLocal(filters as any, 0, newLimit);
   };
 
   const handleSyncFromApi = async () => {
@@ -533,6 +688,9 @@ const SearchHub = () => {
       ...(deadlineDate ? { deadline_before: deadlineDate } : {}),
       active_only: activeOnly,
       expiring_soon: expiringSoon,
+      // Was missing — toggling a quick filter silently dropped the "New this week"
+      // filter even though the pill stayed lit.
+      new_this_week: newThisWeek,
     };
 
     await cachedSearch.searchLocal(combinedFilters as any, 0, 25);
@@ -578,40 +736,45 @@ const SearchHub = () => {
 
   const handleLoadSavedSearch = async (search: SavedSearch) => {
     setSavedSearchesOpen(false);
-    
+
     // Update last run timestamp
     savedSearches.updateLastRun.mutate(search.id);
-    
+
     // Load the search query
     setSearchQuery(search.query);
-    
+
+    // Reset toggle / quick-filter state so the loaded search starts clean —
+    // otherwise lingering pills from a previous search stay lit and silently
+    // narrow the result set in ways the user didn't intend.
+    setActiveFilters([]);
+    setActiveOnly(false);
+    setExpiringSoon(false);
+    setNewThisWeek(false);
+    setBudgetKey("");
+    setActiveSector(null);
+
     // Load the filters
     const filters = search.filters as any;
-    if (filters.naics_codes) setAdvNaics(filters.naics_codes);
-    if (filters.psc_codes) setAdvPsc(filters.psc_codes);
-    if (filters.min_value) setAdvMinValue(filters.min_value.toString());
-    if (filters.max_value) setAdvMaxValue(filters.max_value.toString());
-    if (filters.agencies?.length > 0) setAdvAgency(filters.agencies[0]);
-    if (filters.location) setAdvState(filters.location);
-    if (filters.opportunity_type) setAdvType(filters.opportunity_type);
-    if (filters.set_aside) setAdvSetAside(filters.set_aside);
-    
-    // Execute the search
+    setAdvNaics(filters.naics_codes ?? []);
+    setAdvPsc(filters.psc_codes ?? []);
+    setAdvMinValue(filters.min_value ? filters.min_value.toString() : "");
+    setAdvMaxValue(filters.max_value ? filters.max_value.toString() : "");
+    setAdvAgency(filters.agencies?.[0] ?? "");
+    setAdvState(filters.location ?? "");
+    setAdvType(filters.opportunity_type ?? "");
+    setAdvSetAside(filters.set_aside ?? []);
+
+    // Execute the search against the local contracts table. We no longer
+    // call syncFromApi here — it was firing the admin sync function on
+    // every saved-search load (burning a rate-limit slot) and its return
+    // value was mislabeled as a "SAM.gov total" when it was really just the
+    // count of newly-ingested rows.
     setCurrentPage(0);
     setSyncPage(0);
     setApiTotal(null);
-    
-    const syncResult = await syncFromApi.mutateAsync({ filters, page: 0, limit: 25 });
-    setApiTotal(syncResult.apiTotal);
     await cachedSearch.searchLocal(filters as any, 0, 25);
-    
-    toast.success(`Loaded search: ${search.name}`);
-  };
 
-  const getMatchLabel = (score: number) => {
-    if (score >= 90) return { text: "Great Match", className: "bg-success/20 text-success" };
-    if (score >= 75) return { text: "Good Match", className: "bg-primary/20 text-primary" };
-    return { text: "Possible Match", className: "bg-accent/20 text-accent" };
+    toast.success(`Loaded search: ${search.name}`);
   };
 
   const getDaysLeft = (deadline: string) => {
@@ -630,11 +793,32 @@ const SearchHub = () => {
         transition={{ duration: 0.5 }}
         className="space-y-4"
       >
-        {/* Demo Mode Banner */}
-        {cachedSearch.results.length > 0 && /^SAM-20\d\d-/.test(cachedSearch.results[0]?.id) && (
+        {/* Demo Mode Banner — real SAM solicitations also have IDs starting
+            with "SAM-20xx-", so the old regex caught actual data. Detect the
+            sentinel-prefixed seed IDs only ("SAM-DEMO-…" / "SAM-SEED-…"). */}
+        {cachedSearch.results.length > 0 && /^SAM-(DEMO|SEED)-/i.test(cachedSearch.results[0]?.id) && (
           <div className="bg-accent/10 border border-accent/30 rounded-lg px-4 py-2 flex items-center gap-2 text-sm">
             <span className="font-semibold text-accent">Demo Mode:</span>
             <span className="text-muted-foreground">Showing sample contracts. Add a SAM.gov API key to search live opportunities.</span>
+          </div>
+        )}
+
+        {/* Empty-profile prompt. Without NAICS/certs/PSC, the heuristic score
+            can't differentiate contracts — everything would otherwise show
+            "Low Fit". Surface the cause and link to the company profile. */}
+        {companyProfile
+          && (companyProfile.naics_codes?.filter(Boolean).length ?? 0) === 0
+          && (companyProfile.certifications?.filter(Boolean).length ?? 0) === 0
+          && (companyProfile.psc_codes?.filter(Boolean).length ?? 0) === 0 && (
+          <div className="bg-primary/10 border border-primary/30 rounded-lg px-4 py-3 flex items-center gap-3 text-sm">
+            <Sparkles className="w-5 h-5 text-primary shrink-0" />
+            <div className="flex-1">
+              <p className="font-semibold text-foreground">Set up your profile to see fit scores</p>
+              <p className="text-xs text-muted-foreground">Add your NAICS codes and certifications and we'll rank contracts by how well they match what you do.</p>
+            </div>
+            <Button variant="hero" size="sm" asChild>
+              <Link to="/dashboard/company">Complete profile</Link>
+            </Button>
           </div>
         )}
 
@@ -668,11 +852,11 @@ const SearchHub = () => {
             variant="hero"
             className="h-12"
             onClick={() => handleSearch(0)}
-            disabled={cachedSearch.isSearching || syncFromApi.isPending}
+            disabled={cachedSearch.isSearching}
           >
             <Search className="w-4 h-4 sm:mr-2" />
             <span className="hidden sm:inline">
-              {cachedSearch.isSearching || syncFromApi.isPending ? "Searching..." : "Search"}
+              {cachedSearch.isSearching ? "Searching..." : "Search"}
             </span>
           </Button>
           <DropdownMenu open={savedSearchesOpen} onOpenChange={setSavedSearchesOpen}>
@@ -700,35 +884,42 @@ const SearchHub = () => {
           )}
         </div>
 
-        {/* Parsed filters display */}
-        <AnimatePresence>
-          {parsedFilters && (
+        {/* Canonical active-filters row. Shows EVERY currently-applied filter
+            with an X to remove just that one — replaces both the old
+            parsedFilters "Searching for:" chips (which only appeared after a
+            smart-search) and the implicit-state confusion of having filters
+            applied across multiple panels with no single readout. */}
+        {(() => {
+          const chips = getActiveFilterChips();
+          if (chips.length === 0) return null;
+          return (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
+              className="flex flex-wrap gap-2 items-center"
             >
-              <div className="flex flex-wrap gap-2 items-center">
-                <span className="text-xs text-muted-foreground">Searching for:</span>
-                {parsedFilters.keywords.length > 0 && (
-                  <Badge variant="glass">{parsedFilters.keywords.join(", ")}</Badge>
-                )}
-                {parsedFilters.set_aside.length > 0 && (
-                  <Badge variant="gold">{parsedFilters.set_aside.join(", ")}</Badge>
-                )}
-                {parsedFilters.agencies.length > 0 && (
-                  <Badge variant="outline">{parsedFilters.agencies.join(", ")}</Badge>
-                )}
-                {parsedFilters.min_value && (
-                  <Badge variant="outline">From ${(parsedFilters.min_value / 1000000).toFixed(1)}M</Badge>
-                )}
-                {parsedFilters.psc_codes && parsedFilters.psc_codes.length > 0 && (
-                  <Badge variant="glass">PSC: {parsedFilters.psc_codes.join(", ")}</Badge>
-                )}
-              </div>
+              <span className="text-xs text-muted-foreground">Active filters:</span>
+              {chips.map(chip => (
+                <Badge key={chip.key} variant="glass" className="gap-1 pr-1 pl-2 py-1">
+                  <span className="text-xs">{chip.label}</span>
+                  <button
+                    type="button"
+                    onClick={chip.onRemove}
+                    className="ml-0.5 rounded-full hover:bg-foreground/10 p-0.5 inline-flex"
+                    aria-label={`Remove ${chip.label}`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              ))}
+              {chips.length > 1 && (
+                <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={clearAllFilters}>
+                  Clear all
+                </Button>
+              )}
             </motion.div>
-          )}
-        </AnimatePresence>
+          );
+        })()}
 
         {/* Inline Filter Section */}
         <FilterSection
@@ -831,10 +1022,7 @@ const SearchHub = () => {
                   {cachedSearch.results.length > 0 ? (
                     <>
                       Showing <span className="text-foreground font-semibold">{cachedSearch.results.length.toLocaleString()}</span> of{" "}
-                      <span className="text-foreground font-semibold">{(apiTotal ?? cachedSearch.total).toLocaleString()}</span> results
-                      {apiTotal !== null && apiTotal > cachedSearch.total && (
-                        <span className="text-muted-foreground ml-1">(from SAM.gov)</span>
-                      )}
+                      <span className="text-foreground font-semibold">{cachedSearch.total.toLocaleString()}</span> matching contracts
                     </>
                   ) : cacheCount === 0 ? (
                     <span>No contracts found yet. Try searching above to get started!</span>
@@ -872,10 +1060,9 @@ const SearchHub = () => {
                       </CardContent>
                     </Card>
                   ))
-                ) : cachedSearch.results.length > 0 ? (
-                  cachedSearch.results.map((result, index) => {
+                ) : displayResults.length > 0 ? (
+                  displayResults.map((result, index) => {
                     const isTracked = trackedIds.has(result.id);
-                    const match = getMatchLabel(result.matchScore);
                     const fetchedAt = (result as any).fetchedAt;
                     return (
                       <div key={result.id}>
@@ -887,21 +1074,28 @@ const SearchHub = () => {
                           <Card variant="glass-hover">
                             <CardContent className="p-4">
                               <div className="flex flex-col gap-2">
-                                {/* Top row: match + set-aside */}
+                                {/* Top row: fit + set-aside.
+                                    Show the personalized fit badge only when
+                                    we can actually score (profile populated).
+                                    With no profile, the old "Possible Match"
+                                    fallback was just a re-render of the static
+                                    matchScore=70 the sync writes — a label
+                                    that pretended to be personalized but
+                                    wasn't. Better to show nothing than to
+                                    fake an assessment. The empty-profile
+                                    banner above the results tells the user
+                                    how to enable real scoring. */}
                                 <div className="flex items-center gap-2">
                                   {(() => {
                                     const hScore = computeHeuristicScore(result, companyProfile);
-                                    if (hScore >= 0) {
-                                      const sc = getScoreColor(hScore);
-                                      return (
-                                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${sc.bg} ${sc.text} border border-current/20`}>
-                                          {sc.label}
-                                        </span>
-                                      );
-                                    }
-                                    return null;
+                                    if (hScore < 0) return null;
+                                    const sc = getScoreColor(hScore);
+                                    return (
+                                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${sc.bg} ${sc.text} border border-current/20`}>
+                                        {sc.label}
+                                      </span>
+                                    );
                                   })()}
-                                  <Badge className={`${match.className} text-xs`}>{match.text}</Badge>
                                   {result.setAside && result.setAside !== "None" && (
                                     <Badge variant="glass" className="text-xs">{result.setAside}</Badge>
                                   )}
@@ -1025,27 +1219,60 @@ const SearchHub = () => {
                       <h3 className="font-heading font-semibold text-lg mb-2">
                         {cacheCount === 0 ? "Let's find contracts for you!" : "No matching contracts found"}
                       </h3>
-                      <p className="text-muted-foreground mb-4">
-                        {cacheCount === 0
-                          ? "Tell us what your business does and we'll search for government contracts that match."
-                          : "Try different search terms or adjust your filters."}
-                      </p>
-                      {cacheCount === 0 && (
-                        <Button
-                          variant="hero"
-                          onClick={handleSyncFromApi}
-                          disabled={syncFromApi.isPending}
-                        >
-                          <Search className="w-4 h-4 mr-2" />
-                          {syncFromApi.isPending ? "Finding contracts..." : "Find Contracts"}
-                        </Button>
-                      )}
+                      {(() => {
+                        const chips = getActiveFilterChips();
+                        // No data yet → bootstrap message + Find Contracts button
+                        if (cacheCount === 0) {
+                          return (
+                            <>
+                              <p className="text-muted-foreground mb-4">
+                                Tell us what your business does and we'll search for government contracts that match.
+                              </p>
+                              <Button
+                                variant="hero"
+                                onClick={handleSyncFromApi}
+                                disabled={syncFromApi.isPending}
+                              >
+                                <Search className="w-4 h-4 mr-2" />
+                                {syncFromApi.isPending ? "Finding contracts..." : "Find Contracts"}
+                              </Button>
+                            </>
+                          );
+                        }
+                        // Filters active → suggest removing them, one-tap
+                        if (chips.length > 0) {
+                          return (
+                            <>
+                              <p className="text-muted-foreground mb-4">
+                                Your filters might be too narrow. Try removing one:
+                              </p>
+                              <div className="flex flex-wrap gap-2 justify-center mb-4">
+                                {chips.slice(0, 6).map(chip => (
+                                  <Badge key={chip.key} variant="outline" className="gap-1 pr-1 pl-2 py-1 cursor-pointer hover:bg-accent/20" onClick={chip.onRemove}>
+                                    <span className="text-xs">Remove "{chip.label}"</span>
+                                    <X className="w-3 h-3 ml-1" />
+                                  </Badge>
+                                ))}
+                              </div>
+                              <Button variant="outline" size="sm" onClick={clearAllFilters}>
+                                Clear all filters
+                              </Button>
+                            </>
+                          );
+                        }
+                        // No filters, just no keyword matches
+                        return (
+                          <p className="text-muted-foreground">
+                            Try different search terms.
+                          </p>
+                        );
+                      })()}
                     </CardContent>
                   </Card>
                 )}
               </div>
 
-              {cachedSearch.results.length > 0 && (apiTotal !== null ? cachedSearch.results.length < apiTotal : cachedSearch.total > cachedSearch.results.length) && (
+              {cachedSearch.results.length > 0 && cachedSearch.total > cachedSearch.results.length && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -1054,14 +1281,14 @@ const SearchHub = () => {
                   <Button
                     variant="outline"
                     onClick={handleLoadMoreFromApi}
-                    disabled={cachedSearch.isSearching || syncFromApi.isPending}
+                    disabled={cachedSearch.isSearching}
                     className="gap-2"
                   >
                     <ArrowUp className="w-4 h-4 rotate-180" />
-                    {syncFromApi.isPending ? "Loading..." : "Load More from SAM.gov"}
+                    {cachedSearch.isSearching ? "Loading..." : "Load More"}
                   </Button>
                   <p className="text-xs text-muted-foreground">
-                    {((apiTotal ?? cachedSearch.total) - cachedSearch.results.length).toLocaleString()} more results available on SAM.gov
+                    {(cachedSearch.total - cachedSearch.results.length).toLocaleString()} more matching contracts
                   </p>
                 </motion.div>
               )}
