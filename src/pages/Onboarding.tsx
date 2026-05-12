@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -57,6 +58,7 @@ const steps = [
 
 const Onboarding = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [currentStep, setCurrentStep] = useState(1);
   const [data, setData] = useState<OnboardingData>(initialData);
   const [direction, setDirection] = useState(1);
@@ -101,22 +103,25 @@ const Onboarding = () => {
       // Save company profile
       const { error: companyError } = await supabase
         .from("company_profiles")
-        .upsert({
-          user_id: user.id,
-          company_name: data.companyName || "My Company",
-          sam_uei: data.samUei || null,
-          cage_code: data.cageCode || null,
-          year_founded: data.yearFounded ? parseInt(data.yearFounded) : null,
-          employee_count: data.employeeCount || null,
-          annual_revenue: data.annualRevenue || null,
-          naics_codes: data.naicsCodes,
-          certifications: data.certifications,
-          capabilities: data.capabilities,
-          contract_types: data.contractTypes,
-          preferred_agencies: data.preferredAgencies,
-          min_contract_value: data.minContractValue || null,
-          max_contract_value: data.maxContractValue || null,
-        });
+        .upsert(
+          {
+            user_id: user.id,
+            company_name: data.companyName || "My Company",
+            sam_uei: data.samUei || null,
+            cage_code: data.cageCode || null,
+            year_founded: data.yearFounded ? parseInt(data.yearFounded) : null,
+            employee_count: data.employeeCount || null,
+            annual_revenue: data.annualRevenue || null,
+            naics_codes: data.naicsCodes,
+            certifications: data.certifications,
+            capabilities: data.capabilities,
+            contract_types: data.contractTypes,
+            preferred_agencies: data.preferredAgencies,
+            min_contract_value: data.minContractValue || null,
+            max_contract_value: data.maxContractValue || null,
+          },
+          { onConflict: "user_id" },
+        );
 
       if (companyError) throw companyError;
 
@@ -134,6 +139,11 @@ const Onboarding = () => {
         .eq("id", user.id);
 
       if (profileError) throw profileError;
+
+      // ProtectedRoute reads useProfile() from React Query; invalidate so
+      // /dashboard sees onboarding_completed=true instead of the stale cache.
+      await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+      await queryClient.invalidateQueries({ queryKey: ["company-profile", user.id] });
 
       toast.success("Welcome aboard!", {
         description: "Your profile has been set up successfully.",
@@ -160,8 +170,9 @@ const Onboarding = () => {
           .from("profiles")
           .update({ onboarding_completed: true })
           .eq("id", user.id);
+        await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
       }
-      
+
       navigate("/dashboard");
     } catch (error) {
       console.error("Error skipping onboarding:", error);

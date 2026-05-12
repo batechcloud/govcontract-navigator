@@ -6,13 +6,43 @@ import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-
 export const SAM_API_BASE = "https://api.sam.gov/opportunities/v2/search";
 export const PAGE_SIZE = 1000;
 
+// Maps raw SAM.gov set-aside codes to user-facing labels.
+// References: https://open.gsa.gov/api/sam-opportunities-api/ (typeOfSetAside).
+// SBA = Total Small Business Set-Aside (NOT 8(a) — the old map had this wrong
+// and ~15k rows ended up mislabeled). 8(a) is 8A / 8AN / 8AS.
 const SET_ASIDE_RAW_TO_LABEL: Record<string, string> = {
+  SBA: "Small Business",
   SBP: "Small Business",
-  SBA: "8(a)",
+  "8A": "8(a)",
+  "8AN": "8(a)",
+  "8AS": "8(a)",
   SDVOSBC: "SDVOSB",
+  SDVOSBS: "SDVOSB",
   VOSBC: "VOSB",
+  VOSBS: "VOSB",
+  WOSB: "WOSB",
+  WOSBSS: "WOSB",
+  EDWOSB: "EDWOSB",
+  EDWOSBSS: "EDWOSB",
   HZC: "HUBZone",
+  HZS: "HUBZone",
+  IEE: "Indian Economic Enterprise",
+  ISBEE: "Indian Small Business",
 };
+
+// SAM occasionally returns typeOfSetAside as an array — pulling [0] yields the
+// real code. Without this, JSON.stringify leaks values like `["SBA"]` into the
+// set_aside column.
+function normalizeSetAside(raw: unknown): string {
+  let code: string | null = null;
+  if (Array.isArray(raw)) {
+    code = typeof raw[0] === "string" ? raw[0] : null;
+  } else if (typeof raw === "string") {
+    code = raw;
+  }
+  if (!code || code === "NONE") return "Full & Open";
+  return SET_ASIDE_RAW_TO_LABEL[code] ?? code;
+}
 
 export function formatSamDate(date: Date): string {
   const mm = String(date.getMonth() + 1).padStart(2, "0");
@@ -28,31 +58,37 @@ export function transformToRow(opp: any) {
     ? `${opp.type || "Federal"} opportunity — ${opp.solicitationNumber || "view on SAM.gov"}`
     : rawDesc;
 
-  const agency = opp.fullParentPathName?.split(".").pop()?.trim()
+  const pathSegments: string[] = typeof opp.fullParentPathName === "string"
+    ? opp.fullParentPathName.split(".").map((s: string) => s.trim()).filter(Boolean)
+    : [];
+  const agency = pathSegments[pathSegments.length - 1]
     || opp.department
     || opp.subtierName
     || opp.officeName
     || "Federal Agency";
+  const parentAgency = pathSegments[0] || opp.department || null;
 
   const location = opp.placeOfPerformance?.city?.name
     ? `${opp.placeOfPerformance.city.name}, ${opp.placeOfPerformance?.state?.code || ""}`
     : opp.placeOfPerformance?.state?.name || "Various";
 
   const value = opp.award?.amount || opp.baseAndAllOptionsValue || null;
-  const setAside = opp.typeOfSetAside && opp.typeOfSetAside !== "NONE"
-    ? (SET_ASIDE_RAW_TO_LABEL[opp.typeOfSetAside] || opp.typeOfSetAside)
-    : "Full & Open";
+  const setAside = normalizeSetAside(opp.typeOfSetAside);
 
   return {
     contract_id: opp.noticeId || opp.opportunityId || `SAM-${Date.now()}-${Math.random()}`,
     title: opp.title || "Untitled Opportunity",
     agency,
+    parent_agency: parentAgency,
     description,
     location,
     value: value && value > 0 ? value : null,
     deadline: opp.responseDeadLine || null,
     posted_date: opp.postedDate || null,
     naics_code: opp.naics?.[0]?.code || opp.naicsCode || null,
+    psc_code: typeof opp.classificationCode === "string"
+      ? opp.classificationCode.trim() || null
+      : null,
     set_aside: setAside,
     contract_type: opp.type || null,
     source: "SAM.gov",
@@ -139,7 +175,15 @@ export async function isCancelled(supabase: SupabaseClient, jobId: string): Prom
   return !!data?.cancel_requested;
 }
 
-/** Run an import for a single date window. Returns counts. */
+/**
+ * Run an import for a single date window.
+ *
+ * windowIndex (optional) is preserved into the checkpoint on every page so
+ * a partial run can be resumed from the correct window when runFullImport
+ * is re-invoked. Without this, page-level updates would overwrite the
+ * window_index that runFullImport set at the start of the window, and a
+ * resume would always restart from window 0.
+ */
 export async function runWindow(
   supabase: SupabaseClient,
   jobId: string,
@@ -148,6 +192,7 @@ export async function runWindow(
   postedTo: string,
   startOffset: number,
   counters: { inserted: number; updated: number; failed: number },
+  windowIndex?: number,
 ): Promise<"done" | "cancelled"> {
   let offset = startOffset;
   let totalForWindow: number | null = null;
@@ -181,9 +226,13 @@ export async function runWindow(
     if (opps.length === 0) break;
 
     const rows = opps.map(transformToRow);
-    const { error: upsertError, count } = await supabase
+    // Don't pass count: "exact" here. Older code did and added the returned
+    // count to counters.inserted — but on an unfiltered upsert PostgREST
+    // returns the *total table size* as the count, not the rows just
+    // affected. Result: counters.inserted ballooned to ~table-size per page.
+    const { error: upsertError } = await supabase
       .from("contracts")
-      .upsert(rows, { onConflict: "contract_id", count: "exact" });
+      .upsert(rows, { onConflict: "contract_id" });
 
     if (upsertError) {
       counters.failed += rows.length;
@@ -193,8 +242,9 @@ export async function runWindow(
         error: `Upsert failed: ${upsertError.message}`,
       });
     } else {
-      // We can't easily distinguish insert vs update with upsert; treat as combined.
-      counters.inserted += count ?? rows.length;
+      // PostgREST upsert doesn't distinguish insert-vs-update; this is the
+      // count of rows processed in the page.
+      counters.inserted += rows.length;
     }
 
     offset += rows.length;
@@ -205,7 +255,9 @@ export async function runWindow(
       records_inserted: counters.inserted,
       records_updated: counters.updated,
       records_failed: counters.failed,
-      checkpoint: { postedFrom, postedTo, offset },
+      checkpoint: windowIndex !== undefined
+        ? { window_index: windowIndex, postedFrom, postedTo, offset }
+        : { postedFrom, postedTo, offset },
     });
 
     if (totalForWindow !== null && offset >= totalForWindow) break;
@@ -257,7 +309,10 @@ export async function runFullImport(supabase: SupabaseClient, jobId: string, api
       posted_to: parseSamDate(w.to),
       checkpoint: { window_index: i, postedFrom: w.from, postedTo: w.to, offset: startOffset },
     });
-    const outcome = await runWindow(supabase, jobId, apiKey, w.from, w.to, startOffset, counters);
+    // Pass `i` so runWindow's per-page checkpoint updates preserve the
+    // window_index — required for resume-after-crash to advance instead of
+    // restarting from window 0.
+    const outcome = await runWindow(supabase, jobId, apiKey, w.from, w.to, startOffset, counters, i);
     if (outcome === "cancelled") {
       await updateJob(supabase, jobId, { status: "cancelled", finished_at: new Date().toISOString() });
       return;

@@ -91,14 +91,20 @@ export function GuidedTour() {
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const rafRef = useRef<number>();
 
-  // Show tour if not completed yet
+  // Show tour if the user hasn't completed it AND we haven't already shown
+  // it this browser session. Without the sessionStorage guard, navigating
+  // away and coming back would pop the tour again every time, which is what
+  // users hit after clearing localStorage or testing in incognito.
   useEffect(() => {
     const done = localStorage.getItem(TOUR_STORAGE_KEY);
-    if (!done) {
-      // Small delay so the page renders first
-      const t = setTimeout(() => setActive(true), 1200);
-      return () => clearTimeout(t);
-    }
+    if (done) return;
+    const SESSION_KEY = TOUR_STORAGE_KEY + ":session-shown";
+    if (sessionStorage.getItem(SESSION_KEY)) return;
+    const t = setTimeout(() => {
+      sessionStorage.setItem(SESSION_KEY, "1");
+      setActive(true);
+    }, 1200);
+    return () => clearTimeout(t);
   }, []);
 
   const measureTarget = useCallback(() => {

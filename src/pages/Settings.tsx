@@ -148,16 +148,24 @@ export default function Settings() {
     if (!user) return;
     setSavingNotifs(true);
     try {
+      // Merge into existing preferences rather than overwrite — Onboarding
+      // writes a different shape (email_frequency, quiet_hours_*) into this
+      // same JSON column, and a plain UPDATE would clobber it.
+      const { data: cur } = await supabase
+        .from("profiles")
+        .select("notification_preferences")
+        .eq("id", user.id)
+        .maybeSingle();
+      const merged = {
+        ...(cur?.notification_preferences as Record<string, unknown> | null ?? {}),
+        opportunities: notifOpportunities,
+        deadlines: notifDeadlines,
+        digest: notifDigest,
+        competitors: notifCompetitors,
+      };
       const { error } = await supabase
         .from("profiles")
-        .update({
-          notification_preferences: {
-            opportunities: notifOpportunities,
-            deadlines: notifDeadlines,
-            digest: notifDigest,
-            competitors: notifCompetitors,
-          },
-        })
+        .update({ notification_preferences: merged })
         .eq("id", user.id);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["profile"] });

@@ -53,12 +53,21 @@ serve(async (req) => {
     if (error || !user) return json({ error: "Unauthorized" }, 401);
     actorId = user.id;
 
-    // Single source of truth: ADMIN_EMAILS env var (also synced to admin_emails table for RLS).
-    const allowed = (Deno.env.get("ADMIN_EMAILS") ?? "")
-      .split(/[,\s;]+/)
-      .map((e) => e.trim().toLowerCase())
-      .filter(Boolean);
-    isAdmin = !!user.email && allowed.includes(user.email.toLowerCase());
+    // Source of truth: public.admin_emails table (managed via SQL).
+    // Matches the is_admin() SQL function used by RLS so frontend route
+    // gates and edge function gates agree.
+    if (user.email) {
+      const adminCheckClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      const { data: row } = await adminCheckClient
+        .from("admin_emails")
+        .select("email")
+        .ilike("email", user.email)
+        .maybeSingle();
+      isAdmin = !!row;
+    }
   }
 
   if (!isAdmin) return json({ error: "Admin role required" }, 403);
@@ -88,15 +97,53 @@ serve(async (req) => {
         return json({ error: "A sync job is already running", job_id: running[0].id }, 409);
       }
 
+      // For start_full: inherit the checkpoint from the most recent
+      // non-completed full job so a retry resumes from where the previous
+      // run died (window_index + offset) instead of restarting from window 0.
+      // Without this, a 6-month historical backfill is impractical because
+      // each edge-runtime kill rewinds all progress.
+      let inheritedCheckpoint: Record<string, unknown> | null = null;
+      let resumedFromJobId: string | null = null;
+      if (body.action === "start_full") {
+        const { data: prev } = await supabase
+          .from("sync_jobs")
+          .select("id, checkpoint")
+          .eq("job_type", "full")
+          .in("status", ["cancelled", "failed"])
+          .order("started_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const cp = (prev?.checkpoint ?? null) as { window_index?: number } | null;
+        // Only inherit if the previous run made past window 0 OR had an
+        // in-progress offset — otherwise the "resume" is identical to a
+        // fresh start, so just start fresh.
+        const cpIdx = typeof cp?.window_index === "number" ? cp.window_index : 0;
+        const cpOff = typeof (cp as { offset?: number } | null)?.offset === "number"
+          ? (cp as { offset: number }).offset
+          : 0;
+        if (cp && (cpIdx > 0 || cpOff > 0) && cpIdx < 6) {
+          inheritedCheckpoint = prev?.checkpoint ?? null;
+          resumedFromJobId = prev?.id ?? null;
+        }
+      }
+
       const jobType = body.action === "start_full" ? "full" : (isServiceRoleCall ? "incremental" : "manual");
+      // Only include `checkpoint` in the insert when we have one to inherit —
+      // sync_jobs.checkpoint is NOT NULL with a default, and explicitly
+      // passing null violates the constraint (which is what was breaking the
+      // "Run Incremental Sync" button after the resume-logic deploy).
+      const jobPayload: Record<string, unknown> = {
+        job_type: jobType,
+        status: "running",
+        triggered_by: actorId,
+        started_at: new Date().toISOString(),
+      };
+      if (inheritedCheckpoint) {
+        jobPayload.checkpoint = inheritedCheckpoint;
+      }
       const { data: job, error: insertErr } = await supabase
         .from("sync_jobs")
-        .insert({
-          job_type: jobType,
-          status: "running",
-          triggered_by: actorId,
-          started_at: new Date().toISOString(),
-        })
+        .insert(jobPayload)
         .select()
         .single();
 
@@ -105,7 +152,12 @@ serve(async (req) => {
       await supabase.from("sync_audit_log").insert({
         actor_id: actorId,
         action: body.action,
-        details: { job_id: job.id },
+        details: {
+          job_id: job.id,
+          ...(resumedFromJobId
+            ? { resumed_from_job_id: resumedFromJobId, resume_checkpoint: inheritedCheckpoint }
+            : {}),
+        },
       });
 
       // Run in background

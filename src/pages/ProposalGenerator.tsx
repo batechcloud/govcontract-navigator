@@ -224,7 +224,7 @@ export default function ProposalGenerator() {
                 label="Business Documents"
                 ready={docsCount > 0}
                 detail={docsCount > 0 ? `${docsCount} document${docsCount > 1 ? "s" : ""} uploaded` : "None uploaded"}
-                link="/dashboard/documents"
+                link="/dashboard/company"
               />
               <DataSourceItem
                 label="Capabilities"
