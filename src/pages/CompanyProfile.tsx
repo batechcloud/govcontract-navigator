@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
+import { PageContainer } from "@/components/layout/PageContainer";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -283,12 +284,7 @@ const CompanyProfile = () => {
 
   return (
     <DashboardLayout title="My Business">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="space-y-6 max-w-3xl mx-auto w-full"
-      >
+      <PageContainer variant="narrow" className="space-y-6">
         {/* Basic Info */}
         <Card variant="glass">
           <CardHeader>
@@ -568,7 +564,7 @@ const CompanyProfile = () => {
             )}
           </Button>
         </div>
-      </motion.div>
+      </PageContainer>
 
       {/* Document Preview Dialog */}
       <Dialog open={!!previewDoc} onOpenChange={(open) => !open && closePreview()}>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PageContainer } from "@/components/layout/PageContainer";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { motion } from "framer-motion";
@@ -184,10 +185,10 @@ export default function ProposalEditor() {
   if (isLoading) {
     return (
       <DashboardLayout title="Proposal">
-        <div className="max-w-4xl mx-auto space-y-6">
+        <PageContainer variant="default" animate={false} className="space-y-6">
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-96 w-full" />
-        </div>
+        </PageContainer>
       </DashboardLayout>
     );
   }
@@ -210,7 +211,7 @@ export default function ProposalEditor() {
 
   return (
     <DashboardLayout title="Proposal">
-      <div className="max-w-4xl mx-auto">
+      <PageContainer variant="default" animate={false}>
         {/* Header */}
         <motion.div
           className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6"
@@ -299,7 +300,7 @@ export default function ProposalEditor() {
             ))}
           </Tabs>
         </motion.div>
-      </div>
+      </PageContainer>
     </DashboardLayout>
   );
 }

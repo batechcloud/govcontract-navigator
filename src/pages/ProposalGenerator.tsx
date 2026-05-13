@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import confetti from "canvas-confetti";
+import { PageContainer } from "@/components/layout/PageContainer";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { motion } from "framer-motion";
@@ -174,7 +175,7 @@ export default function ProposalGenerator() {
 
   return (
     <DashboardLayout title="AI Proposal Generator">
-      <div className="max-w-3xl mx-auto">
+      <PageContainer variant="narrow" animate={false}>
         <motion.div
           className="text-center mb-8"
           initial={{ opacity: 0, y: 20 }}
@@ -481,7 +482,7 @@ export default function ProposalGenerator() {
             </div>
           </motion.div>
         )}
-      </div>
+      </PageContainer>
     </DashboardLayout>
   );
 }

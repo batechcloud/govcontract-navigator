@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { PageContainer } from "@/components/layout/PageContainer";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,12 +43,7 @@ const Dashboard = () => {
 
   return (
     <DashboardLayout title="Home">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="space-y-6"
-      >
+      <PageContainer variant="full" className="space-y-6">
         {/* Welcome Banner */}
         <Card variant="glass" className="overflow-hidden relative">
           <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-primary/20 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
@@ -215,7 +211,7 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         )}
-      </motion.div>
+      </PageContainer>
     </DashboardLayout>
   );
 };

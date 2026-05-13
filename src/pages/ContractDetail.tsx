@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useLocation, useNavigate, Link } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import { motion } from "framer-motion";
+import { PageContainer } from "@/components/layout/PageContainer";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -373,12 +374,9 @@ const ContractDetail = () => {
   if (!contract && fetchLoading) {
     return (
       <DashboardLayout title="Contract Details">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="space-y-6 max-w-4xl mx-auto w-full"
-        >
+        <PageContainer variant="default" className="space-y-6">
           {/* Back button skeleton */}
+          <Skeleton className="h-9 w-28 rounded-lg" />
           <Skeleton className="h-9 w-28 rounded-lg" />
 
           {/* Header card skeleton */}
@@ -434,10 +432,10 @@ const ContractDetail = () => {
               <Skeleton className="h-4 w-full" />
               <Skeleton className="h-4 w-full" />
               <Skeleton className="h-4 w-2/3" />
-            </CardContent>
-          </Card>
-        </motion.div>
-      </DashboardLayout>
+          </CardContent>
+        </Card>
+      </PageContainer>
+    </DashboardLayout>
     );
   }
 
@@ -475,12 +473,7 @@ const ContractDetail = () => {
 
   return (
     <DashboardLayout title="Contract Details">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="space-y-4 sm:space-y-6 max-w-4xl mx-auto w-full px-1 sm:px-0"
-      >
+      <PageContainer variant="default" className="space-y-4 sm:space-y-6 px-1 sm:px-0">
         {/* Back button */}
         <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-2 text-muted-foreground hover:text-foreground">
           <ArrowLeft className="w-4 h-4" /> Back
@@ -837,7 +830,7 @@ const ContractDetail = () => {
             </CardContent>
           </Card>
         )}
-      </motion.div>
+      </PageContainer>
 
       <WinScoreModal
         open={scoreModalOpen}

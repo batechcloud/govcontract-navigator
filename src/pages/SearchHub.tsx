@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { PageContainer } from "@/components/layout/PageContainer";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -787,12 +788,7 @@ const SearchHub = () => {
 
   return (
     <DashboardLayout title="Find Contracts">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="space-y-4"
-      >
+      <PageContainer variant="full" className="space-y-4">
         {/* Demo Mode Banner — real SAM solicitations also have IDs starting
             with "SAM-20xx-", so the old regex caught actual data. Detect the
             sentinel-prefixed seed IDs only ("SAM-DEMO-…" / "SAM-SEED-…"). */}
@@ -1495,7 +1491,7 @@ const SearchHub = () => {
             </div>
           </TabsContent>
         </Tabs>
-      </motion.div>
+      </PageContainer>
 
 
       {/* Save Search Modal */}
