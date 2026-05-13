@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { PageContainer } from "@/components/layout/PageContainer";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { SpendingHeader } from "@/components/usaspending/SpendingHeader";
 import { SpendingSnapshot } from "@/components/usaspending/SpendingSnapshot";
@@ -47,7 +48,7 @@ const USASpendingIntel = () => {
 
   return (
     <DashboardLayout title="USASpending Intelligence">
-      <div className="space-y-8 max-w-7xl mx-auto">
+      <PageContainer variant="wide" animate={false} className="space-y-8">
         <SpendingHeader fy={fy} onFyChange={handleFyChange} onRefresh={handleRefresh} lastRefreshed={lastRefreshed} />
         <SpendingSnapshot fy={fy} refreshKey={refreshKey} />
         <TopAgencies fy={fy} refreshKey={refreshKey} onAgencySelect={setSelectedAgency} />
@@ -57,8 +58,8 @@ const USASpendingIntel = () => {
         <SpendingTrends refreshKey={refreshKey} />
         <GeographicSpending fy={fy} refreshKey={refreshKey} />
         <SmallBusinessIntel fy={fy} refreshKey={refreshKey} />
-        <USASpendingGuide />
-      </div>
+      <USASpendingGuide />
+      </PageContainer>
     </DashboardLayout>
   );
 };

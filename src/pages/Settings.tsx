@@ -180,7 +180,7 @@ export default function Settings() {
 
   return (
     <DashboardLayout title="Settings">
-      <div className="max-w-4xl mx-auto">
+      <PageContainer variant="default" animate={false}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -498,7 +498,7 @@ export default function Settings() {
             </TabsContent>
           </Tabs>
         </motion.div>
-      </div>
+      </PageContainer>
     </DashboardLayout>
   );
 }
