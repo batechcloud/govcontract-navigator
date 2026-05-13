@@ -283,12 +283,7 @@ const CompanyProfile = () => {
 
   return (
     <DashboardLayout title="My Business">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="space-y-6 max-w-3xl mx-auto w-full"
-      >
+      <PageContainer variant="narrow" className="space-y-6">
         {/* Basic Info */}
         <Card variant="glass">
           <CardHeader>
