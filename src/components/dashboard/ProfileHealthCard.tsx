@@ -83,7 +83,7 @@ export function ProfileHealthCard() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
+        {showSkeleton ? (
           <div className="flex gap-4">
             <Skeleton className="w-24 h-24 rounded-full shrink-0" />
             <div className="space-y-2 flex-1">
@@ -97,7 +97,12 @@ export function ProfileHealthCard() {
             <ScoreRing score={data.score} />
             <div className="flex-1 min-w-0 space-y-2">
               {data.summary && (
-                <p className="text-xs text-muted-foreground">{data.summary}</p>
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  {data.summary}
+                  {!aiData && isFetching && (
+                    <span className="text-[10px] text-muted-foreground/60">· refining…</span>
+                  )}
+                </p>
               )}
               {data.suggestions.slice(0, 3).map((s, i) => (
                 <div key={i} className="flex items-start gap-2">
