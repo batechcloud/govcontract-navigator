@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { ShieldCheck, ArrowRight, AlertTriangle, CheckCircle, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAIProfileScore } from "@/hooks/useAIProfileScore";
+import { useCompanyProfile } from "@/hooks/useProfile";
+import { useMemo } from "react";
+import { computeHeuristicProfileScore } from "@/lib/heuristic-profile-score";
 
 const priorityIcons = {
   high: <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0" />,
@@ -58,10 +61,19 @@ const ScoreRing = forwardRef<HTMLDivElement, { score: number }>(({ score }, ref)
 });
 ScoreRing.displayName = "ScoreRing";
 export function ProfileHealthCard() {
-  const { data, isLoading, isError } = useAIProfileScore();
+  const { data: aiData, isLoading, isError, isFetching } = useAIProfileScore();
+  const { data: companyProfile } = useCompanyProfile();
 
-  if (isError) return null;
+  const heuristic = useMemo(
+    () => computeHeuristicProfileScore(companyProfile),
+    [companyProfile]
+  );
 
+  // Prefer AI result once available; otherwise show heuristic instantly.
+  const data = aiData ?? heuristic;
+  const showSkeleton = isLoading && !companyProfile;
+
+  if (isError && !companyProfile) return null;
   return (
     <Card variant="glass">
       <CardHeader className="pb-2">
@@ -71,7 +83,7 @@ export function ProfileHealthCard() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
+        {showSkeleton ? (
           <div className="flex gap-4">
             <Skeleton className="w-24 h-24 rounded-full shrink-0" />
             <div className="space-y-2 flex-1">
@@ -85,7 +97,12 @@ export function ProfileHealthCard() {
             <ScoreRing score={data.score} />
             <div className="flex-1 min-w-0 space-y-2">
               {data.summary && (
-                <p className="text-xs text-muted-foreground">{data.summary}</p>
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  {data.summary}
+                  {!aiData && isFetching && (
+                    <span className="text-[10px] text-muted-foreground/60">· refining…</span>
+                  )}
+                </p>
               )}
               {data.suggestions.slice(0, 3).map((s, i) => (
                 <div key={i} className="flex items-start gap-2">
