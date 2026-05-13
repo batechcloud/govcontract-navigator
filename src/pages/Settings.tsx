@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
+import { PageContainer } from "@/components/layout/PageContainer";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
-import { motion } from "framer-motion";
 import { User, Bell, Shield, CreditCard, Camera, Loader2, Check, Crown, ExternalLink, Download, FileText, Calendar, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
