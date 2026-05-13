@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useLocation, useNavigate, Link } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import { motion } from "framer-motion";
+import { PageContainer } from "@/components/layout/PageContainer";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
