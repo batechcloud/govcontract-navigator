@@ -376,7 +376,7 @@ const ContractDetail = () => {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="space-y-6 max-w-4xl"
+          className="space-y-6 max-w-4xl mx-auto w-full"
         >
           {/* Back button skeleton */}
           <Skeleton className="h-9 w-28 rounded-lg" />
