@@ -8,7 +8,14 @@ const corsHeaders = {
 
 const SAM_API_BASE = "https://api.sam.gov/opportunities/v2/search";
 const MAX_PER_PAGE = 1000;
-const MAX_PAGES = 10; // Safety limit: 10,000 contracts per sync run
+// Safety cap on pages per run. Daily incremental is ~1-3 pages on a busy
+// weekday; the cap is high to survive multi-day gap recoveries (e.g. after a
+// cron failure), where postedFrom..postedTo may span several days.
+const MAX_PAGES = 50;
+// Retry policy for transient SAM.gov failures (504 gateway timeouts and 429
+// rate limits are the common modes). Backoff is per-page; the cron has a 60s
+// hard ceiling per fetch, so total page time stays bounded.
+const FETCH_RETRY_BACKOFFS_MS = [1000, 3000, 8000, 20000];
 
 // Kept in sync with _shared/sam-sync.ts. See that file for the source-of-truth
 // mapping and rationale (SBA is Total Small Business, not 8(a); SAM sometimes
@@ -126,22 +133,42 @@ serve(async (req) => {
       const url = `${SAM_API_BASE}?${params.toString()}`;
       console.log(`Fetching page at offset ${offset}...`);
 
-      const response = await fetch(url, {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      });
+      // Retry on 5xx and 429. 504 gateway timeouts are common during SAM.gov
+      // maintenance windows; without retry, a single transient failure here
+      // aborts the whole sync.
+      let response: Response | null = null;
+      let responseText = "";
+      let networkErr: unknown = null;
+      for (let attempt = 0; attempt <= FETCH_RETRY_BACKOFFS_MS.length; attempt++) {
+        try {
+          response = await fetch(url, {
+            method: "GET",
+            headers: { Accept: "application/json" },
+          });
+          responseText = await response.text();
+          if (response.ok) break;
+          // Don't retry 4xx other than 429 — those are deterministic.
+          if (response.status !== 429 && response.status < 500) break;
+        } catch (err) {
+          networkErr = err;
+          response = null;
+        }
+        if (attempt < FETCH_RETRY_BACKOFFS_MS.length) {
+          await new Promise(r => setTimeout(r, FETCH_RETRY_BACKOFFS_MS[attempt]));
+        }
+      }
 
-      const responseText = await response.text();
-
-      if (!response.ok) {
-        console.error(`SAM.gov API error at offset ${offset}: ${response.status}`, responseText.substring(0, 500));
-        diagnostics.push({ offset, status: response.status, body: responseText.substring(0, 200) });
+      if (!response || !response.ok) {
+        const status = response?.status ?? 0;
+        const body = response ? responseText.substring(0, 500) : (networkErr instanceof Error ? networkErr.message : String(networkErr));
+        console.error(`SAM.gov API error at offset ${offset}: ${status}`, body.substring(0, 500));
+        diagnostics.push({ offset, status, body: body.substring(0, 200) });
         failedPages += 1;
         if (job) {
           await supabase.from("sync_failed_records").insert({
             job_id: job.id,
-            payload: { postedFrom, postedTo, offset, status: response.status, body: responseText.substring(0, 500) },
-            error: `SAM page fetch failed (${response.status})`,
+            payload: { postedFrom, postedTo, offset, status, body: body.substring(0, 500) },
+            error: `SAM page fetch failed (${status})`,
           });
         }
         break;
@@ -213,23 +240,35 @@ serve(async (req) => {
       }
     }
 
-    // Update sync metadata
-    const { error: updateError } = await supabase
-      .from("sync_metadata")
-      .update({
-        last_synced_at: now.toISOString(),
-        total_synced: (syncMeta.total_synced || 0) + totalSynced,
-      })
-      .eq("id", "sam_sync");
+    // Only advance the cursor if the run actually succeeded. Previously this
+    // updated last_synced_at unconditionally — when a fetch failed (e.g. 504),
+    // the cursor jumped forward over the un-ingested window and the next cron
+    // run never backfilled it. Now: any failed page leaves the cursor where it
+    // was, so the next run re-covers the window.
+    const advanceCursor = failedPages === 0;
+    if (advanceCursor) {
+      const { error: updateError } = await supabase
+        .from("sync_metadata")
+        .update({
+          last_synced_at: now.toISOString(),
+          total_synced: (syncMeta.total_synced || 0) + totalSynced,
+        })
+        .eq("id", "sam_sync");
 
-    if (updateError) {
-      console.error("Failed to update sync_metadata:", updateError);
+      if (updateError) {
+        console.error("Failed to update sync_metadata:", updateError);
+      }
+    } else {
+      console.warn(
+        `Cursor NOT advanced: ${failedPages} page(s) failed. ` +
+        `Next run will retry window ${postedFrom} -> now.`,
+      );
     }
 
-    console.log(`Sync complete: ${totalSynced} contracts synced`);
+    console.log(`Sync complete: ${totalSynced} contracts synced, ${failedPages} page(s) failed`);
 
     await finishJob({
-      status: failedPages > 0 && totalSynced === 0 ? "failed" : "completed",
+      status: failedPages > 0 ? "failed" : "completed",
       records_inserted: totalSynced,
       records_failed: failedPages,
     });
