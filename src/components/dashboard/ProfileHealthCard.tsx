@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { ShieldCheck, ArrowRight, AlertTriangle, CheckCircle, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAIProfileScore } from "@/hooks/useAIProfileScore";
+import { useCompanyProfile } from "@/hooks/useProfile";
+import { useMemo } from "react";
+import { computeHeuristicProfileScore } from "@/lib/heuristic-profile-score";
 
 const priorityIcons = {
   high: <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0" />,
