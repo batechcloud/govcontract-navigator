@@ -563,7 +563,7 @@ const CompanyProfile = () => {
             )}
           </Button>
         </div>
-      </motion.div>
+      </PageContainer>
 
       {/* Document Preview Dialog */}
       <Dialog open={!!previewDoc} onOpenChange={(open) => !open && closePreview()}>

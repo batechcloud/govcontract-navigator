@@ -829,7 +829,7 @@ const ContractDetail = () => {
             </CardContent>
           </Card>
         )}
-      </motion.div>
+      </PageContainer>
 
       <WinScoreModal
         open={scoreModalOpen}
