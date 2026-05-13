@@ -1,6 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, lazy, Suspense } from "react";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -8,11 +7,17 @@ import { Heart, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useTrackedContracts, useUntrackContract, useUpdateContractStatus, useUpdateContractNotes, TrackedContract } from "@/hooks/useTrackedContracts";
-import { PipelineAnalytics } from "@/components/tracked/PipelineAnalytics";
-import { KanbanBoard } from "@/components/tracked/KanbanBoard";
-import { ListView } from "@/components/tracked/ListView";
 import { OpportunityFilters } from "@/components/tracked/OpportunityFilters";
 import { NotesModal } from "@/components/tracked/NotesModal";
+
+// Heavy bundles (DnD, framer-motion, recharts-adjacent) — defer so filters paint first.
+const PipelineAnalytics = lazy(() => import("@/components/tracked/PipelineAnalytics").then(m => ({ default: m.PipelineAnalytics })));
+const KanbanBoard = lazy(() => import("@/components/tracked/KanbanBoard").then(m => ({ default: m.KanbanBoard })));
+const ListView = lazy(() => import("@/components/tracked/ListView").then(m => ({ default: m.ListView })));
+
+const SectionFallback = () => (
+  <Card className="glass"><CardContent className="p-4"><Skeleton className="h-32 w-full" /></CardContent></Card>
+);
 
 const TrackedContracts = () => {
   const { data: contracts, isLoading } = useTrackedContracts();
@@ -103,15 +108,17 @@ const TrackedContracts = () => {
           </Card>
         ) : (
           <>
-            {/* Analytics */}
-            <PipelineAnalytics contracts={contracts || []} />
+            <Suspense fallback={<SectionFallback />}>
+              <PipelineAnalytics contracts={contracts || []} />
+            </Suspense>
 
-            {/* Board or List */}
-            {view === "board" ? (
-              <KanbanBoard contracts={filtered} onStatusChange={handleStatusChange} onDelete={handleDelete} onCardClick={handleCardClick} />
-            ) : (
-              <ListView contracts={filtered} onStatusChange={handleStatusChange} onDelete={handleDelete} />
-            )}
+            <Suspense fallback={<SectionFallback />}>
+              {view === "board" ? (
+                <KanbanBoard contracts={filtered} onStatusChange={handleStatusChange} onDelete={handleDelete} onCardClick={handleCardClick} />
+              ) : (
+                <ListView contracts={filtered} onStatusChange={handleStatusChange} onDelete={handleDelete} />
+              )}
+            </Suspense>
 
             {filtered.length === 0 && contracts && contracts.length > 0 && (
               <p className="text-center text-sm text-muted-foreground py-8">No opportunities match your filters.</p>

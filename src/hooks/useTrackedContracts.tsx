@@ -22,18 +22,26 @@ export interface TrackedContract {
   updated_at: string;
 }
 
+// Explicit column list — skips the heavy `resource_links` jsonb the UI never reads,
+// which can be the bulk of the row payload for tracked contracts.
+const TRACKED_COLUMNS =
+  "id,user_id,contract_id,contract_title,contract_agency,response_deadline,status,priority,notes,match_score,posted_date,contract_value,set_aside,naics_code,created_at,updated_at";
+
 export const useTrackedContracts = () => {
   return useQuery({
     queryKey: ["tracked-contracts"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tracked_contracts")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .select(TRACKED_COLUMNS)
+        .order("created_at", { ascending: false })
+        .limit(500);
 
       if (error) throw error;
-      return data as TrackedContract[];
+      return (data as unknown as TrackedContract[]).map(c => ({ ...c, resource_links: null }));
     },
+    staleTime: 2 * 60 * 1000,
+    placeholderData: (prev) => prev,
   });
 };
 
