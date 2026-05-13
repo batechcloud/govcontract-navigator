@@ -108,15 +108,17 @@ const TrackedContracts = () => {
           </Card>
         ) : (
           <>
-            {/* Analytics */}
-            <PipelineAnalytics contracts={contracts || []} />
+            <Suspense fallback={<SectionFallback />}>
+              <PipelineAnalytics contracts={contracts || []} />
+            </Suspense>
 
-            {/* Board or List */}
-            {view === "board" ? (
-              <KanbanBoard contracts={filtered} onStatusChange={handleStatusChange} onDelete={handleDelete} onCardClick={handleCardClick} />
-            ) : (
-              <ListView contracts={filtered} onStatusChange={handleStatusChange} onDelete={handleDelete} />
-            )}
+            <Suspense fallback={<SectionFallback />}>
+              {view === "board" ? (
+                <KanbanBoard contracts={filtered} onStatusChange={handleStatusChange} onDelete={handleDelete} onCardClick={handleCardClick} />
+              ) : (
+                <ListView contracts={filtered} onStatusChange={handleStatusChange} onDelete={handleDelete} />
+              )}
+            </Suspense>
 
             {filtered.length === 0 && contracts && contracts.length > 0 && (
               <p className="text-center text-sm text-muted-foreground py-8">No opportunities match your filters.</p>
