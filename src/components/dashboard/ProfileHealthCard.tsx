@@ -61,10 +61,19 @@ const ScoreRing = forwardRef<HTMLDivElement, { score: number }>(({ score }, ref)
 });
 ScoreRing.displayName = "ScoreRing";
 export function ProfileHealthCard() {
-  const { data, isLoading, isError } = useAIProfileScore();
+  const { data: aiData, isLoading, isError, isFetching } = useAIProfileScore();
+  const { data: companyProfile } = useCompanyProfile();
 
-  if (isError) return null;
+  const heuristic = useMemo(
+    () => computeHeuristicProfileScore(companyProfile),
+    [companyProfile]
+  );
 
+  // Prefer AI result once available; otherwise show heuristic instantly.
+  const data = aiData ?? heuristic;
+  const showSkeleton = isLoading && !companyProfile;
+
+  if (isError && !companyProfile) return null;
   return (
     <Card variant="glass">
       <CardHeader className="pb-2">
