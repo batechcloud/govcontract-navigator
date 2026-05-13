@@ -493,7 +493,7 @@ export default function AIOpportunityChat() {
               </p>
             </div>
           </Card>
-        </div>
+        </PageContainer>
       </div>
     </DashboardLayout>
   );
