@@ -42,11 +42,6 @@ export function useAIProfileScore() {
     },
     enabled: !!session,
     staleTime: 30 * 60 * 1000,
-    retry: (failureCount, error) => {
-      // Don't retry on rate limits
-      if (error?.message === "rate_limited") return false;
-      return failureCount < 1;
-    },
-    retryDelay: 5000,
+    retry: 0,
   });
 }
