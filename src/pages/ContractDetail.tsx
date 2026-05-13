@@ -431,10 +431,10 @@ const ContractDetail = () => {
               <Skeleton className="h-4 w-full" />
               <Skeleton className="h-4 w-full" />
               <Skeleton className="h-4 w-2/3" />
-            </CardContent>
-          </Card>
-        </motion.div>
-      </DashboardLayout>
+          </CardContent>
+        </Card>
+      </PageContainer>
+    </DashboardLayout>
     );
   }
 
