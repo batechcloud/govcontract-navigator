@@ -321,7 +321,7 @@ export default function AIOpportunityChat() {
         </AnimatePresence>
 
         {/* Main Chat Area */}
-        <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full gap-4 min-w-0">
+        <PageContainer variant="default" animate={false} className="flex-1 flex-col gap-4 min-w-0">
           {/* Header info */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
