@@ -355,7 +355,9 @@ export type Database = {
           location: string | null
           match_score: number | null
           naics_code: string | null
+          parent_agency: string | null
           posted_date: string | null
+          psc_code: string | null
           raw_data: Json | null
           resource_links: string[] | null
           sector: string | null
@@ -379,7 +381,9 @@ export type Database = {
           location?: string | null
           match_score?: number | null
           naics_code?: string | null
+          parent_agency?: string | null
           posted_date?: string | null
+          psc_code?: string | null
           raw_data?: Json | null
           resource_links?: string[] | null
           sector?: string | null
@@ -403,7 +407,9 @@ export type Database = {
           location?: string | null
           match_score?: number | null
           naics_code?: string | null
+          parent_agency?: string | null
           posted_date?: string | null
+          psc_code?: string | null
           raw_data?: Json | null
           resource_links?: string[] | null
           sector?: string | null
