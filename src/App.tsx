@@ -1,7 +1,9 @@
 import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute, PublicOnlyRoute } from "@/components/auth/ProtectedRoute";
@@ -57,15 +59,42 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       staleTime: 5 * 60 * 1000,
-      gcTime: 30 * 60 * 1000,
+      gcTime: 24 * 60 * 60 * 1000, // 24h — must be >= persister maxAge
       refetchOnWindowFocus: false,
     },
   },
 });
 
+// Persist React Query cache to localStorage so AI cards & profile data
+// survive full page reloads (saves the 5–15s AI calls on every refresh).
+const persister = createSyncStoragePersister({
+  storage: typeof window !== "undefined" ? window.localStorage : undefined,
+  key: "gcnav-rq-cache-v1",
+  throttleTime: 1000,
+});
+
 const App = () => (
   <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister,
+        maxAge: 24 * 60 * 60 * 1000,
+        // Only persist queries the user benefits from on reload.
+        dehydrateOptions: {
+          shouldDehydrateQuery: (q) => {
+            const k = String(q.queryKey?.[0] ?? "");
+            return [
+              "ai-recommendations",
+              "ai-profile-score",
+              "profile",
+              "company-profile",
+              "tracked-contracts",
+            ].includes(k);
+          },
+        },
+      }}
+    >
       <AuthProvider>
         <TooltipProvider>
           <Toaster />
@@ -134,7 +163,7 @@ const App = () => (
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   </ErrorBoundary>
 );
 

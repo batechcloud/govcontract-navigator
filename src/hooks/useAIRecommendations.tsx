@@ -17,7 +17,7 @@ export interface AIRecommendation {
   priority: "high" | "medium" | "low";
 }
 
-async function invokeWithRetry(maxRetries = 4): Promise<{ recommendations: AIRecommendation[]; message?: string; error?: string; source?: string }> {
+async function invokeWithRetry(maxRetries = 2): Promise<{ recommendations: AIRecommendation[]; message?: string; error?: string; source?: string }> {
   let delay = 1500;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -48,7 +48,7 @@ export function useAIRecommendations() {
     queryFn: () => invokeWithRetry(),
     enabled: !!session,
     staleTime: 30 * 60 * 1000,
-    retry: 1,
-    retryDelay: 5000,
+    // invokeWithRetry already handles 429 backoff — don't double-retry.
+    retry: 0,
   });
 }

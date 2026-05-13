@@ -6,17 +6,24 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-async function callOpenAI(body: Record<string, unknown>, apiKey: string, retries = 1): Promise<Response> {
-  const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+async function callOpenAI(body: Record<string, unknown>, apiKey: string): Promise<Response> {
+  // No internal retry — the client (useAIRecommendations) handles 429 backoff.
+  // Keeps total request time bounded and avoids stacked retries.
+  return fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (resp.status === 429 && retries > 0) {
-    await new Promise(r => setTimeout(r, 2000));
-    return callOpenAI(body, apiKey, retries - 1);
+}
+
+async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { signal: ctrl.signal });
+  } finally {
+    clearTimeout(t);
   }
-  return resp;
 }
 
 serve(async (req) => {
@@ -93,7 +100,9 @@ Set-aside eligibility: ${profile.certifications?.length ? profile.certifications
       try {
         const naicsQuery = profile.naics_codes.slice(0, 3).join(",");
         const samUrl = `https://api.sam.gov/opportunities/v2/search?api_key=${samApiKey}&limit=20&postedFrom=${getDateDaysAgo(30)}&postedTo=${getToday()}&ncode=${naicsQuery}&ptype=o,k`;
-        const samResp = await fetch(samUrl);
+        // Hard 4s timeout — if SAM.gov is slow or returns empty, fall through
+        // to the AI-generated branch instead of blocking the whole request.
+        const samResp = await fetchWithTimeout(samUrl, 4000);
         if (samResp.ok) {
           const samData = await samResp.json();
           opportunities = (samData.opportunitiesData || []).map((o: any) => ({
@@ -110,7 +119,7 @@ Set-aside eligibility: ${profile.certifications?.length ? profile.certifications
           }));
         }
       } catch (e) {
-        console.error("SAM.gov fetch error:", e);
+        console.error("SAM.gov fetch error (non-fatal, falling back to AI generation):", e);
       }
     }
 
