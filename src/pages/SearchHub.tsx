@@ -260,7 +260,7 @@ const SearchHub = () => {
     const effectiveNaics = advNaics.length > 0 ? advNaics : profileNaics;
 
     return {
-      keywords: searchQuery.trim() ? searchQuery.trim().split(/\s+/) : [],
+      keywords: searchQuery.trim() ? [searchQuery.trim()] : [],
       naics_codes: effectiveNaics,
       psc_codes: advPsc,
       set_aside: mergedSetAsides,
