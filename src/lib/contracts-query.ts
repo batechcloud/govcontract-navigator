@@ -63,6 +63,8 @@ export interface ContractQueryFilters {
   max_value?: number | null;
   location?: string | null;
   opportunity_type?: string | null;
+  /** ISO date string — only contracts with deadline strictly before this. */
+  deadline_before?: string | null;
 }
 
 /**
