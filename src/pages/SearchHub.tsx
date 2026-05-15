@@ -677,7 +677,7 @@ const SearchHub = () => {
     }
 
     const combinedFilters = {
-      keywords: searchQuery.trim() ? searchQuery.trim().split(/\s+/) : [],
+      keywords: searchQuery.trim() ? [searchQuery.trim()] : [],
       naics_codes: advNaics,
       psc_codes: advPsc,
       set_aside: mergedSetAsides,
