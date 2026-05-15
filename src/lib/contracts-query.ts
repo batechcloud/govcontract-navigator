@@ -141,6 +141,10 @@ export function applyContractFilters(query: any, filters: ContractQueryFilters):
     );
   }
 
+  if (filters.deadline_before) {
+    query = query.lt("deadline", filters.deadline_before);
+  }
+
   return query;
 }
 
