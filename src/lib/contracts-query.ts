@@ -81,6 +81,10 @@ export interface ContractQueryFilters {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function applyContractFilters(query: any, filters: ContractQueryFilters): any {
   if (filters.keywords?.length) {
+    // Each keyword becomes its own OR group across title/description/agency.
+    // Multiple .or() calls on the same builder are appended as repeated `or=`
+    // query params, which PostgREST AND-groups — so all keywords must match
+    // (in any of the three columns). This is what the UI's chip stack implies.
     for (const raw of filters.keywords) {
       const kw = sanitizeFilterValue(raw);
       if (kw.length < 2) continue;
