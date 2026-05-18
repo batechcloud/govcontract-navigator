@@ -227,6 +227,48 @@ serve(async (req) => {
       return json({ ok: true, job_id: job.id });
     }
 
+    case "continue_full": {
+      // Self-reinvocation entrypoint. Resumes an existing running full-import
+      // job from its persisted checkpoint. Only callable by service role.
+      if (!isServiceRoleCall) return json({ error: "service role only" }, 403);
+      if (!apiKey) return json({ error: "SAM_API_KEY not configured" }, 500);
+      if (!body.job_id) return json({ error: "job_id required" }, 400);
+
+      const { data: contJob } = await supabase
+        .from("sync_jobs")
+        .select("id, status, job_type, cancel_requested")
+        .eq("id", body.job_id)
+        .maybeSingle();
+      if (!contJob) return json({ error: "Job not found" }, 404);
+      if (contJob.status !== "running") return json({ ok: true, skipped: true, reason: `status=${contJob.status}` });
+      if (contJob.cancel_requested) {
+        await supabase.from("sync_jobs").update({
+          status: "cancelled",
+          finished_at: new Date().toISOString(),
+        }).eq("id", contJob.id);
+        return json({ ok: true, cancelled: true });
+      }
+      if (contJob.job_type !== "full") return json({ error: "continue_full only supports full jobs" }, 400);
+
+      EdgeRuntime.waitUntil(
+        runFullImport(supabase, contJob.id, apiKey).catch(async (err) => {
+          console.error("continue_full worker error:", err);
+          const message = err instanceof Error ? err.message : String(err);
+          await supabase.from("sync_jobs").update({
+            status: "failed",
+            finished_at: new Date().toISOString(),
+            last_error: message,
+          }).eq("id", contJob.id);
+          await supabase.from("sync_audit_log").insert({
+            action: "sync_job_failed",
+            details: { job_id: contJob.id, error: message, phase: "continue_full" },
+          });
+        }),
+      );
+
+      return json({ ok: true, job_id: contJob.id, continued: true });
+    }
+
     case "cancel": {
       if (!body.job_id) return json({ error: "job_id required" }, 400);
       await supabase.from("sync_jobs").update({ cancel_requested: true }).eq("id", body.job_id);
