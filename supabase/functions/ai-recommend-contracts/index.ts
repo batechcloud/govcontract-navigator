@@ -26,6 +26,32 @@ async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
   }
 }
 
+function jsonResponse(body: Record<string, unknown>, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+function busyFallback(message = "AI picks are temporarily busy. Please refresh in a moment."): Response {
+  return jsonResponse({ recommendations: [], message, fallback: true, source: "fallback" });
+}
+
+function fallbackFromOpportunities(opportunities: any[]): Response {
+  const recommendations = opportunities.slice(0, 5).map((o, i) => ({
+    ...o,
+    match_reason: "This opportunity matches one of your profile NAICS areas. Review the official listing for fit and deadlines.",
+    priority: i < 2 ? "high" : i < 4 ? "medium" : "low",
+  }));
+
+  return jsonResponse({
+    recommendations,
+    message: "AI ranking is temporarily busy, so these are the best matching live opportunities we found.",
+    fallback: true,
+    source: "sam_fallback",
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -53,7 +79,7 @@ serve(async (req) => {
 
   try {
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
+    if (!OPENAI_API_KEY) return busyFallback("AI picks are temporarily unavailable. Please try again shortly.");
 
     // Fetch company profile
     const { data: profile } = await supabase
@@ -172,13 +198,9 @@ Set-aside eligibility: ${profile.certifications?.length ? profile.certifications
       }, OPENAI_API_KEY);
 
       if (!response.ok) {
-        if (response.status === 429) {
-          return new Response(JSON.stringify({ error: "AI is busy, please try again in a moment." }), {
-            status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
         const errText = await response.text();
         console.error("OpenAI error:", response.status, errText);
+        if (response.status === 429 || response.status >= 500) return fallbackFromOpportunities(opportunities);
         throw new Error(`AI error: ${response.status}`);
       }
 
@@ -254,13 +276,9 @@ Set-aside eligibility: ${profile.certifications?.length ? profile.certifications
     }, OPENAI_API_KEY);
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "AI is busy, please try again in a moment." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
       const errText = await response.text();
       console.error("OpenAI error:", response.status, errText);
+      if (response.status === 429 || response.status >= 500) return busyFallback();
       throw new Error(`AI error: ${response.status}`);
     }
 
@@ -290,9 +308,7 @@ Set-aside eligibility: ${profile.certifications?.length ? profile.certifications
     });
   } catch (e) {
     console.error("recommend error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return busyFallback("AI picks are temporarily unavailable. Please try again shortly.");
   }
 });
 
