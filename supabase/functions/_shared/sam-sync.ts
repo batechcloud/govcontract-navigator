@@ -112,6 +112,8 @@ export async function fetchSamPage(opts: {
   postedTo: string;
   offset: number;
   limit?: number;
+  /** When true, append `active=true` (matches the cron's filter). */
+  activeOnly?: boolean;
 }): Promise<{ ok: true; data: any } | { ok: false; status: number; body: string }> {
   const params = new URLSearchParams();
   params.append("api_key", opts.apiKey);
@@ -119,6 +121,15 @@ export async function fetchSamPage(opts: {
   params.append("offset", String(opts.offset));
   params.append("postedFrom", opts.postedFrom);
   params.append("postedTo", opts.postedTo);
+  // SAM.gov's /opportunities/v2/search returns an empty `opportunitiesData`
+  // array for many wide windows unless an `active` filter is present. The
+  // cron at sam-sync-incremental has always sent `active=true` and works;
+  // runWindow used to omit it, which is why full backfills silently
+  // produced 0 rows for 5 of 6 windows. Default to true here so both code
+  // paths behave the same; callers can override for archive sweeps.
+  if (opts.activeOnly !== false) {
+    params.append("active", "true");
+  }
 
   const url = `${SAM_API_BASE}?${params.toString()}`;
   const backoffs = [1000, 2000, 4000, 8000];
@@ -147,6 +158,7 @@ export async function fetchSamPage(opts: {
   }
   return { ok: false, status: lastStatus, body: lastBody };
 }
+
 
 export interface JobUpdates {
   current_offset?: number;
