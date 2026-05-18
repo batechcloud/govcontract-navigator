@@ -13,7 +13,17 @@ export interface ProfileScoreResult {
   score: number;
   summary?: string;
   suggestions: ProfileSuggestion[];
+  fallback?: boolean;
+  busy?: boolean;
 }
+
+const BUSY_FALLBACK: ProfileScoreResult = {
+  score: 0,
+  summary: "AI scoring is temporarily busy. Try again shortly.",
+  suggestions: [],
+  fallback: true,
+  busy: true,
+};
 
 export function useAIProfileScore() {
   const { session } = useAuth();
@@ -23,19 +33,15 @@ export function useAIProfileScore() {
     queryFn: async (): Promise<ProfileScoreResult> => {
       const { data, error } = await supabase.functions.invoke("ai-profile-optimizer");
 
+      // Treat 429s / network errors as a soft busy state — never blank the page.
       if (error) {
-        // Check for rate limit in the error response
-        if (error.message?.includes("429")) {
-          toast.error("AI is busy, please try again in a moment.");
-          throw new Error("rate_limited");
-        }
-        throw error;
+        const is429 = error.message?.includes("429") || (error as any)?.context?.status === 429;
+        if (is429) return BUSY_FALLBACK;
+        console.error("ai-profile-score error:", error);
+        return BUSY_FALLBACK;
       }
       if (data?.error) {
-        if (data.error.includes("busy")) {
-          toast.error("AI is busy, please try again in a moment.");
-          throw new Error("rate_limited");
-        }
+        if (String(data.error).toLowerCase().includes("busy")) return BUSY_FALLBACK;
         throw new Error(data.error);
       }
       return data as ProfileScoreResult;
