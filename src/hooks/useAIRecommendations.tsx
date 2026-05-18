@@ -17,8 +17,10 @@ export interface AIRecommendation {
   priority: "high" | "medium" | "low";
 }
 
-async function invokeWithRetry(maxRetries = 2): Promise<{ recommendations: AIRecommendation[]; message?: string; error?: string; source?: string }> {
-  let delay = 1500;
+async function invokeWithRetry(maxRetries = 3): Promise<{ recommendations: AIRecommendation[]; message?: string; error?: string; source?: string }> {
+  // Exponential backoff with full jitter: base * 2^attempt, randomized in [0, capped]
+  const baseDelay = 1000;
+  const maxDelay = 15000;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const { data, error } = await supabase.functions.invoke("ai-recommend-contracts");
@@ -29,8 +31,9 @@ async function invokeWithRetry(maxRetries = 2): Promise<{ recommendations: AIRec
       (typeof data?.error === "string" && data.error.toLowerCase().includes("busy"));
 
     if (is429 && attempt < maxRetries) {
-      await new Promise(r => setTimeout(r, delay));
-      delay *= 2;
+      const expDelay = Math.min(maxDelay, baseDelay * Math.pow(2, attempt));
+      const jittered = Math.random() * expDelay; // full jitter
+      await new Promise(r => setTimeout(r, jittered));
       continue;
     }
 
