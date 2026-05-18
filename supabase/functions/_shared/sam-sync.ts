@@ -319,11 +319,21 @@ export async function runWindow(
   return { outcome: "done", inserted: windowInserted, totalRecords: totalForWindow, pages, failedPages: windowFailedPages, lastOffset: offset };
 }
 
-/** Run a full historical import (last 6 months — SAM.gov hard limit). */
+/** Run a full historical import (last 6 months — SAM.gov hard limit).
+ *  Self-reinvokes via `triggerContinuation` if it approaches the edge-runtime
+ *  wall-clock limit, so progress survives across multiple invocations.
+ */
 export async function runFullImport(supabase: SupabaseClient, jobId: string, apiKey: string) {
-  const counters = { inserted: 0, updated: 0, failed: 0 };
-  // Resume from checkpoint if present
-  const { data: job } = await supabase.from("sync_jobs").select("checkpoint").eq("id", jobId).single();
+  const startedAt = Date.now();
+  const deadline = startedAt + WALL_TIME_BUDGET_MS;
+
+  // Resume: read both checkpoint AND prior counters so we don't overwrite
+  // records_inserted/records_failed from earlier invocations.
+  const { data: job } = await supabase
+    .from("sync_jobs")
+    .select("checkpoint, records_inserted, records_updated, records_failed")
+    .eq("id", jobId)
+    .single();
   const checkpoint = (job?.checkpoint ?? {}) as {
     window_index?: number;
     postedFrom?: string;
@@ -331,12 +341,17 @@ export async function runFullImport(supabase: SupabaseClient, jobId: string, api
     offset?: number;
     window_stats?: Array<Record<string, unknown>>;
   };
+  const counters = {
+    inserted: job?.records_inserted ?? 0,
+    updated: job?.records_updated ?? 0,
+    failed: job?.records_failed ?? 0,
+  };
 
   const windows = buildWindows(6, 30);
   const startWindow = checkpoint.window_index ?? 0;
   const windowStats: Array<Record<string, unknown>> = checkpoint.window_stats ?? [];
 
-  console.log(`runFullImport: ${windows.length} windows, starting at index ${startWindow}`);
+  console.log(`runFullImport: ${windows.length} windows, starting at index ${startWindow}, prior inserted=${counters.inserted}`);
 
   for (let i = startWindow; i < windows.length; i++) {
     const w = windows[i];
@@ -352,8 +367,32 @@ export async function runFullImport(supabase: SupabaseClient, jobId: string, api
         window_stats: windowStats,
       },
     });
-    const res = await runWindow(supabase, jobId, apiKey, w.from, w.to, startOffset, counters, i);
+    const res = await runWindow(supabase, jobId, apiKey, w.from, w.to, startOffset, counters, i, deadline);
 
+    if (res.outcome === "cancelled") {
+      await updateJob(supabase, jobId, { status: "cancelled", finished_at: new Date().toISOString() });
+      return;
+    }
+
+    if (res.outcome === "timeout") {
+      // Persist current progress within this window then hand off to a
+      // fresh invocation. The next run resumes from the same window_index
+      // and the page-level offset already written by runWindow.
+      await updateJob(supabase, jobId, {
+        checkpoint: {
+          window_index: i,
+          postedFrom: w.from,
+          postedTo: w.to,
+          offset: res.lastOffset,
+          window_stats: windowStats,
+        },
+      });
+      console.log(`runFullImport handing off: window=${i} offset=${res.lastOffset}`);
+      await triggerContinuation(jobId);
+      return;
+    }
+
+    // Window finished — record stats and advance.
     windowStats.push({
       index: i,
       postedFrom: w.from,
@@ -363,14 +402,9 @@ export async function runFullImport(supabase: SupabaseClient, jobId: string, api
       pages: res.pages,
       failedPages: res.failedPages,
     });
-
-    // Persist per-window stats after each window so the admin UI can verify
-    // that each window actually inserted records (previously, only the final
-    // window's data was visible — windows 0-5 silently returned 0 because
-    // `active=true` wasn't sent).
     await updateJob(supabase, jobId, {
       checkpoint: {
-        window_index: i,
+        window_index: i + 1,
         postedFrom: w.from,
         postedTo: w.to,
         offset: 0,
@@ -378,15 +412,14 @@ export async function runFullImport(supabase: SupabaseClient, jobId: string, api
       },
     });
 
-    if (res.outcome === "cancelled") {
-      await updateJob(supabase, jobId, { status: "cancelled", finished_at: new Date().toISOString() });
+    // After each completed window, check budget again before starting the next.
+    if (i + 1 < windows.length && Date.now() > deadline) {
+      console.log(`runFullImport handing off between windows after ${i}`);
+      await triggerContinuation(jobId);
       return;
     }
   }
 
-  // Verify each window pulled at least one record. If any returned 0 across
-  // its full range, flag the job as failed so the admin UI doesn't show a
-  // green "completed" for a silently-broken backfill.
   const emptyWindows = windowStats.filter((s) => (s.inserted as number) === 0);
   const status = emptyWindows.length === windowStats.length && windowStats.length > 0
     ? "failed"
