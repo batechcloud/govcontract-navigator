@@ -93,14 +93,24 @@ serve(async (req) => {
     case "start_incremental": {
       if (!apiKey) return json({ error: "SAM_API_KEY not configured" }, 500);
 
-      // Block if a job is already running
+      // Block if a job is genuinely running. A job that hasn't been updated
+      // in STALE_JOB_MS is treated as dead (edge runtime killed without
+      // continuation) — mark it failed so we don't permanently block starts.
       const { data: running } = await supabase
         .from("sync_jobs")
-        .select("id")
+        .select("id, updated_at")
         .eq("status", "running")
         .limit(1);
       if (running && running.length > 0) {
-        return json({ error: "A sync job is already running", job_id: running[0].id }, 409);
+        const updatedAt = running[0].updated_at ? new Date(running[0].updated_at).getTime() : 0;
+        if (Date.now() - updatedAt < STALE_JOB_MS) {
+          return json({ error: "A sync job is already running", job_id: running[0].id }, 409);
+        }
+        await supabase.from("sync_jobs").update({
+          status: "failed",
+          finished_at: new Date().toISOString(),
+          last_error: "Job marked failed: no heartbeat for >5min (edge runtime killed without continuation)",
+        }).eq("id", running[0].id);
       }
 
       // For start_full: inherit the checkpoint from the most recent
