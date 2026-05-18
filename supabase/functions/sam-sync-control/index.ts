@@ -18,6 +18,7 @@ const BodySchema = z.object({
   action: z.enum([
     "start_full",
     "start_incremental",
+    "continue_full",
     "cancel",
     "retry_failed",
     "status",
@@ -28,6 +29,11 @@ const BodySchema = z.object({
   job_id: z.string().uuid().optional(),
   failed_record_ids: z.array(z.string().uuid()).max(100).optional(),
 });
+
+// A "running" job whose updated_at is older than this is treated as dead
+// (edge runtime killed it without writing a status). Lets a new start_full
+// auto-recover instead of being permanently blocked.
+const STALE_JOB_MS = 5 * 60 * 1000;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
