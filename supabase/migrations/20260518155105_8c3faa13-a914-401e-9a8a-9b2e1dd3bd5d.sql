@@ -1,0 +1,1 @@
+UPDATE public.sync_jobs SET status = 'cancelled', cancel_requested = true, finished_at = now(), last_error = 'Cancelled by admin (stale worker)' WHERE id = '94efbb7f-63fa-4b46-bca5-2dd049635a97' AND status = 'running';
