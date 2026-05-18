@@ -230,7 +230,8 @@ export async function runWindow(
   startOffset: number,
   counters: { inserted: number; updated: number; failed: number },
   windowIndex?: number,
-): Promise<{ outcome: "done" | "cancelled"; inserted: number; totalRecords: number | null; pages: number; failedPages: number }> {
+  deadline?: number,
+): Promise<{ outcome: "done" | "cancelled" | "timeout"; inserted: number; totalRecords: number | null; pages: number; failedPages: number; lastOffset: number }> {
   let offset = startOffset;
   let totalForWindow: number | null = null;
   let windowInserted = 0;
@@ -240,7 +241,11 @@ export async function runWindow(
 
   while (true) {
     if (await isCancelled(supabase, jobId)) {
-      return { outcome: "cancelled", inserted: windowInserted, totalRecords: totalForWindow, pages, failedPages: windowFailedPages };
+      return { outcome: "cancelled", inserted: windowInserted, totalRecords: totalForWindow, pages, failedPages: windowFailedPages, lastOffset: offset };
+    }
+    if (deadline && Date.now() > deadline) {
+      console.log(`${label} hit wall-time budget at offset=${offset}; will self-reinvoke`);
+      return { outcome: "timeout", inserted: windowInserted, totalRecords: totalForWindow, pages, failedPages: windowFailedPages, lastOffset: offset };
     }
 
     const result = await fetchSamPage({ apiKey, postedFrom, postedTo, offset });
@@ -255,10 +260,8 @@ export async function runWindow(
         payload: { postedFrom, postedTo, offset, status: result.status, body: result.body, window_index: windowIndex },
         error: `SAM page fetch failed (${result.status}): ${result.body.slice(0, 200)}`,
       });
-      // Skip this page, keep going.
       offset += PAGE_SIZE;
       if (totalForWindow !== null && offset >= totalForWindow) break;
-      // Without a known total, give up after a failed first page to avoid infinite loop.
       if (totalForWindow === null) break;
       continue;
     }
@@ -310,34 +313,10 @@ export async function runWindow(
     if (totalForWindow !== null && offset >= totalForWindow) break;
     if (rows.length < PAGE_SIZE) break;
 
-    // Pacing
     await sleep(400);
   }
   console.log(`${label} done: inserted=${windowInserted} pages=${pages} failedPages=${windowFailedPages} totalRecords=${totalForWindow}`);
-  return { outcome: "done", inserted: windowInserted, totalRecords: totalForWindow, pages, failedPages: windowFailedPages };
-}
-
-
-/** Step a date by N days. */
-function addDays(d: Date, days: number): Date {
-  const n = new Date(d);
-  n.setDate(n.getDate() + days);
-  return n;
-}
-
-/** Build descending list of [from,to] windows covering `monthsBack` months. */
-export function buildWindows(monthsBack: number, windowDays = 30): Array<{ from: string; to: string }> {
-  const windows: Array<{ from: string; to: string }> = [];
-  const earliest = new Date();
-  earliest.setMonth(earliest.getMonth() - monthsBack);
-  let to = new Date();
-  while (to > earliest) {
-    const from = addDays(to, -windowDays + 1);
-    const clampedFrom = from < earliest ? earliest : from;
-    windows.push({ from: formatSamDate(clampedFrom), to: formatSamDate(to) });
-    to = addDays(clampedFrom, -1);
-  }
-  return windows;
+  return { outcome: "done", inserted: windowInserted, totalRecords: totalForWindow, pages, failedPages: windowFailedPages, lastOffset: offset };
 }
 
 /** Run a full historical import (last 6 months — SAM.gov hard limit). */
