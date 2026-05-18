@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { enqueueAIRequest } from "@/lib/ai-request-queue";
 
 export interface AIRecommendation {
   id: string;
