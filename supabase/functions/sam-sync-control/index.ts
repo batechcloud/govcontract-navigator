@@ -246,7 +246,8 @@ serve(async (req) => {
           if (!p.postedFrom || !p.postedTo) continue;
           const out = await runWindow(supabase, job!.id, apiKey, p.postedFrom, p.postedTo, p.offset ?? 0, counters);
           await supabase.from("sync_failed_records").update({ resolved: true, attempts: (rec.attempts || 0) + 1 }).eq("id", rec.id);
-          if (out === "cancelled") break;
+          if (out.outcome === "cancelled") break;
+
         }
         await supabase.from("sync_jobs").update({
           status: "completed",
