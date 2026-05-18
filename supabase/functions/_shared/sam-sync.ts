@@ -6,6 +6,31 @@ import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-
 export const SAM_API_BASE = "https://api.sam.gov/opportunities/v2/search";
 export const PAGE_SIZE = 1000;
 
+// Supabase Edge Functions have a hard wall-clock limit (~400s). We stop the
+// worker well before that and self-reinvoke `sam-sync-control` with the same
+// job id so the next invocation resumes from the persisted checkpoint.
+export const WALL_TIME_BUDGET_MS = 200_000;
+
+/** Fire-and-forget HTTP call to sam-sync-control to resume a job. */
+export async function triggerContinuation(jobId: string): Promise<void> {
+  const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/sam-sync-control`;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  try {
+    // We don't await the response — the receiving function runs the worker in
+    // EdgeRuntime.waitUntil. We just need the HTTP request to be flushed.
+    await fetch(url, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${serviceKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "continue_full", job_id: jobId }),
+    });
+  } catch (err) {
+    console.error("triggerContinuation failed:", err);
+  }
+}
+
 // Maps raw SAM.gov set-aside codes to user-facing labels.
 // References: https://open.gsa.gov/api/sam-opportunities-api/ (typeOfSetAside).
 // SBA = Total Small Business Set-Aside (NOT 8(a) — the old map had this wrong
