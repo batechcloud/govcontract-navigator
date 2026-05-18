@@ -107,21 +107,31 @@ serve(async (req) => {
       if (body.action === "start_full") {
         const { data: prev } = await supabase
           .from("sync_jobs")
-          .select("id, checkpoint")
+          .select("id, checkpoint, started_at")
           .eq("job_type", "full")
           .in("status", ["cancelled", "failed"])
           .order("started_at", { ascending: false })
           .limit(1)
           .maybeSingle();
+        // Only inherit if the failed/cancelled run is more recent than the
+        // last completed full job — otherwise we'd resume from a stale
+        // checkpoint and permanently skip the oldest windows.
+        const { data: lastCompleted } = await supabase
+          .from("sync_jobs")
+          .select("started_at")
+          .eq("job_type", "full")
+          .eq("status", "completed")
+          .order("started_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
         const cp = (prev?.checkpoint ?? null) as { window_index?: number } | null;
-        // Only inherit if the previous run made past window 0 OR had an
-        // in-progress offset — otherwise the "resume" is identical to a
-        // fresh start, so just start fresh.
         const cpIdx = typeof cp?.window_index === "number" ? cp.window_index : 0;
         const cpOff = typeof (cp as { offset?: number } | null)?.offset === "number"
           ? (cp as { offset: number }).offset
           : 0;
-        if (cp && (cpIdx > 0 || cpOff > 0) && cpIdx < 6) {
+        const isNewerThanLastCompleted = !lastCompleted?.started_at
+          || (prev?.started_at && prev.started_at > lastCompleted.started_at);
+        if (cp && (cpIdx > 0 || cpOff > 0) && cpIdx < 6 && isNewerThanLastCompleted) {
           inheritedCheckpoint = prev?.checkpoint ?? null;
           resumedFromJobId = prev?.id ?? null;
         }
