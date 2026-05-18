@@ -205,20 +205,29 @@ export async function runWindow(
   startOffset: number,
   counters: { inserted: number; updated: number; failed: number },
   windowIndex?: number,
-): Promise<"done" | "cancelled"> {
+): Promise<{ outcome: "done" | "cancelled"; inserted: number; totalRecords: number | null; pages: number; failedPages: number }> {
   let offset = startOffset;
   let totalForWindow: number | null = null;
+  let windowInserted = 0;
+  let windowFailedPages = 0;
+  let pages = 0;
+  const label = `[window ${windowIndex ?? "?"}] ${postedFrom}->${postedTo}`;
 
   while (true) {
-    if (await isCancelled(supabase, jobId)) return "cancelled";
+    if (await isCancelled(supabase, jobId)) {
+      return { outcome: "cancelled", inserted: windowInserted, totalRecords: totalForWindow, pages, failedPages: windowFailedPages };
+    }
 
     const result = await fetchSamPage({ apiKey, postedFrom, postedTo, offset });
+    pages += 1;
 
     if (!result.ok) {
+      console.error(`${label} page offset=${offset} FAILED (${result.status}): ${result.body.slice(0, 200)}`);
       counters.failed += 1;
+      windowFailedPages += 1;
       await supabase.from("sync_failed_records").insert({
         job_id: jobId,
-        payload: { postedFrom, postedTo, offset, status: result.status, body: result.body },
+        payload: { postedFrom, postedTo, offset, status: result.status, body: result.body, window_index: windowIndex },
         error: `SAM page fetch failed (${result.status}): ${result.body.slice(0, 200)}`,
       });
       // Skip this page, keep going.
@@ -233,30 +242,31 @@ export async function runWindow(
     const opps = data.opportunitiesData || data.data || data.results || [];
     if (totalForWindow === null) {
       totalForWindow = data.totalRecords ?? opps.length;
+      console.log(`${label} totalRecords=${totalForWindow} (first page returned ${opps.length})`);
     }
 
-    if (opps.length === 0) break;
+    if (opps.length === 0) {
+      console.log(`${label} page offset=${offset} returned 0 opportunities; ending window`);
+      break;
+    }
 
     const rows = opps.map(transformToRow);
-    // Don't pass count: "exact" here. Older code did and added the returned
-    // count to counters.inserted — but on an unfiltered upsert PostgREST
-    // returns the *total table size* as the count, not the rows just
-    // affected. Result: counters.inserted ballooned to ~table-size per page.
     const { error: upsertError } = await supabase
       .from("contracts")
       .upsert(rows, { onConflict: "contract_id" });
 
     if (upsertError) {
+      console.error(`${label} upsert error at offset=${offset}: ${upsertError.message}`);
       counters.failed += rows.length;
+      windowFailedPages += 1;
       await supabase.from("sync_failed_records").insert({
         job_id: jobId,
-        payload: { postedFrom, postedTo, offset, sample_ids: rows.slice(0, 5).map((r) => r.contract_id) },
+        payload: { postedFrom, postedTo, offset, sample_ids: rows.slice(0, 5).map((r) => r.contract_id), window_index: windowIndex },
         error: `Upsert failed: ${upsertError.message}`,
       });
     } else {
-      // PostgREST upsert doesn't distinguish insert-vs-update; this is the
-      // count of rows processed in the page.
       counters.inserted += rows.length;
+      windowInserted += rows.length;
     }
 
     offset += rows.length;
@@ -278,8 +288,10 @@ export async function runWindow(
     // Pacing
     await sleep(400);
   }
-  return "done";
+  console.log(`${label} done: inserted=${windowInserted} pages=${pages} failedPages=${windowFailedPages} totalRecords=${totalForWindow}`);
+  return { outcome: "done", inserted: windowInserted, totalRecords: totalForWindow, pages, failedPages: windowFailedPages };
 }
+
 
 /** Step a date by N days. */
 function addDays(d: Date, days: number): Date {
