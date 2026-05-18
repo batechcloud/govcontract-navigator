@@ -15,10 +15,15 @@ const priorityColors = {
 export function AIRecommendationsCard() {
   const { data, isLoading, isError, refetch, isFetching } = useAIRecommendations();
 
-  if (isError) return null;
-
   const recs = data?.recommendations || [];
   const isAIGenerated = data?.source === "ai_generated";
+  // Treat any error OR a fallback message with no recs as "AI busy".
+  const isBusy =
+    isError ||
+    (!isLoading && recs.length === 0 && typeof data?.message === "string" &&
+      /busy|unavailable|temporarily/i.test(data.message));
+  const isProfileMissing =
+    !isLoading && recs.length === 0 && data?.message && !isBusy;
 
   return (
     <Card variant="glass">
@@ -75,10 +80,28 @@ export function AIRecommendationsCard() {
               Generating personalized picks…
             </p>
           </div>
-        ) : data?.message && recs.length === 0 ? (
+        ) : isBusy ? (
+          <div className="text-center py-6 text-muted-foreground">
+            <Sparkles className="w-10 h-10 mx-auto mb-2 opacity-40 animate-pulse" />
+            <p className="text-sm">AI picks are warming up</p>
+            <p className="text-xs mt-1">
+              Our recommender is briefly overloaded. Your personalized picks will appear shortly.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3 gap-1"
+              onClick={() => refetch()}
+              disabled={isFetching}
+            >
+              <RefreshCw className={`w-3 h-3 ${isFetching ? "animate-spin" : ""}`} />
+              Try again
+            </Button>
+          </div>
+        ) : isProfileMissing ? (
           <div className="text-center py-6 text-muted-foreground">
             <Sparkles className="w-10 h-10 mx-auto mb-2 opacity-40" />
-            <p className="text-sm">{data.message}</p>
+            <p className="text-sm">{data?.message}</p>
             <Button variant="outline" size="sm" className="mt-3" asChild>
               <Link to="/dashboard/company">Complete Profile</Link>
             </Button>
