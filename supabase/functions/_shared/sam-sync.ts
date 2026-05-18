@@ -112,6 +112,8 @@ export async function fetchSamPage(opts: {
   postedTo: string;
   offset: number;
   limit?: number;
+  /** When true, append `active=true` (matches the cron's filter). */
+  activeOnly?: boolean;
 }): Promise<{ ok: true; data: any } | { ok: false; status: number; body: string }> {
   const params = new URLSearchParams();
   params.append("api_key", opts.apiKey);
@@ -119,6 +121,15 @@ export async function fetchSamPage(opts: {
   params.append("offset", String(opts.offset));
   params.append("postedFrom", opts.postedFrom);
   params.append("postedTo", opts.postedTo);
+  // SAM.gov's /opportunities/v2/search returns an empty `opportunitiesData`
+  // array for many wide windows unless an `active` filter is present. The
+  // cron at sam-sync-incremental has always sent `active=true` and works;
+  // runWindow used to omit it, which is why full backfills silently
+  // produced 0 rows for 5 of 6 windows. Default to true here so both code
+  // paths behave the same; callers can override for archive sweeps.
+  if (opts.activeOnly !== false) {
+    params.append("active", "true");
+  }
 
   const url = `${SAM_API_BASE}?${params.toString()}`;
   const backoffs = [1000, 2000, 4000, 8000];
@@ -147,6 +158,7 @@ export async function fetchSamPage(opts: {
   }
   return { ok: false, status: lastStatus, body: lastBody };
 }
+
 
 export interface JobUpdates {
   current_offset?: number;
@@ -193,20 +205,29 @@ export async function runWindow(
   startOffset: number,
   counters: { inserted: number; updated: number; failed: number },
   windowIndex?: number,
-): Promise<"done" | "cancelled"> {
+): Promise<{ outcome: "done" | "cancelled"; inserted: number; totalRecords: number | null; pages: number; failedPages: number }> {
   let offset = startOffset;
   let totalForWindow: number | null = null;
+  let windowInserted = 0;
+  let windowFailedPages = 0;
+  let pages = 0;
+  const label = `[window ${windowIndex ?? "?"}] ${postedFrom}->${postedTo}`;
 
   while (true) {
-    if (await isCancelled(supabase, jobId)) return "cancelled";
+    if (await isCancelled(supabase, jobId)) {
+      return { outcome: "cancelled", inserted: windowInserted, totalRecords: totalForWindow, pages, failedPages: windowFailedPages };
+    }
 
     const result = await fetchSamPage({ apiKey, postedFrom, postedTo, offset });
+    pages += 1;
 
     if (!result.ok) {
+      console.error(`${label} page offset=${offset} FAILED (${result.status}): ${result.body.slice(0, 200)}`);
       counters.failed += 1;
+      windowFailedPages += 1;
       await supabase.from("sync_failed_records").insert({
         job_id: jobId,
-        payload: { postedFrom, postedTo, offset, status: result.status, body: result.body },
+        payload: { postedFrom, postedTo, offset, status: result.status, body: result.body, window_index: windowIndex },
         error: `SAM page fetch failed (${result.status}): ${result.body.slice(0, 200)}`,
       });
       // Skip this page, keep going.
@@ -221,30 +242,31 @@ export async function runWindow(
     const opps = data.opportunitiesData || data.data || data.results || [];
     if (totalForWindow === null) {
       totalForWindow = data.totalRecords ?? opps.length;
+      console.log(`${label} totalRecords=${totalForWindow} (first page returned ${opps.length})`);
     }
 
-    if (opps.length === 0) break;
+    if (opps.length === 0) {
+      console.log(`${label} page offset=${offset} returned 0 opportunities; ending window`);
+      break;
+    }
 
     const rows = opps.map(transformToRow);
-    // Don't pass count: "exact" here. Older code did and added the returned
-    // count to counters.inserted — but on an unfiltered upsert PostgREST
-    // returns the *total table size* as the count, not the rows just
-    // affected. Result: counters.inserted ballooned to ~table-size per page.
     const { error: upsertError } = await supabase
       .from("contracts")
       .upsert(rows, { onConflict: "contract_id" });
 
     if (upsertError) {
+      console.error(`${label} upsert error at offset=${offset}: ${upsertError.message}`);
       counters.failed += rows.length;
+      windowFailedPages += 1;
       await supabase.from("sync_failed_records").insert({
         job_id: jobId,
-        payload: { postedFrom, postedTo, offset, sample_ids: rows.slice(0, 5).map((r) => r.contract_id) },
+        payload: { postedFrom, postedTo, offset, sample_ids: rows.slice(0, 5).map((r) => r.contract_id), window_index: windowIndex },
         error: `Upsert failed: ${upsertError.message}`,
       });
     } else {
-      // PostgREST upsert doesn't distinguish insert-vs-update; this is the
-      // count of rows processed in the page.
       counters.inserted += rows.length;
+      windowInserted += rows.length;
     }
 
     offset += rows.length;
@@ -266,8 +288,10 @@ export async function runWindow(
     // Pacing
     await sleep(400);
   }
-  return "done";
+  console.log(`${label} done: inserted=${windowInserted} pages=${pages} failedPages=${windowFailedPages} totalRecords=${totalForWindow}`);
+  return { outcome: "done", inserted: windowInserted, totalRecords: totalForWindow, pages, failedPages: windowFailedPages };
 }
+
 
 /** Step a date by N days. */
 function addDays(d: Date, days: number): Date {
@@ -296,10 +320,19 @@ export async function runFullImport(supabase: SupabaseClient, jobId: string, api
   const counters = { inserted: 0, updated: 0, failed: 0 };
   // Resume from checkpoint if present
   const { data: job } = await supabase.from("sync_jobs").select("checkpoint").eq("id", jobId).single();
-  const checkpoint = (job?.checkpoint ?? {}) as { window_index?: number; postedFrom?: string; postedTo?: string; offset?: number };
+  const checkpoint = (job?.checkpoint ?? {}) as {
+    window_index?: number;
+    postedFrom?: string;
+    postedTo?: string;
+    offset?: number;
+    window_stats?: Array<Record<string, unknown>>;
+  };
 
   const windows = buildWindows(6, 30);
   const startWindow = checkpoint.window_index ?? 0;
+  const windowStats: Array<Record<string, unknown>> = checkpoint.window_stats ?? [];
+
+  console.log(`runFullImport: ${windows.length} windows, starting at index ${startWindow}`);
 
   for (let i = startWindow; i < windows.length; i++) {
     const w = windows[i];
@@ -307,30 +340,75 @@ export async function runFullImport(supabase: SupabaseClient, jobId: string, api
     await updateJob(supabase, jobId, {
       posted_from: parseSamDate(w.from),
       posted_to: parseSamDate(w.to),
-      checkpoint: { window_index: i, postedFrom: w.from, postedTo: w.to, offset: startOffset },
+      checkpoint: {
+        window_index: i,
+        postedFrom: w.from,
+        postedTo: w.to,
+        offset: startOffset,
+        window_stats: windowStats,
+      },
     });
-    // Pass `i` so runWindow's per-page checkpoint updates preserve the
-    // window_index — required for resume-after-crash to advance instead of
-    // restarting from window 0.
-    const outcome = await runWindow(supabase, jobId, apiKey, w.from, w.to, startOffset, counters, i);
-    if (outcome === "cancelled") {
+    const res = await runWindow(supabase, jobId, apiKey, w.from, w.to, startOffset, counters, i);
+
+    windowStats.push({
+      index: i,
+      postedFrom: w.from,
+      postedTo: w.to,
+      inserted: res.inserted,
+      totalRecords: res.totalRecords,
+      pages: res.pages,
+      failedPages: res.failedPages,
+    });
+
+    // Persist per-window stats after each window so the admin UI can verify
+    // that each window actually inserted records (previously, only the final
+    // window's data was visible — windows 0-5 silently returned 0 because
+    // `active=true` wasn't sent).
+    await updateJob(supabase, jobId, {
+      checkpoint: {
+        window_index: i,
+        postedFrom: w.from,
+        postedTo: w.to,
+        offset: 0,
+        window_stats: windowStats,
+      },
+    });
+
+    if (res.outcome === "cancelled") {
       await updateJob(supabase, jobId, { status: "cancelled", finished_at: new Date().toISOString() });
       return;
     }
   }
 
+  // Verify each window pulled at least one record. If any returned 0 across
+  // its full range, flag the job as failed so the admin UI doesn't show a
+  // green "completed" for a silently-broken backfill.
+  const emptyWindows = windowStats.filter((s) => (s.inserted as number) === 0);
+  const status = emptyWindows.length === windowStats.length && windowStats.length > 0
+    ? "failed"
+    : "completed";
+  const lastError = emptyWindows.length > 0
+    ? `Empty windows: ${emptyWindows.map((s) => `${s.postedFrom}->${s.postedTo}`).join(", ")}`
+    : null;
+
+  console.log(`runFullImport complete: ${counters.inserted} rows across ${windowStats.length} windows (${emptyWindows.length} empty)`);
+
   await updateJob(supabase, jobId, {
-    status: "completed",
+    status,
     finished_at: new Date().toISOString(),
     records_inserted: counters.inserted,
     records_failed: counters.failed,
+    last_error: lastError,
   });
 
-  await supabase
-    .from("sync_metadata")
-    .update({ last_synced_at: new Date().toISOString() })
-    .eq("id", "sam_sync");
+  if (status === "completed") {
+    await supabase
+      .from("sync_metadata")
+      .update({ last_synced_at: new Date().toISOString() })
+      .eq("id", "sam_sync");
+  }
 }
+
 
 function parseSamDate(s: string): string {
   // "MM/DD/YYYY" -> "YYYY-MM-DD"
@@ -358,7 +436,9 @@ export async function runIncrementalImport(supabase: SupabaseClient, jobId: stri
     checkpoint: { postedFrom, postedTo, offset: 0 },
   });
 
-  const outcome = await runWindow(supabase, jobId, apiKey, postedFrom, postedTo, 0, counters);
+  const res = await runWindow(supabase, jobId, apiKey, postedFrom, postedTo, 0, counters);
+  const outcome = res.outcome;
+
 
   await updateJob(supabase, jobId, {
     status: outcome === "cancelled" ? "cancelled" : "completed",
