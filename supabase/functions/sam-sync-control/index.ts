@@ -18,6 +18,7 @@ const BodySchema = z.object({
   action: z.enum([
     "start_full",
     "start_incremental",
+    "continue_full",
     "cancel",
     "retry_failed",
     "status",
@@ -28,6 +29,11 @@ const BodySchema = z.object({
   job_id: z.string().uuid().optional(),
   failed_record_ids: z.array(z.string().uuid()).max(100).optional(),
 });
+
+// A "running" job whose updated_at is older than this is treated as dead
+// (edge runtime killed it without writing a status). Lets a new start_full
+// auto-recover instead of being permanently blocked.
+const STALE_JOB_MS = 5 * 60 * 1000;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -87,14 +93,24 @@ serve(async (req) => {
     case "start_incremental": {
       if (!apiKey) return json({ error: "SAM_API_KEY not configured" }, 500);
 
-      // Block if a job is already running
+      // Block if a job is genuinely running. A job that hasn't been updated
+      // in STALE_JOB_MS is treated as dead (edge runtime killed without
+      // continuation) — mark it failed so we don't permanently block starts.
       const { data: running } = await supabase
         .from("sync_jobs")
-        .select("id")
+        .select("id, updated_at")
         .eq("status", "running")
         .limit(1);
       if (running && running.length > 0) {
-        return json({ error: "A sync job is already running", job_id: running[0].id }, 409);
+        const updatedAt = running[0].updated_at ? new Date(running[0].updated_at).getTime() : 0;
+        if (Date.now() - updatedAt < STALE_JOB_MS) {
+          return json({ error: "A sync job is already running", job_id: running[0].id }, 409);
+        }
+        await supabase.from("sync_jobs").update({
+          status: "failed",
+          finished_at: new Date().toISOString(),
+          last_error: "Job marked failed: no heartbeat for >5min (edge runtime killed without continuation)",
+        }).eq("id", running[0].id);
       }
 
       // For start_full: inherit the checkpoint from the most recent
@@ -209,6 +225,48 @@ serve(async (req) => {
       );
 
       return json({ ok: true, job_id: job.id });
+    }
+
+    case "continue_full": {
+      // Self-reinvocation entrypoint. Resumes an existing running full-import
+      // job from its persisted checkpoint. Only callable by service role.
+      if (!isServiceRoleCall) return json({ error: "service role only" }, 403);
+      if (!apiKey) return json({ error: "SAM_API_KEY not configured" }, 500);
+      if (!body.job_id) return json({ error: "job_id required" }, 400);
+
+      const { data: contJob } = await supabase
+        .from("sync_jobs")
+        .select("id, status, job_type, cancel_requested")
+        .eq("id", body.job_id)
+        .maybeSingle();
+      if (!contJob) return json({ error: "Job not found" }, 404);
+      if (contJob.status !== "running") return json({ ok: true, skipped: true, reason: `status=${contJob.status}` });
+      if (contJob.cancel_requested) {
+        await supabase.from("sync_jobs").update({
+          status: "cancelled",
+          finished_at: new Date().toISOString(),
+        }).eq("id", contJob.id);
+        return json({ ok: true, cancelled: true });
+      }
+      if (contJob.job_type !== "full") return json({ error: "continue_full only supports full jobs" }, 400);
+
+      EdgeRuntime.waitUntil(
+        runFullImport(supabase, contJob.id, apiKey).catch(async (err) => {
+          console.error("continue_full worker error:", err);
+          const message = err instanceof Error ? err.message : String(err);
+          await supabase.from("sync_jobs").update({
+            status: "failed",
+            finished_at: new Date().toISOString(),
+            last_error: message,
+          }).eq("id", contJob.id);
+          await supabase.from("sync_audit_log").insert({
+            action: "sync_job_failed",
+            details: { job_id: contJob.id, error: message, phase: "continue_full" },
+          });
+        }),
+      );
+
+      return json({ ok: true, job_id: contJob.id, continued: true });
     }
 
     case "cancel": {
