@@ -436,7 +436,9 @@ export async function runIncrementalImport(supabase: SupabaseClient, jobId: stri
     checkpoint: { postedFrom, postedTo, offset: 0 },
   });
 
-  const outcome = await runWindow(supabase, jobId, apiKey, postedFrom, postedTo, 0, counters);
+  const res = await runWindow(supabase, jobId, apiKey, postedFrom, postedTo, 0, counters);
+  const outcome = res.outcome;
+
 
   await updateJob(supabase, jobId, {
     status: outcome === "cancelled" ? "cancelled" : "completed",
