@@ -320,10 +320,19 @@ export async function runFullImport(supabase: SupabaseClient, jobId: string, api
   const counters = { inserted: 0, updated: 0, failed: 0 };
   // Resume from checkpoint if present
   const { data: job } = await supabase.from("sync_jobs").select("checkpoint").eq("id", jobId).single();
-  const checkpoint = (job?.checkpoint ?? {}) as { window_index?: number; postedFrom?: string; postedTo?: string; offset?: number };
+  const checkpoint = (job?.checkpoint ?? {}) as {
+    window_index?: number;
+    postedFrom?: string;
+    postedTo?: string;
+    offset?: number;
+    window_stats?: Array<Record<string, unknown>>;
+  };
 
   const windows = buildWindows(6, 30);
   const startWindow = checkpoint.window_index ?? 0;
+  const windowStats: Array<Record<string, unknown>> = checkpoint.window_stats ?? [];
+
+  console.log(`runFullImport: ${windows.length} windows, starting at index ${startWindow}`);
 
   for (let i = startWindow; i < windows.length; i++) {
     const w = windows[i];
@@ -331,30 +340,75 @@ export async function runFullImport(supabase: SupabaseClient, jobId: string, api
     await updateJob(supabase, jobId, {
       posted_from: parseSamDate(w.from),
       posted_to: parseSamDate(w.to),
-      checkpoint: { window_index: i, postedFrom: w.from, postedTo: w.to, offset: startOffset },
+      checkpoint: {
+        window_index: i,
+        postedFrom: w.from,
+        postedTo: w.to,
+        offset: startOffset,
+        window_stats: windowStats,
+      },
     });
-    // Pass `i` so runWindow's per-page checkpoint updates preserve the
-    // window_index — required for resume-after-crash to advance instead of
-    // restarting from window 0.
-    const outcome = await runWindow(supabase, jobId, apiKey, w.from, w.to, startOffset, counters, i);
-    if (outcome === "cancelled") {
+    const res = await runWindow(supabase, jobId, apiKey, w.from, w.to, startOffset, counters, i);
+
+    windowStats.push({
+      index: i,
+      postedFrom: w.from,
+      postedTo: w.to,
+      inserted: res.inserted,
+      totalRecords: res.totalRecords,
+      pages: res.pages,
+      failedPages: res.failedPages,
+    });
+
+    // Persist per-window stats after each window so the admin UI can verify
+    // that each window actually inserted records (previously, only the final
+    // window's data was visible — windows 0-5 silently returned 0 because
+    // `active=true` wasn't sent).
+    await updateJob(supabase, jobId, {
+      checkpoint: {
+        window_index: i,
+        postedFrom: w.from,
+        postedTo: w.to,
+        offset: 0,
+        window_stats: windowStats,
+      },
+    });
+
+    if (res.outcome === "cancelled") {
       await updateJob(supabase, jobId, { status: "cancelled", finished_at: new Date().toISOString() });
       return;
     }
   }
 
+  // Verify each window pulled at least one record. If any returned 0 across
+  // its full range, flag the job as failed so the admin UI doesn't show a
+  // green "completed" for a silently-broken backfill.
+  const emptyWindows = windowStats.filter((s) => (s.inserted as number) === 0);
+  const status = emptyWindows.length === windowStats.length && windowStats.length > 0
+    ? "failed"
+    : "completed";
+  const lastError = emptyWindows.length > 0
+    ? `Empty windows: ${emptyWindows.map((s) => `${s.postedFrom}->${s.postedTo}`).join(", ")}`
+    : null;
+
+  console.log(`runFullImport complete: ${counters.inserted} rows across ${windowStats.length} windows (${emptyWindows.length} empty)`);
+
   await updateJob(supabase, jobId, {
-    status: "completed",
+    status,
     finished_at: new Date().toISOString(),
     records_inserted: counters.inserted,
     records_failed: counters.failed,
+    last_error: lastError,
   });
 
-  await supabase
-    .from("sync_metadata")
-    .update({ last_synced_at: new Date().toISOString() })
-    .eq("id", "sam_sync");
+  if (status === "completed") {
+    await supabase
+      .from("sync_metadata")
+      .update({ last_synced_at: new Date().toISOString() })
+      .eq("id", "sam_sync");
+  }
 }
+
 
 function parseSamDate(s: string): string {
   // "MM/DD/YYYY" -> "YYYY-MM-DD"
