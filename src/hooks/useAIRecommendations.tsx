@@ -63,7 +63,12 @@ export function useAIRecommendations() {
 
   return useQuery({
     queryKey: ["ai-recommendations"],
-    queryFn: () => invokeWithRetry(),
+    queryFn: () =>
+      enqueueAIRequest(
+        "ai-recommend-contracts",
+        () => invokeWithRetry(),
+        { minGapMs: 800, dedupeId: "ai-recommend-contracts" },
+      ),
     enabled: !!session,
     staleTime: 30 * 60 * 1000,
     // invokeWithRetry already handles 429 backoff — don't double-retry.
