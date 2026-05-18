@@ -23,12 +23,23 @@ async function invokeWithRetry(maxRetries = 2): Promise<{ recommendations: AIRec
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const { data, error } = await supabase.functions.invoke("ai-recommend-contracts");
 
-    const is429 = error?.message?.includes("429") || data?.error?.includes("busy");
+    const is429 =
+      error?.message?.includes("429") ||
+      (error as any)?.context?.status === 429 ||
+      (typeof data?.error === "string" && data.error.toLowerCase().includes("busy"));
 
     if (is429 && attempt < maxRetries) {
       await new Promise(r => setTimeout(r, delay));
       delay *= 2;
       continue;
+    }
+
+    // Persistent 429 → degrade gracefully so the card doesn't blank-screen.
+    if (is429) {
+      return {
+        recommendations: [],
+        message: "AI picks are temporarily busy. Please refresh in a moment.",
+      };
     }
 
     if (error) throw error;
@@ -37,7 +48,10 @@ async function invokeWithRetry(maxRetries = 2): Promise<{ recommendations: AIRec
     return data;
   }
 
-  throw new Error("AI service is temporarily unavailable. Please try again shortly.");
+  return {
+    recommendations: [],
+    message: "AI picks are temporarily unavailable. Please try again shortly.",
+  };
 }
 
 export function useAIRecommendations() {
