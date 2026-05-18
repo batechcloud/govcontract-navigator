@@ -271,6 +271,44 @@ serve(async (req) => {
 
     case "cancel": {
       if (!body.job_id) return json({ error: "job_id required" }, 400);
+
+      // Read current state to decide if the worker is alive
+      const { data: existing } = await supabase
+        .from("sync_jobs")
+        .select("id, status, updated_at")
+        .eq("id", body.job_id)
+        .maybeSingle();
+
+      if (!existing) return json({ error: "job not found" }, 404);
+
+      // If already terminal, no-op
+      if (["completed", "cancelled", "failed"].includes(existing.status)) {
+        return json({ ok: true, already: existing.status });
+      }
+
+      const ageMs = Date.now() - new Date(existing.updated_at).getTime();
+      const STALE_MS = 60 * 1000; // 60s without heartbeat = no live worker
+
+      if (ageMs > STALE_MS) {
+        // No live worker is honoring the flag — finalize immediately
+        await supabase
+          .from("sync_jobs")
+          .update({
+            status: "cancelled",
+            cancel_requested: true,
+            finished_at: new Date().toISOString(),
+            last_error: "Cancelled by admin (no active worker)",
+          })
+          .eq("id", body.job_id);
+        await supabase.from("sync_audit_log").insert({
+          actor_id: actorId,
+          action: "cancel_forced",
+          details: { job_id: body.job_id, stale_ms: ageMs },
+        });
+        return json({ ok: true, forced: true });
+      }
+
+      // Worker is alive — request graceful cancel; it will honor at next checkpoint
       await supabase.from("sync_jobs").update({ cancel_requested: true }).eq("id", body.job_id);
       await supabase.from("sync_audit_log").insert({
         actor_id: actorId,
