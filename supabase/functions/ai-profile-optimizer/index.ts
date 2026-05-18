@@ -155,8 +155,14 @@ Contract Types: ${profile.contract_types?.length || 0}`;
     });
   } catch (e) {
     console.error("profile optimizer error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    return new Response(JSON.stringify({
+      score: 0,
+      summary: "AI scoring is temporarily unavailable. Try again shortly.",
+      suggestions: [],
+      fallback: true,
+      busy: true,
+    }), {
+      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
