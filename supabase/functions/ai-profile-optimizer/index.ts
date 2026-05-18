@@ -126,13 +126,21 @@ Contract Types: ${profile.contract_types?.length || 0}`;
     }, OPENAI_API_KEY);
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "AI is busy, please try again in a moment." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      const errText = await response.text().catch(() => "");
+      console.error("OpenAI error:", response.status, errText);
+      // Graceful fallback for overload / server errors — return 200 so the
+      // client doesn't blank-screen on FunctionsHttpError.
+      if (response.status === 429 || response.status >= 500) {
+        return new Response(JSON.stringify({
+          score: 0,
+          summary: "AI scoring is temporarily busy. Try again shortly.",
+          suggestions: [],
+          fallback: true,
+          busy: true,
+        }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const errText = await response.text();
-      console.error("OpenAI error:", response.status, errText);
       throw new Error(`AI error: ${response.status}`);
     }
 
