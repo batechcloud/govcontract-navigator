@@ -15,10 +15,15 @@ const priorityColors = {
 export function AIRecommendationsCard() {
   const { data, isLoading, isError, refetch, isFetching } = useAIRecommendations();
 
-  if (isError) return null;
-
   const recs = data?.recommendations || [];
   const isAIGenerated = data?.source === "ai_generated";
+  // Treat any error OR a fallback message with no recs as "AI busy".
+  const isBusy =
+    isError ||
+    (!isLoading && recs.length === 0 && typeof data?.message === "string" &&
+      /busy|unavailable|temporarily/i.test(data.message));
+  const isProfileMissing =
+    !isLoading && recs.length === 0 && data?.message && !isBusy;
 
   return (
     <Card variant="glass">
