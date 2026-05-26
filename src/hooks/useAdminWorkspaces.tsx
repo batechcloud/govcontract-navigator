@@ -23,6 +23,7 @@ export type AdminWorkspaceMember = {
   role: string;
   is_suspended: boolean;
   joined_at: string;
+  last_active_at: string | null;
 };
 
 export function useAdminWorkspaces() {

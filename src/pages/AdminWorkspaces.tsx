@@ -12,7 +12,9 @@ import {
   ChevronRight,
   Activity,
   UserCog,
+  Eye,
 } from "lucide-react";
+import WorkspaceDetailDrawer from "@/components/admin/WorkspaceDetailDrawer";
 import { startImpersonation } from "@/lib/impersonation";
 
 import { Card } from "@/components/ui/card";
@@ -70,6 +72,7 @@ export default function AdminWorkspaces() {
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<AdminWorkspaceRow | null>(null);
+  const [detailRow, setDetailRow] = useState<AdminWorkspaceRow | null>(null);
   const [reason, setReason] = useState("");
 
   const filtered = useMemo(() => {
@@ -197,6 +200,7 @@ export default function AdminWorkspaces() {
                     setConfirm(r);
                     setReason("");
                   }}
+                  onOpenDetail={() => setDetailRow(r)}
                 />
               ))}
             </TableBody>
@@ -243,6 +247,12 @@ export default function AdminWorkspaces() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <WorkspaceDetailDrawer
+        row={detailRow}
+        open={!!detailRow}
+        onOpenChange={(o) => !o && setDetailRow(null)}
+      />
     </>
   );
 }
@@ -252,11 +262,13 @@ function WorkspaceRow({
   expanded,
   onToggleExpand,
   onActionClick,
+  onOpenDetail,
 }: {
   row: AdminWorkspaceRow;
   expanded: boolean;
   onToggleExpand: () => void;
   onActionClick: () => void;
+  onOpenDetail: () => void;
 }) {
   const { data: members = [], isLoading } = useAdminWorkspaceMembers(expanded ? row.workspace_id : null);
 
@@ -268,7 +280,14 @@ function WorkspaceRow({
             {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           </Button>
         </TableCell>
-        <TableCell className="font-medium">{row.workspace_name}</TableCell>
+        <TableCell>
+          <button
+            onClick={onOpenDetail}
+            className="font-medium text-left hover:text-primary hover:underline"
+          >
+            {row.workspace_name}
+          </button>
+        </TableCell>
         <TableCell>
           <div className="text-sm">{ownerLabel(row)}</div>
           <div className="text-xs text-muted-foreground">{row.owner_email}</div>
@@ -293,6 +312,9 @@ function WorkspaceRow({
         </TableCell>
         <TableCell className="text-right">
           <div className="flex items-center justify-end gap-2">
+            <Button size="sm" variant="outline" onClick={onOpenDetail}>
+              <Eye className="w-4 h-4 mr-1" /> Details
+            </Button>
             <Button
               size="sm"
               variant="outline"

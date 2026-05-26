@@ -1360,6 +1360,7 @@ export type Database = {
           first_name: string
           is_suspended: boolean
           joined_at: string
+          last_active_at: string
           last_name: string
           role: Database["public"]["Enums"]["workspace_role"]
           user_id: string
@@ -1405,6 +1406,7 @@ export type Database = {
           signups: number
         }[]
       }
+      admin_workspace_detail: { Args: { _workspace_id: string }; Returns: Json }
       can_impersonate: { Args: { _user_id: string }; Returns: boolean }
       can_manage_subscriptions: { Args: { _user_id: string }; Returns: boolean }
       check_and_increment_rate_limit: {
