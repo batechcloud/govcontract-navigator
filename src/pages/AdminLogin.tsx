@@ -43,7 +43,7 @@ const AdminLogin = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
       const { data: isAdmin } = await supabase.rpc("is_admin", { _user_id: session.user.id });
-      if (isAdmin) navigate("/admin/sync", { replace: true });
+      if (isAdmin) navigate("/admin", { replace: true });
     })();
   }, [navigate]);
 
@@ -85,7 +85,7 @@ const AdminLogin = () => {
 
       await auditLogin(true);
       toast.success("Welcome, admin");
-      navigate("/admin/sync", { replace: true });
+      navigate("/admin", { replace: true });
     } catch (err: any) {
       await auditLogin(false, "password", err?.message);
       toast.error("Sign-in failed", { description: err?.message });

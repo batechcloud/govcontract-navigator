@@ -48,13 +48,17 @@ export function useAdminRecentSignups(limit = 8) {
   return useQuery({
     queryKey: ["admin-recent-signups", limit],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, first_name, last_name, created_at, is_suspended")
-        .order("created_at", { ascending: false })
-        .limit(limit);
+      const { data, error } = await supabase.rpc("admin_recent_signups" as any, {
+        _limit: limit,
+      });
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as {
+        id: string;
+        first_name: string | null;
+        last_name: string | null;
+        created_at: string;
+        is_suspended: boolean;
+      }[];
     },
     staleTime: 60_000,
   });

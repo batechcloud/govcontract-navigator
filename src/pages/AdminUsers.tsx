@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
-import { Users, Search, Loader2, ShieldOff, ShieldCheck } from "lucide-react";
+import { Users, Search, Loader2, ShieldOff, ShieldCheck, UserCog } from "lucide-react";
+import { startImpersonation } from "@/lib/impersonation";
 
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -199,30 +200,46 @@ export default function AdminUsers() {
                   )}
                 </TableCell>
                 <TableCell className="text-right">
-                  {u.is_suspended ? (
+                  <div className="flex items-center justify-end gap-2">
                     <Button
                       size="sm"
                       variant="outline"
-                      className="border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10"
-                      onClick={() => {
-                        setConfirm(u);
-                        setReason("");
+                      onClick={async () => {
+                        try {
+                          toast.message(`Switching to ${u.email ?? u.user_id}…`);
+                          await startImpersonation(u.user_id);
+                        } catch (e) {
+                          toast.error((e as Error).message || "Impersonation failed");
+                        }
                       }}
                     >
-                      <ShieldCheck className="w-4 h-4 mr-1" /> Reactivate
+                      <UserCog className="w-4 h-4 mr-1" /> Impersonate
                     </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => {
-                        setConfirm(u);
-                        setReason("");
-                      }}
-                    >
-                      <ShieldOff className="w-4 h-4 mr-1" /> Suspend
-                    </Button>
-                  )}
+                    {u.is_suspended ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10"
+                        onClick={() => {
+                          setConfirm(u);
+                          setReason("");
+                        }}
+                      >
+                        <ShieldCheck className="w-4 h-4 mr-1" /> Reactivate
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => {
+                          setConfirm(u);
+                          setReason("");
+                        }}
+                      >
+                        <ShieldOff className="w-4 h-4 mr-1" /> Suspend
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

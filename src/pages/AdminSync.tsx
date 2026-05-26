@@ -152,7 +152,7 @@ export default function AdminSync() {
   }
 
   if (!isAdmin) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/admin/login" replace />;
   }
 
   const running = status.data?.running_job;

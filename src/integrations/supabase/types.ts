@@ -1399,6 +1399,16 @@ export type Database = {
           total_workspaces: number
         }[]
       }
+      admin_recent_signups: {
+        Args: { _limit?: number }
+        Returns: {
+          created_at: string
+          first_name: string
+          id: string
+          is_suspended: boolean
+          last_name: string
+        }[]
+      }
       admin_signups_timeseries: {
         Args: { _days?: number }
         Returns: {
