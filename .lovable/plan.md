@@ -1,55 +1,76 @@
-## Add Viewer/Editor roles to workspace invites
+## Add Support Chat (workspace ↔ support team)
 
-Extend the existing Workspace model so invited users get a role of **Viewer** (read-only) or **Editor** (read/write), while the original creator remains **Owner**. Owners keep exclusive rights to invite and remove members.
+A shared support thread per workspace. Owner and all members can post; superadmins reply from a new Admin Support Inbox page. Polls every 30s. Image/PDF attachments supported.
 
 ### 1. Database (single migration)
 
-- Extend the `workspace_role` enum: add `viewer` and `editor` values (keep existing `owner`, `member` for backward compatibility; treat legacy `member` as `editor` at read time).
-- Add helper security-definer functions:
-  - `is_workspace_editor()` → true if current user is `owner` or `editor` in their workspace.
-  - `is_workspace_viewer_or_above()` → true for any membership (used by SELECT policies).
-- Update RLS on shared tables (`tracked_contracts`, `proposals`, `saved_searches`, `company_profiles`):
-  - **SELECT** — any workspace member (viewer included), via `same_workspace_as(user_id)`.
-  - **INSERT / UPDATE / DELETE** — only `owner` or `editor` of the same workspace. Viewers blocked.
-- Backfill: any existing `member` row → `editor` (preserves current behavior for already-invited users).
+- **`support_threads`** — one row per workspace.
+  - `id`, `workspace_id` (unique), `subject` (default "Workspace support"), `status` ('open' | 'pending' | 'resolved'), `last_message_at`, `last_message_preview`, `unread_for_workspace` int, `unread_for_admin` int, timestamps.
+- **`support_messages`** — chronological messages.
+  - `id`, `thread_id`, `sender_id` (auth user id), `sender_type` ('workspace' | 'admin' | 'system'), `body` text, `attachments` jsonb (array of `{ path, name, mime, size }`), `created_at`.
+- Indexes on `support_messages(thread_id, created_at)` and `support_threads(workspace_id)`, `support_threads(status, last_message_at desc)`.
+- **GRANTs** for `authenticated` and `service_role` on both tables.
+- **RLS**
+  - Threads: workspace members SELECT/UPDATE their own thread (via `same_workspace_as` on `owner_id` lookup or direct workspace_id check using `my_workspace_id()`); admins (`is_admin(auth.uid())`) SELECT/UPDATE all.
+  - Messages: workspace members SELECT messages whose thread belongs to their workspace; INSERT allowed with `sender_id = auth.uid()` and `sender_type = 'workspace'`. Admins SELECT all and INSERT with `sender_type = 'admin'`.
+- Trigger on `support_messages` insert: update parent thread's `last_message_at`, `last_message_preview`, increment the opposite-side unread counter, set status to `open` when a workspace user posts.
+- Helper `get_or_create_support_thread(_workspace_id uuid)` SECURITY DEFINER returning the thread id, used by the client on first open.
 
-### 2. Edge functions
+### 2. Storage
 
-- **`workspace-invite-user`** — accept new `role` field in body, validated as `'viewer' | 'editor'` (default `'viewer'`). Owner-only caller check unchanged. Insert `workspace_members` row with the chosen role.
-- **`workspace-remove-user`** — unchanged (owner-only, hard delete).
-- Owner role cannot be assigned via invite; only the workspace creator is owner.
+- New private bucket `support-attachments`.
+- RLS on `storage.objects`:
+  - Workspace members upload/read files prefixed `workspace/<workspace_id>/...`.
+  - Admins read all under the bucket.
+- 10MB per file limit enforced client-side. Allowed mimes: `image/*`, `application/pdf`.
 
-### 3. Frontend — `src/components/settings/UsersTab.tsx`
+### 3. Edge functions
 
-- **Invite dialog**: add a Role selector (Viewer / Editor) with short helper text for each:
-  - Viewer — "Can see contracts, proposals, saved searches. Cannot make changes."
-  - Editor — "Full access to create, edit, and delete shared workspace data."
-- **Roster table**: show role badge with three styles (Owner / Editor / Viewer). Add an inline role switcher (dropdown) for owner to change a member between Viewer ↔ Editor. Owner row is locked.
-- **Remove button**: owner-only, unchanged.
-- Add a small `useWorkspacePermissions` derivation in `useWorkspace.tsx` exposing `isOwner`, `isEditor`, `isViewer`, `canEdit` for use elsewhere.
+None required for v1 — all reads/writes go through Supabase client + RLS. Trigger handles thread bookkeeping.
 
-### 4. Frontend write-path gating (light touch)
+### 4. Frontend — workspace side
 
-- Use `canEdit` from `useWorkspacePermissions` to disable obvious write controls for viewers (Save contract button, Create proposal, Save search, Edit company profile). DB RLS is the source of truth; UI gating just avoids confusing errors.
-- Show a single tooltip on disabled controls: "Read-only access — ask your workspace owner for editor access."
+- **`src/hooks/useSupportThread.tsx`**
+  - `useSupportThread()` — RPC `get_or_create_support_thread`, then `useQuery` for thread row.
+  - `useSupportMessages(threadId)` — message list, `refetchInterval: 30_000` while visible.
+  - `useSendSupportMessage()` — upload attachments to storage, then insert message row.
+- **`src/components/support/SupportChatPanel.tsx`** — Sheet/drawer with header (subject, status badge, "Typical reply within 24h" microcopy), scrollable message list, input area with file attach + send button. Uses AI Elements–style bubbles (own = right-aligned filled, admin = left-aligned subtle surface, system = centered muted). Auto-scroll to bottom on new messages.
+- **Sidebar entry** — add a "Support" item near the bottom of the main sidebar (icon: `LifeBuoy`) with an unread dot when `unread_for_workspace > 0`. Clicking opens the Sheet panel (not a route). Visible to every workspace member (owner + editor + viewer).
+- Mark thread read: when the panel opens, reset `unread_for_workspace = 0`.
 
-### 5. New edge function — `workspace-update-role`
+### 5. Frontend — admin side
 
-- Owner-only. Input: `{ user_id, role: 'viewer' | 'editor' }`. Validates target is in caller's workspace and not the owner. Updates `workspace_members.role`. Audit log entry.
+- **`src/pages/admin/SupportInbox.tsx`** (new) under `AdminRoute` at `/admin/support`.
+  - Left column: list of all threads, ordered by `last_message_at desc`. Each row: workspace name, last preview, time ago, unread badge, status pill, filter chips (Open / Pending / Resolved / All), search.
+  - Right column: selected thread conversation reusing `SupportMessageList` + admin composer. Status dropdown (Open / Pending / Resolved). On open, reset `unread_for_admin = 0`.
+- Add **Support** link to the admin sidebar.
+
+### 6. Polling & sidebar badge
+
+- Lightweight workspace-side hook `useSupportUnreadCount()` that queries `support_threads.unread_for_workspace` for the workspace every 30s; drives the sidebar dot.
+- Admin sidebar gets a parallel `useAdminSupportUnreadCount()` summing `unread_for_admin` across open threads.
 
 ### Out of scope
 
-- No per-resource permissions (everything is workspace-wide).
-- No transfer-ownership flow.
-- No invite emails (still temp-password flow).
-- No new "admin" tier between owner and editor.
+- No realtime subscriptions (poll only).
+- No email notifications.
+- No typing indicators, read receipts, reactions.
+- No per-message editing/deletion.
+- No file types beyond images and PDFs.
+- No SLAs / business-hours logic — UI just shows "Typical reply within 24h" microcopy.
 
-### Files
+### Files to create
 
-- New migration (enum values, helper fns, RLS rewrites, backfill).
-- New edge function `supabase/functions/workspace-update-role/index.ts`.
-- Edit `supabase/functions/workspace-invite-user/index.ts` (accept role).
-- Edit `supabase/config.toml` (register new function).
-- Edit `src/hooks/useWorkspace.tsx` (expose permissions).
-- Edit `src/components/settings/UsersTab.tsx` (role selector + inline switcher).
-- Optional: wire `canEdit` into a few primary write actions (TrackContract button, Create Proposal button, Save Search button).
+- Migration (tables, indexes, RLS, trigger, helper RPC, bucket + storage policies).
+- `src/hooks/useSupportThread.tsx`
+- `src/components/support/SupportChatPanel.tsx`
+- `src/components/support/SupportMessageList.tsx`
+- `src/components/support/SupportComposer.tsx`
+- `src/pages/admin/SupportInbox.tsx`
+
+### Files to edit
+
+- Main sidebar component (add Support item + unread dot)
+- Admin sidebar component (add Support link)
+- `src/App.tsx` (lazy route `/admin/support`)
+- Memory index (new `mem://features/support-chat` entry)
