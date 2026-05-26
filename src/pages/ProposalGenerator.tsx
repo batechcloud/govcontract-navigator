@@ -258,14 +258,27 @@ export default function ProposalGenerator() {
           )}
         </motion.div>
 
-        {!generatedProposalId ? (
+        {proposalAccess && !proposalAccess.has_access ? (
+          <UpgradePrompt
+            featureCode="proposal_generator"
+            currentPlan={subscription?.plan?.display_name || "Starter"}
+            hasAccess={false}
+          />
+        ) : !generatedProposalId ? (
           <motion.div
             className="bg-card/50 backdrop-blur-xl border border-border/50 rounded-xl p-8"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
+            <UsageLimitBanner
+              featureCode="proposal_generator"
+              featureName="AI Proposals"
+              className="mb-6"
+              showAlways
+            />
             <div className="space-y-6">
+
 
               {/* Tracked Contract Picker */}
               {trackedContracts.length > 0 && (
