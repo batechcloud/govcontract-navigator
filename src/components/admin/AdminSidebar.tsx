@@ -129,12 +129,6 @@ export function AdminSidebar() {
       <SidebarFooter className="border-t border-border/60 p-2">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton onClick={() => navigate("/dashboard")}>
-              <ArrowLeft className="w-4 h-4" />
-              {!collapsed && <span>Back to app</span>}
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
             <SidebarMenuButton
               onClick={async () => {
                 await supabase.auth.signOut();
