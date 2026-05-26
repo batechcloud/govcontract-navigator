@@ -180,17 +180,6 @@ export default function AdminSync() {
               Manage contract data ingestion. The platform serves users from this internal database — never from a live SAM.gov call.
             </p>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            <Button variant="outline" onClick={() => navigate("/admin/workspaces")}>
-              Workspaces
-            </Button>
-            <Button variant="outline" onClick={() => navigate("/admin/support")}>
-              Support
-            </Button>
-            <Button variant="outline" onClick={() => navigate("/admin/audit")}>
-              <Activity className="w-4 h-4 mr-2" /> View Audit
-            </Button>
-          </div>
         </div>
 
         {/* Top metrics */}
