@@ -12,6 +12,7 @@ import {
   X,
   LogOut,
   LifeBuoy,
+  BarChart3,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
@@ -26,6 +27,7 @@ const sidebarItems = [
   { icon: FileText, label: "My Proposals", href: "/dashboard/proposals" },
   { icon: Sparkles, label: "Ask AI", href: "/dashboard/ai" },
   { icon: Building2, label: "My Business", href: "/dashboard/company" },
+  { icon: BarChart3, label: "USASpending", href: "/dashboard/usaspending" },
 ];
 
 interface DashboardSidebarProps {
