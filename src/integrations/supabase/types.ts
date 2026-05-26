@@ -1309,6 +1309,34 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_list_workspace_members: {
+        Args: { _workspace_id: string }
+        Returns: {
+          email: string
+          first_name: string
+          is_suspended: boolean
+          joined_at: string
+          last_name: string
+          role: Database["public"]["Enums"]["workspace_role"]
+          user_id: string
+        }[]
+      }
+      admin_list_workspaces: {
+        Args: never
+        Returns: {
+          is_suspended: boolean
+          member_count: number
+          owner_email: string
+          owner_first_name: string
+          owner_id: string
+          owner_last_active_at: string
+          owner_last_name: string
+          plan_name: string
+          workspace_created_at: string
+          workspace_id: string
+          workspace_name: string
+        }[]
+      }
       check_and_increment_rate_limit: {
         Args: { _api_name: string; _daily_limit: number; _user_id: string }
         Returns: {

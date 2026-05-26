@@ -59,3 +59,9 @@ verify_jwt = false
 
 [functions.workspace-update-role]
 verify_jwt = false
+
+[functions.admin-set-user-active]
+verify_jwt = false
+
+[functions.bootstrap-test-admin]
+verify_jwt = false
