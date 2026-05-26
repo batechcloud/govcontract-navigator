@@ -99,6 +99,20 @@ export const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => 
 
         {/* User Section */}
         <div className="p-4 border-t border-border space-y-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start relative"
+            onClick={() => setSupportOpen(true)}
+          >
+            <LifeBuoy className="w-4 h-4 mr-2" />
+            Support
+            {unread > 0 && (
+              <span className="ml-auto inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold">
+                {unread > 9 ? "9+" : unread}
+              </span>
+            )}
+          </Button>
           <Button variant="ghost" size="sm" className="w-full justify-start" asChild>
             <Link to="/dashboard/settings">
               <Settings className="w-4 h-4 mr-2" />
@@ -111,6 +125,7 @@ export const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => 
           </Button>
         </div>
       </div>
+      <SupportChatPanel open={supportOpen} onOpenChange={setSupportOpen} />
     </aside>
   );
 };
