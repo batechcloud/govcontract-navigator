@@ -1,85 +1,85 @@
-# Admin Impersonation
+## Admin Settings, Profile & Team Management
 
-Goal: from `/admin/workspaces`, an admin clicks **Impersonate** on any workspace row, lands on that owner's `/dashboard` with full read/write context, and can return to admin with one click. Every impersonation is auditable.
+Add a full admin account area plus an admin team system with granular roles.
 
-## Approach
+### 1. Admin Profile & Settings page (`/admin/settings`)
 
-Use Supabase Admin API (`generateLink` + magic link consumption) inside an edge function to mint a real session for the target user. Admin's original session is stashed in `sessionStorage` so we can restore it on exit.
+New page with tabs:
 
-```text
-[Admin] click Impersonate
-   │
-   ▼
-edge fn: admin-impersonate (verifies is_admin, audits, mints session for target)
-   │
-   ▼
-client: stash current admin tokens → supabase.auth.setSession(targetTokens)
-   │
-   ▼
-Redirect to /dashboard with global ImpersonationBanner
-   │
-   ▼
-click "Exit impersonation" → restore admin tokens → /admin/workspaces
-```
+- **Profile** — first name, last name, avatar upload (reuses `avatars` bucket), updates `profiles` table.
+- **Account** — change email (`supabase.auth.updateUser({ email })`), change password (`updateUser({ password })`), with current-password reverify.
+- **Security** — sign out of all sessions, view recent admin logins (from `sync_audit_log` filtered by `actor_id`).
+- **Team** — manage admin team members (see §3).
 
-## Backend
+Add a "Settings" link to `AdminSidebar` and a user menu in `AdminLayout` header (avatar → Settings / Sign out).
 
-**New edge function `supabase/functions/admin-impersonate/index.ts`**
-- Manual JWT verify of caller; require `is_admin(caller.id) = true`.
-- Input (Zod): `{ target_user_id: uuid }`.
-- Reject if target is also admin (no admin-on-admin impersonation).
-- Use `supabase.auth.admin.generateLink({ type: 'magiclink', email: target.email })`, extract `hashed_token`, then call `verifyOtp({ type: 'magiclink', token_hash })` server-side to get `{ access_token, refresh_token }`.
-- Insert row into `sync_audit_log` with action `admin.impersonate.start`, details `{ target_user_id, target_email, ip, ua }`.
-- Return `{ access_token, refresh_token, target: { id, email, first_name, last_name } }`.
-- Registered in `supabase/config.toml` with `verify_jwt = false` (manual check inside).
+### 2. New admin role system
 
-**New edge function `supabase/functions/admin-impersonate-end/index.ts`**
-- Caller is the impersonated user; body carries `original_admin_id`.
-- Verifies via `sync_audit_log` that an active impersonation start exists for that pair in the last 8h.
-- Writes `admin.impersonate.end` audit row. (No token work — client restores stashed admin tokens.)
+Extend `app_role` enum (currently `admin`, `moderator`, `user`) with two scoped admin roles:
 
-No DB migration required (audit log + `admin_emails` already exist).
+- `subscription_manager` — read/update `user_subscriptions`, view users; no impersonation, no support.
+- `workspace_admin` — impersonate workspace owners, access support inbox, view workspaces/users; can no view or edit subscription.
+- `admin` (existing, treated as superadmin) — full access, only role that can manage the admin team.
 
-## Frontend
+DB migration:
 
-**New `src/lib/impersonation.ts`**
-- `IMPERSONATION_KEY = "gcn.impersonation"` in `sessionStorage`.
-- Shape: `{ adminAccessToken, adminRefreshToken, adminUserId, adminEmail, targetUserId, targetEmail, startedAt }`.
-- Helpers: `getImpersonation()`, `isImpersonating()`, `startImpersonation(targetId)`, `endImpersonation()`.
-- `startImpersonation`: read current session, invoke `admin-impersonate`, stash admin tokens, `supabase.auth.setSession(target tokens)`, `queryClient.clear()`, navigate `/dashboard`.
-- `endImpersonation`: invoke `admin-impersonate-end`, `supabase.auth.setSession(admin tokens)`, clear storage, `queryClient.clear()`, navigate `/admin/workspaces`.
+- `ALTER TYPE app_role ADD VALUE 'subscription_manager'; ADD VALUE 'workspace_admin';`
+- Update `is_admin(uuid)` to return true for any of the three admin roles (so existing admin routes keep working), OR introduce `has_admin_access(uuid)` + keep `is_admin` strictly superadmin. **Recommendation:** new `has_admin_access()` function used by RLS/routes; keep `is_admin()` as superadmin gate for destructive actions and team management.
+- New SECURITY DEFINER helpers: `can_manage_subscriptions(uuid)`, `can_impersonate(uuid)`.
+- New RPCs: `admin_list_team()`, `admin_add_team_member(email, role)`, `admin_update_team_role(user_id, role)`, `admin_remove_team_member(user_id)` — all gated by superadmin check.
 
-**New `src/components/impersonation/ImpersonationBanner.tsx`**
-- Fixed top banner (amber/destructive tokens), shown app-wide whenever `isImpersonating()`.
-- Text: "Viewing as {targetEmail} — actions are real". Button: **Exit impersonation**.
-- Mounted once in `src/App.tsx` above `<Routes>`.
+### 3. Team management UI (Settings → Team tab, superadmin only)
 
-**`src/pages/AdminWorkspaces.tsx`**
-- Add **Impersonate** button per row (uses existing `useAdminWorkspaces` data → `owner_id`, `owner_email`).
-- Confirm dialog: "Impersonate {owner_email}? All actions will be performed as this user and logged."
-- On confirm → `startImpersonation(owner_id)`.
+- Table of admin team members: email, role, added date, last active, remove button.
+- "Add team member" dialog: email + role select (Subscription Manager / Workspace Admin / Superadmin).
+- Calls new `admin-team-invite` edge function that either:
+  - Finds existing auth user by email and inserts into `user_roles`, or
+  - Sends invite via `admin.auth.admin.inviteUserByEmail`, then assigns role on signup.
+- Role-change dropdown inline per row.
+- Superadmin cannot remove the last superadmin (server-side guard).
 
-**`src/components/auth/AdminRoute.tsx`**
-- If `isImpersonating()` → redirect to `/dashboard` (admin guard must not engage while impersonating).
+### 4. Permission enforcement
 
-**`src/hooks/useIsAdmin.tsx`**
-- Force-return `false` when `isImpersonating()` so admin UI never leaks into the target's view.
+- `useIsAdmin` → keep as "any admin access" check (drives sidebar visibility).
+- New `useAdminRole()` hook returns `'admin' | 'subscription_manager' | 'workspace_admin' | null`.
+- `AdminRoute` accepts optional `requiredRole` prop; route-level gates:
+  - `/admin/subscriptions` — `subscription_manager` or `admin`
+  - `/admin/workspaces`, `/admin/support`, impersonate button — `workspace_admin` or `admin`
+  - `/admin/users`, `/admin/sync`, `/admin/audit`, `/admin/settings` (Team tab) — `admin` only
+- `AdminSidebar` filters items based on role.
+- `admin-impersonate` edge function: replace `is_admin` check with `can_impersonate` check.
+- `admin-set-user-active` and subscription mutation functions: gate by appropriate role.
 
-## Security
+### 5. Files
 
-- Only callers where `is_admin(auth.uid())` passes can invoke `admin-impersonate`; double-checked server-side.
-- Cannot impersonate another admin.
-- Every start/end is written to `sync_audit_log` (already admin-readable).
-- Tokens minted have normal Supabase session lifetime; sessionStorage (not localStorage) so they die with the tab.
-- Banner is non-dismissible; exit button is always one click.
+**New**
 
-## Out of scope
+- `src/pages/AdminSettings.tsx`
+- `src/components/admin/AdminUserMenu.tsx`
+- `src/components/admin/settings/ProfileTab.tsx`
+- `src/components/admin/settings/AccountTab.tsx`
+- `src/components/admin/settings/SecurityTab.tsx`
+- `src/components/admin/settings/TeamTab.tsx`
+- `src/hooks/useAdminRole.tsx`
+- `src/hooks/useAdminTeam.tsx`
+- `supabase/functions/admin-team-invite/index.ts`
+- `supabase/functions/admin-team-update-role/index.ts`
+- `supabase/functions/admin-team-remove/index.ts`
+- Migration: enum values + helper functions + RPCs
 
-- Read-only impersonation mode.
-- Time-boxed auto-exit timer (can add later; audit log already records start).
-- Impersonating users without an email (shouldn't exist in this project).
+**Edited**
 
-## Files
+- `src/App.tsx` (add route)
+- `src/components/admin/AdminSidebar.tsx` (Settings link + role filtering)
+- `src/components/admin/AdminLayout.tsx` (header user menu)
+- `src/components/auth/AdminRoute.tsx` (`requiredRole` prop)
+- `src/hooks/useIsAdmin.tsx` (use `has_admin_access`)
+- `src/pages/AdminWorkspaces.tsx` (gate impersonate button)
+- `supabase/functions/admin-impersonate/index.ts` (use `can_impersonate`)
+- `supabase/config.toml` (register new functions)
 
-**Create:** `supabase/functions/admin-impersonate/index.ts`, `supabase/functions/admin-impersonate-end/index.ts`, `src/lib/impersonation.ts`, `src/components/impersonation/ImpersonationBanner.tsx`
-**Edit:** `supabase/config.toml`, `src/App.tsx`, `src/pages/AdminWorkspaces.tsx`, `src/components/auth/AdminRoute.tsx`, `src/hooks/useIsAdmin.tsx`, `mem://index.md` + new `mem://features/admin-impersonation`
+### Open questions
+
+1. **Email change flow** — require email confirmation (Supabase default, safer) or instant change via service role? Default: require confirmation.
+2. **Team invites** — send Supabase invite email to brand-new users, or require them to sign up first then grant role? Default: invite email if user doesn't exist.
+3. **Superadmin role naming** — keep `admin` as the superadmin label in the UI, or rename to "Superadmin"? Default: "Superadmin" in UI, `admin` in DB.
