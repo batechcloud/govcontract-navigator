@@ -163,7 +163,7 @@ export default function AdminWorkspaces() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-8" />
+                
                 <TableHead>Workspace</TableHead>
                 <TableHead>Owner</TableHead>
                 <TableHead>Plan</TableHead>
