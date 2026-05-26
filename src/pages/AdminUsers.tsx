@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
-import { Users, Search, Loader2, ShieldOff, ShieldCheck } from "lucide-react";
+import { Users, Search, Loader2, ShieldOff, ShieldCheck, UserCog } from "lucide-react";
+import { startImpersonation } from "@/lib/impersonation";
 
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
