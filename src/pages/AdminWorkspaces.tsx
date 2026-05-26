@@ -273,119 +273,73 @@ function WorkspaceRow({
   const { data: members = [], isLoading } = useAdminWorkspaceMembers(expanded ? row.workspace_id : null);
 
   return (
-    <>
-      <TableRow>
-        <TableCell>
-          <Button variant="ghost" size="sm" onClick={onToggleExpand}>
-            {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+    <TableRow>
+      <TableCell>
+        <button
+          onClick={onOpenDetail}
+          className="font-medium text-left hover:text-primary hover:underline"
+        >
+          {row.workspace_name}
+        </button>
+      </TableCell>
+      <TableCell>
+        <div className="text-sm">{ownerLabel(row)}</div>
+        <div className="text-xs text-muted-foreground">{row.owner_email}</div>
+      </TableCell>
+      <TableCell>
+        <Badge variant="outline">{row.plan_name}</Badge>
+      </TableCell>
+      <TableCell className="text-center">{row.member_count}</TableCell>
+      <TableCell className="text-sm text-muted-foreground">
+        {formatDistanceToNow(new Date(row.workspace_created_at), { addSuffix: true })}
+      </TableCell>
+      <TableCell>
+        {row.is_suspended ? (
+          <Badge className="bg-destructive/15 text-destructive border-destructive/30">
+            Suspended
+          </Badge>
+        ) : (
+          <Badge className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30">
+            Active
+          </Badge>
+        )}
+      </TableCell>
+      <TableCell className="text-right">
+        <div className="flex items-center justify-end gap-2">
+          <Button size="sm" variant="outline" onClick={onOpenDetail}>
+            <Eye className="w-4 h-4 mr-1" /> Details
           </Button>
-        </TableCell>
-        <TableCell>
-          <button
-            onClick={onOpenDetail}
-            className="font-medium text-left hover:text-primary hover:underline"
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={async () => {
+              try {
+                toast.message(`Switching to ${row.owner_email}…`);
+                await startImpersonation(row.owner_id);
+              } catch (e) {
+                toast.error((e as Error).message || "Impersonation failed");
+              }
+            }}
           >
-            {row.workspace_name}
-          </button>
-        </TableCell>
-        <TableCell>
-          <div className="text-sm">{ownerLabel(row)}</div>
-          <div className="text-xs text-muted-foreground">{row.owner_email}</div>
-        </TableCell>
-        <TableCell>
-          <Badge variant="outline">{row.plan_name}</Badge>
-        </TableCell>
-        <TableCell className="text-center">{row.member_count}</TableCell>
-        <TableCell className="text-sm text-muted-foreground">
-          {formatDistanceToNow(new Date(row.workspace_created_at), { addSuffix: true })}
-        </TableCell>
-        <TableCell>
+            <UserCog className="w-4 h-4 mr-1" /> Impersonate
+          </Button>
           {row.is_suspended ? (
-            <Badge className="bg-destructive/15 text-destructive border-destructive/30">
-              Suspended
-            </Badge>
-          ) : (
-            <Badge className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30">
-              Active
-            </Badge>
-          )}
-        </TableCell>
-        <TableCell className="text-right">
-          <div className="flex items-center justify-end gap-2">
-            <Button size="sm" variant="outline" onClick={onOpenDetail}>
-              <Eye className="w-4 h-4 mr-1" /> Details
-            </Button>
             <Button
               size="sm"
               variant="outline"
-              onClick={async () => {
-                try {
-                  toast.message(`Switching to ${row.owner_email}…`);
-                  await startImpersonation(row.owner_id);
-                } catch (e) {
-                  toast.error((e as Error).message || "Impersonation failed");
-                }
-              }}
+              className="border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10"
+              onClick={onActionClick}
             >
-              <UserCog className="w-4 h-4 mr-1" /> Impersonate
+              <ShieldCheck className="w-4 h-4 mr-1" /> Reactivate
             </Button>
-            {row.is_suspended ? (
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10"
-                onClick={onActionClick}
-              >
-                <ShieldCheck className="w-4 h-4 mr-1" /> Reactivate
-              </Button>
-            ) : (
-              <Button size="sm" variant="destructive" onClick={onActionClick}>
-                <ShieldOff className="w-4 h-4 mr-1" /> Suspend
-              </Button>
-            )}
-          </div>
-        </TableCell>
-      </TableRow>
-      {expanded && (
-        <TableRow>
-          <TableCell colSpan={8} className="bg-muted/30">
-            <div className="p-3">
-              <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
-                Members
-              </div>
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <div className="space-y-1">
-                  {members.map((m) => (
-                    <div
-                      key={m.user_id}
-                      className="flex items-center justify-between text-sm py-1.5 px-2 rounded hover:bg-background/50"
-                    >
-                      <div>
-                        <span className="font-medium">
-                          {[m.first_name, m.last_name].filter(Boolean).join(" ") || m.email || "—"}
-                        </span>
-                        <span className="text-muted-foreground ml-2">{m.email}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {m.is_suspended && (
-                          <Badge className="bg-destructive/15 text-destructive border-destructive/30">
-                            Suspended
-                          </Badge>
-                        )}
-                        <Badge variant="outline" className="capitalize">
-                          {m.role}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </TableCell>
-        </TableRow>
-      )}
-    </>
+          ) : (
+            <Button size="sm" variant="destructive" onClick={onActionClick}>
+              <ShieldOff className="w-4 h-4 mr-1" /> Suspend
+            </Button>
+          )}
+        </div>
+      </TableCell>
+    </TableRow>
   );
 }
+
