@@ -126,17 +126,6 @@ export default function AdminWorkspaces() {
               them out and blocks future sign-ins.
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate("/admin/sync")}>
-              Sync
-            </Button>
-            <Button variant="outline" onClick={() => navigate("/admin/support")}>
-              Support
-            </Button>
-            <Button variant="outline" onClick={() => navigate("/admin/audit")}>
-              <Activity className="w-4 h-4 mr-2" /> Audit
-            </Button>
-          </div>
         </div>
 
         <Card className="p-4 flex gap-3 flex-wrap items-center">
