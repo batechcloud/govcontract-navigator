@@ -54,6 +54,7 @@ const AdminSyncJobDetail = lazy(() => import("./pages/AdminSyncJobDetail"));
 const AdminAudit = lazy(() => import("./pages/AdminAudit"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const AdminSupport = lazy(() => import("./pages/AdminSupport"));
+const AdminWorkspaces = lazy(() => import("./pages/AdminWorkspaces"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
