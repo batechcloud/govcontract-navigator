@@ -509,7 +509,7 @@ const CompanyProfile = () => {
               <Button
                 variant="outline"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
+                disabled={isUploading || readOnly}
                 className="flex-1 sm:flex-none"
               >
                 {isUploading ? (
