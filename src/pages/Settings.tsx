@@ -192,6 +192,10 @@ export default function Settings() {
 
           <Tabs defaultValue="profile" className="space-y-6">
             <TabsList className="bg-card/50 border border-border/50">
+              <TabsTrigger value="business" className="flex items-center gap-2">
+                <Building2 className="w-4 h-4" />
+                My Business
+              </TabsTrigger>
               <TabsTrigger value="profile" className="flex items-center gap-2">
                 <User className="w-4 h-4" />
                 Profile
@@ -213,6 +217,11 @@ export default function Settings() {
                 Billing
               </TabsTrigger>
             </TabsList>
+
+            {/* Business Tab */}
+            <TabsContent value="business">
+              <BusinessTab />
+            </TabsContent>
 
             {/* Profile Tab */}
             <TabsContent value="profile">
