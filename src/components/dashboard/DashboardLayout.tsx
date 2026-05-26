@@ -22,6 +22,7 @@ import {
   LogOut,
   User,
   Settings,
+  BarChart3,
 } from "lucide-react";
 import { DashboardSidebar } from "./DashboardSidebar";
 import { useAuth } from "@/hooks/useAuth";
