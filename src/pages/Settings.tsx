@@ -2,13 +2,13 @@ import { useState, useRef, useEffect } from "react";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { motion } from "framer-motion";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
-import { User, Bell, Shield, CreditCard, Camera, Loader2, Check, Crown, ExternalLink, Download, FileText, Calendar, ChevronRight, Users, Building2 } from "lucide-react";
+import { User, Shield, CreditCard, Camera, Loader2, Check, Crown, ExternalLink, Download, FileText, Calendar, ChevronRight, Users, Building2 } from "lucide-react";
 import { BusinessTab } from "@/components/settings/BusinessTab";
 import { UsersTab } from "@/components/settings/UsersTab";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
@@ -34,14 +34,8 @@ export default function Settings() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
-  const [savingNotifs, setSavingNotifs] = useState(false);
 
-  // Notification preferences state
-  const notifPrefs = (profile?.notification_preferences as Record<string, unknown>) || {};
-  const [notifOpportunities, setNotifOpportunities] = useState<boolean>(() => notifPrefs.opportunities !== false);
-  const [notifDeadlines, setNotifDeadlines] = useState<boolean>(() => notifPrefs.deadlines !== false);
-  const [notifDigest, setNotifDigest] = useState<boolean>(() => notifPrefs.digest === true);
-  const [notifCompetitors, setNotifCompetitors] = useState<boolean>(() => notifPrefs.competitors !== false);
+
 
   useEffect(() => {
     if (profile) {
