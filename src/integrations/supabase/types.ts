@@ -1254,6 +1254,7 @@ export type Database = {
         Returns: number
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_workspace_editor: { Args: never; Returns: boolean }
       is_workspace_owner: { Args: { _workspace_id: string }; Returns: boolean }
       my_workspace_id: { Args: never; Returns: string }
       same_workspace_as: { Args: { _other_user: string }; Returns: boolean }

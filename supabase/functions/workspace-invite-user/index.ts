@@ -13,6 +13,7 @@ const BodySchema = z.object({
   email: z.string().email().max(255),
   first_name: z.string().trim().max(80).optional(),
   last_name: z.string().trim().max(80).optional(),
+  role: z.enum(["viewer", "editor"]).default("viewer"),
   temp_password: z
     .string()
     .min(12, "Password must be at least 12 characters")
@@ -47,7 +48,6 @@ serve(async (req) => {
     return json({ error: "Invalid request", details: e?.errors ?? String(e) }, 400);
   }
 
-  // Caller must be an owner of a workspace.
   const { data: membership } = await admin
     .from("workspace_members")
     .select("workspace_id, role")
@@ -60,7 +60,6 @@ serve(async (req) => {
 
   const email = body.email.toLowerCase().trim();
 
-  // Reject if already exists.
   const { data: existing } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
   if (existing?.users?.some((u) => (u.email || "").toLowerCase() === email)) {
     return json({ error: "A user with this email already exists." }, 409);
@@ -74,6 +73,7 @@ serve(async (req) => {
       first_name: body.first_name ?? null,
       last_name: body.last_name ?? null,
       invited_workspace_id: membership.workspace_id,
+      invited_role: body.role,
       invited_by: callerId,
       must_change_password: true,
     },
@@ -83,13 +83,16 @@ serve(async (req) => {
     return json({ error: createErr?.message ?? "Failed to create user" }, 500);
   }
 
-  // The handle_new_user trigger picks up invited_workspace_id and inserts the member row.
-  // Audit.
   await admin.from("sync_audit_log").insert({
     actor_id: callerId,
     action: "workspace_invite",
-    details: { workspace_id: membership.workspace_id, new_user_id: created.user.id, email },
+    details: {
+      workspace_id: membership.workspace_id,
+      new_user_id: created.user.id,
+      email,
+      role: body.role,
+    },
   });
 
-  return json({ ok: true, user_id: created.user.id, email });
+  return json({ ok: true, user_id: created.user.id, email, role: body.role });
 });

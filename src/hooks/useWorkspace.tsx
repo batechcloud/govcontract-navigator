@@ -2,17 +2,23 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 
+export type WorkspaceRole = "owner" | "editor" | "viewer" | "member";
+
 export type WorkspaceMember = {
   id: string;
   user_id: string;
   workspace_id: string;
-  role: "owner" | "member";
+  role: WorkspaceRole;
   created_at: string;
   email: string | null;
   first_name: string | null;
   last_name: string | null;
   avatar_url: string | null;
 };
+
+// Normalize legacy "member" role to "editor" for display/permission purposes
+export const normalizeRole = (r: WorkspaceRole): "owner" | "editor" | "viewer" =>
+  r === "member" ? "editor" : (r as "owner" | "editor" | "viewer");
 
 export function useWorkspace() {
   const { user } = useAuth();
@@ -21,7 +27,6 @@ export function useWorkspace() {
     enabled: !!user,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
-      // Find caller's workspace via their membership row.
       const { data: myMembership, error: meErr } = await supabase
         .from("workspace_members")
         .select("workspace_id, role")
@@ -43,12 +48,11 @@ export function useWorkspace() {
         ? await supabase.from("profiles").select("id, first_name, last_name, avatar_url").in("id", ids)
         : { data: [] as any[] };
 
-      // emails aren't directly readable from client; we surface the caller's own email
-      // and rely on first/last name for others.
       const members: WorkspaceMember[] = (memberRows ?? []).map((m) => {
         const p = (profiles ?? []).find((x: any) => x.id === m.user_id);
         return {
           ...m,
+          role: m.role as WorkspaceRole,
           email: m.user_id === user!.id ? user!.email ?? null : null,
           first_name: p?.first_name ?? null,
           last_name: p?.last_name ?? null,
@@ -59,8 +63,20 @@ export function useWorkspace() {
       return {
         workspace,
         members,
-        myRole: myMembership.role as "owner" | "member",
+        myRole: myMembership.role as WorkspaceRole,
       };
     },
   });
+}
+
+export function useWorkspacePermissions() {
+  const { data } = useWorkspace();
+  const role = data?.myRole ? normalizeRole(data.myRole) : null;
+  return {
+    role,
+    isOwner: role === "owner",
+    isEditor: role === "editor",
+    isViewer: role === "viewer",
+    canEdit: role === "owner" || role === "editor",
+  };
 }
