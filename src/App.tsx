@@ -146,6 +146,7 @@ const App = () => (
                 <Route path="/admin/sync/jobs/:jobId" element={<AdminRoute><ErrorBoundary><AdminSyncJobDetail /></ErrorBoundary></AdminRoute>} />
                 <Route path="/admin/audit" element={<AdminRoute><ErrorBoundary><AdminAudit /></ErrorBoundary></AdminRoute>} />
                 <Route path="/admin/support" element={<AdminRoute><ErrorBoundary><AdminSupport /></ErrorBoundary></AdminRoute>} />
+                <Route path="/admin/workspaces" element={<AdminRoute><ErrorBoundary><AdminWorkspaces /></ErrorBoundary></AdminRoute>} />
                 <Route path="/dashboard/admin/sync" element={<Navigate to="/admin/sync" replace />} />
 
                 {/* Redirects from old routes */}
