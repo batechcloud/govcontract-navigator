@@ -40,6 +40,7 @@ import { PscCodeSelector } from "@/components/company/PscCodeSelector";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useCompanyProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
+import { useWorkspacePermissions } from "@/hooks/useWorkspace";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
