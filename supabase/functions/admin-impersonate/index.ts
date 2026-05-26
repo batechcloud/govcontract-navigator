@@ -25,9 +25,9 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE);
 
-    // Verify caller is admin
-    const { data: isAdmin } = await admin.rpc("is_admin", { _user_id: adminId });
-    if (!isAdmin) return json({ error: "Forbidden" }, 403);
+    // Verify caller can impersonate (superadmin or workspace_admin)
+    const { data: canImp } = await admin.rpc("can_impersonate", { _user_id: adminId });
+    if (!canImp) return json({ error: "Forbidden" }, 403);
 
     const body = await req.json().catch(() => ({}));
     const targetUserId = String(body?.target_user_id ?? "");
