@@ -50,3 +50,9 @@ verify_jwt = false
 
 [functions.admin-setup]
 verify_jwt = false
+
+[functions.workspace-invite-user]
+verify_jwt = false
+
+[functions.workspace-remove-user]
+verify_jwt = false

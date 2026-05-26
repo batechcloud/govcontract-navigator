@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { motion } from "framer-motion";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
-import { User, Bell, Shield, CreditCard, Camera, Loader2, Check, Crown, ExternalLink, Download, FileText, Calendar, ChevronRight } from "lucide-react";
+import { User, Bell, Shield, CreditCard, Camera, Loader2, Check, Crown, ExternalLink, Download, FileText, Calendar, ChevronRight, Users } from "lucide-react";
+import { UsersTab } from "@/components/settings/UsersTab";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -202,6 +203,10 @@ export default function Settings() {
                 <Shield className="w-4 h-4" />
                 Security
               </TabsTrigger>
+              <TabsTrigger value="users" className="flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                Users
+              </TabsTrigger>
               <TabsTrigger value="billing" className="flex items-center gap-2">
                 <CreditCard className="w-4 h-4" />
                 Billing
@@ -398,6 +403,11 @@ export default function Settings() {
                   </Button>
                 </div>
               </div>
+            </TabsContent>
+
+            {/* Users Tab */}
+            <TabsContent value="users">
+              <UsersTab />
             </TabsContent>
 
             {/* Billing Tab */}
