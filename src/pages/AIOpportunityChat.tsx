@@ -372,6 +372,8 @@ export default function AIOpportunityChat() {
             </div>
           </div>
 
+          <UsageLimitBanner featureCode="ai_chat" featureName="AI Chat" />
+
           {/* Chat area */}
           <Card variant="glass" className="flex-1 overflow-hidden flex flex-col min-h-0">
             <ScrollArea className="flex-1 px-4 py-4">
