@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as supabaseTyped } from "@/integrations/supabase/client";
+// Types not yet regenerated for support_* tables / RPC. Use loose typing.
+const supabase = supabaseTyped as any;
 import { useAuth } from "./useAuth";
 
 export type SupportThread = {
