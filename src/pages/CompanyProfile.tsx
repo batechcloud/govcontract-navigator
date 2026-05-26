@@ -563,7 +563,7 @@ const CompanyProfile = () => {
         </Card>
 
         <div className="flex justify-end">
-          <Button variant="hero" size="lg" onClick={handleSave} disabled={isSaving}>
+          <Button variant="hero" size="lg" onClick={handleSave} disabled={isSaving || readOnly}>
             {isSaving ? (
               <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
             ) : (
