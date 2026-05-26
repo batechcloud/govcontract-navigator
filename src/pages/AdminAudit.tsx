@@ -144,7 +144,7 @@ export default function AdminAudit() {
     <>
       <div className="max-w-7xl mx-auto space-y-6">
         <div>
-          <Button variant="ghost" onClick={() => navigate("/admin/sync")} className="mb-3 -ml-2">
+          <Button variant="ghost" onClick={() => navigate("/admin")} className="mb-3 -ml-2">
             <ArrowLeft className="w-4 h-4 mr-2" /> Back to console
           </Button>
           <h1 className="text-3xl font-heading font-bold text-foreground">Admin Audit</h1>
