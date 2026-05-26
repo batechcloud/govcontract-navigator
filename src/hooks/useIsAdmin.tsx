@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
+import { isImpersonating } from "@/lib/impersonation";
 
 /**
  * Single source of truth for admin checks.
- * Calls the server-side `is_admin(uuid)` SQL function which reads from
- * the `admin_emails` allowlist (synced from the ADMIN_EMAILS secret).
- * No client-side role tables, no manual inserts.
+ * Returns false while impersonating a workspace owner so admin UI never
+ * leaks into the target's view.
  */
 export function useIsAdmin() {
   const { user } = useAuth();
@@ -14,6 +14,7 @@ export function useIsAdmin() {
     queryKey: ["is-admin", user?.id],
     queryFn: async () => {
       if (!user) return false;
+      if (isImpersonating()) return false;
       const { data, error } = await supabase.rpc("is_admin", { _user_id: user.id });
       if (error) {
         console.error("is_admin check failed", error);

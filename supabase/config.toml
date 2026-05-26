@@ -68,3 +68,9 @@ verify_jwt = false
 
 [functions.bootstrap-test-admin]
 verify_jwt = false
+
+[functions.admin-impersonate]
+verify_jwt = false
+
+[functions.admin-impersonate-end]
+verify_jwt = false
