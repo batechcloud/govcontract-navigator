@@ -105,6 +105,14 @@ export default function AIOpportunityChat() {
   const sendMessage = async (text: string) => {
     const userText = text.trim();
     if (!userText || isLoading) return;
+    if (chatAccess && !chatAccess.can_use) {
+      toast.error(
+        chatAccess.has_access
+          ? "You've reached your monthly AI chat limit"
+          : "Upgrade required to use AI chat"
+      );
+      return;
+    }
 
     const userMsg: Message = { role: "user", content: userText };
     const newMessages = [...messages, userMsg];
