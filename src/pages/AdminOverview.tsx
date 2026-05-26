@@ -27,6 +27,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
 import {
   useAdminOverviewStats,
   useAdminSignupsTimeseries,
@@ -46,6 +48,8 @@ function formatCurrencyCents(cents: number) {
 export default function AdminOverview() {
   const navigate = useNavigate();
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
+  const { user } = useAuth();
+  const { data: profile } = useProfile();
   const { data: stats, isLoading } = useAdminOverviewStats();
   const { data: series = [] } = useAdminSignupsTimeseries(30);
   const { data: recentSignups = [] } = useAdminRecentSignups(6);
@@ -70,13 +74,26 @@ export default function AdminOverview() {
     .sort((a, b) => b.member_count - a.member_count)
     .slice(0, 5);
 
+  const displayName =
+    [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
+    profile?.first_name ||
+    user?.email?.split("@")[0] ||
+    "Admin";
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-heading font-bold text-foreground">Overview</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Platform health, growth, and operations at a glance.
-        </p>
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-2">
+        <div>
+          <h1 className="text-3xl font-heading font-bold text-foreground">
+            Welcome back, {displayName}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Platform health, growth, and operations at a glance.
+          </p>
+        </div>
+        <div className="text-xs text-muted-foreground">
+          {format(new Date(), "EEEE, MMMM d, yyyy")}
+        </div>
       </div>
 
       {/* KPI grid */}
@@ -88,6 +105,7 @@ export default function AdminOverview() {
           sub={`${stats?.active_subscriptions ?? 0} active subs`}
           tone="primary"
           loading={isLoading}
+          onClick={() => navigate("/admin/subscriptions")}
         />
         <Kpi
           icon={<Users className="w-4 h-4" />}
@@ -99,12 +117,14 @@ export default function AdminOverview() {
               : "all active"
           }
           loading={isLoading}
+          onClick={() => navigate("/admin/users")}
         />
         <Kpi
           icon={<Building2 className="w-4 h-4" />}
           label="Workspaces"
           value={stats?.total_workspaces?.toLocaleString() ?? "—"}
           loading={isLoading}
+          onClick={() => navigate("/admin/workspaces")}
         />
         <Kpi
           icon={<TrendingUp className="w-4 h-4" />}
@@ -113,12 +133,14 @@ export default function AdminOverview() {
           sub={`${stats?.signups_today ?? 0} today · ${stats?.signups_7d ?? 0} this week`}
           tone="success"
           loading={isLoading}
+          onClick={() => navigate("/admin/users")}
         />
         <Kpi
           icon={<CreditCard className="w-4 h-4" />}
           label="Active subscriptions"
           value={stats?.active_subscriptions?.toLocaleString() ?? "—"}
           loading={isLoading}
+          onClick={() => navigate("/admin/subscriptions")}
         />
         <Kpi
           icon={<UserMinus className="w-4 h-4" />}
@@ -126,6 +148,7 @@ export default function AdminOverview() {
           value={stats?.cancellations_30d?.toLocaleString() ?? "—"}
           tone={stats?.cancellations_30d ? "warn" : "default"}
           loading={isLoading}
+          onClick={() => navigate("/admin/subscriptions")}
         />
         <Kpi
           icon={<LifeBuoy className="w-4 h-4" />}
@@ -133,6 +156,7 @@ export default function AdminOverview() {
           value={stats?.open_support_threads?.toLocaleString() ?? "—"}
           tone={stats?.open_support_threads ? "warn" : "default"}
           loading={isLoading}
+          onClick={() => navigate("/admin/support")}
         />
         <Kpi
           icon={<AlertTriangle className="w-4 h-4" />}
@@ -140,6 +164,7 @@ export default function AdminOverview() {
           value={stats?.failed_sync_records?.toLocaleString() ?? "—"}
           tone={stats?.failed_sync_records ? "warn" : "default"}
           loading={isLoading}
+          onClick={() => navigate("/admin/sync")}
         />
       </div>
 
@@ -196,21 +221,25 @@ export default function AdminOverview() {
                 ? formatDistanceToNow(new Date(stats.last_sync_at), { addSuffix: true })
                 : "Never"
             }
+            onClick={() => navigate("/admin/sync")}
           />
           <HealthRow
             label="Failed records"
             value={`${stats?.failed_sync_records ?? 0}`}
             tone={stats?.failed_sync_records ? "warn" : "ok"}
+            onClick={() => navigate("/admin/sync")}
           />
           <HealthRow
             label="Open support threads"
             value={`${stats?.open_support_threads ?? 0}`}
             tone={stats?.open_support_threads ? "warn" : "ok"}
+            onClick={() => navigate("/admin/support")}
           />
           <HealthRow
             label="Suspended users"
             value={`${stats?.suspended_users ?? 0}`}
             tone={stats?.suspended_users ? "warn" : "ok"}
+            onClick={() => navigate("/admin/users")}
           />
           <Button
             variant="outline"
@@ -234,9 +263,10 @@ export default function AdminOverview() {
             {recentSignups.map((s: any) => {
               const name = [s.first_name, s.last_name].filter(Boolean).join(" ") || "New user";
               return (
-                <div
+                <button
                   key={s.id}
-                  className="flex items-center justify-between text-sm py-1.5 border-b border-border/40 last:border-0"
+                  onClick={() => navigate("/admin/users")}
+                  className="w-full text-left flex items-center justify-between text-sm py-1.5 border-b border-border/40 last:border-0 hover:bg-muted/30 rounded px-1 -mx-1 transition-colors"
                 >
                   <div className="min-w-0">
                     <div className="font-medium truncate">{name}</div>
@@ -249,7 +279,7 @@ export default function AdminOverview() {
                       Suspended
                     </Badge>
                   )}
-                </div>
+                </button>
               );
             })}
           </div>
@@ -270,16 +300,17 @@ export default function AdminOverview() {
               <div className="text-xs text-muted-foreground">No workspaces yet.</div>
             )}
             {topWorkspaces.map((w) => (
-              <div
+              <button
                 key={w.workspace_id}
-                className="flex items-center justify-between text-sm py-1.5 border-b border-border/40 last:border-0"
+                onClick={() => navigate("/admin/workspaces")}
+                className="w-full text-left flex items-center justify-between text-sm py-1.5 border-b border-border/40 last:border-0 hover:bg-muted/30 rounded px-1 -mx-1 transition-colors"
               >
                 <div className="min-w-0">
                   <div className="font-medium truncate">{w.workspace_name}</div>
                   <div className="text-xs text-muted-foreground truncate">{w.owner_email}</div>
                 </div>
                 <Badge variant="outline">{w.member_count} members</Badge>
-              </div>
+              </button>
             ))}
           </div>
           <Button
@@ -299,15 +330,16 @@ export default function AdminOverview() {
               <div className="text-xs text-muted-foreground">No audit entries yet.</div>
             )}
             {recentAudit.map((a: any) => (
-              <div
+              <button
                 key={a.id}
-                className="text-sm py-1.5 border-b border-border/40 last:border-0"
+                onClick={() => navigate("/admin/audit")}
+                className="w-full text-left text-sm py-1.5 border-b border-border/40 last:border-0 hover:bg-muted/30 rounded px-1 -mx-1 transition-colors"
               >
                 <div className="font-medium truncate">{a.action}</div>
                 <div className="text-xs text-muted-foreground">
                   {formatDistanceToNow(new Date(a.created_at), { addSuffix: true })}
                 </div>
-              </div>
+              </button>
             ))}
           </div>
           <Button
@@ -331,6 +363,7 @@ function Kpi({
   sub,
   tone = "default",
   loading,
+  onClick,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -338,6 +371,7 @@ function Kpi({
   sub?: string;
   tone?: "default" | "primary" | "success" | "warn";
   loading?: boolean;
+  onClick?: () => void;
 }) {
   const toneClass = {
     default: "text-foreground",
@@ -346,17 +380,25 @@ function Kpi({
     warn: "text-amber-400",
   }[tone];
 
+  const interactive = onClick
+    ? "cursor-pointer hover:border-primary/40 hover:bg-card/80 transition-colors text-left w-full"
+    : "";
+
+  const Wrapper: any = onClick ? "button" : "div";
+
   return (
-    <Card className="p-4">
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <span className={toneClass}>{icon}</span>
-        {label}
-      </div>
-      <div className={`mt-2 text-2xl font-heading font-bold ${toneClass}`}>
-        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : value}
-      </div>
-      {sub && <div className="text-[11px] text-muted-foreground mt-1">{sub}</div>}
-    </Card>
+    <Wrapper onClick={onClick} className={interactive}>
+      <Card className="p-4 h-full">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span className={toneClass}>{icon}</span>
+          {label}
+        </div>
+        <div className={`mt-2 text-2xl font-heading font-bold ${toneClass}`}>
+          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : value}
+        </div>
+        {sub && <div className="text-[11px] text-muted-foreground mt-1">{sub}</div>}
+      </Card>
+    </Wrapper>
   );
 }
 
@@ -364,20 +406,35 @@ function HealthRow({
   label,
   value,
   tone = "default",
+  onClick,
 }: {
   label: string;
   value: string;
   tone?: "default" | "ok" | "warn";
+  onClick?: () => void;
 }) {
   const dot =
     tone === "warn" ? "bg-amber-500" : tone === "ok" ? "bg-emerald-500" : "bg-muted-foreground";
-  return (
-    <div className="flex items-center justify-between text-sm">
+
+  const content = (
+    <>
       <span className="text-muted-foreground flex items-center gap-2">
         <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
         {label}
       </span>
       <span className="font-medium">{value}</span>
-    </div>
+    </>
   );
+
+  if (onClick) {
+    return (
+      <button
+        onClick={onClick}
+        className="w-full flex items-center justify-between text-sm hover:bg-muted/30 rounded px-1 -mx-1 py-0.5 transition-colors"
+      >
+        {content}
+      </button>
+    );
+  }
+  return <div className="flex items-center justify-between text-sm">{content}</div>;
 }
