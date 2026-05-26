@@ -58,6 +58,7 @@ const AdminWorkspaces = lazy(() => import("./pages/AdminWorkspaces"));
 const AdminOverview = lazy(() => import("./pages/AdminOverview"));
 const AdminUsers = lazy(() => import("./pages/AdminUsers"));
 const AdminSubscriptions = lazy(() => import("./pages/AdminSubscriptions"));
+const AdminSettings = lazy(() => import("./pages/AdminSettings"));
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ImpersonationBanner } from "@/components/impersonation/ImpersonationBanner";
 
@@ -148,13 +149,14 @@ const App = () => (
                 {/* Separate admin area with its own login */}
                 <Route path="/admin/login" element={<ErrorBoundary><AdminLogin /></ErrorBoundary>} />
                 <Route path="/admin" element={<AdminRoute><AdminLayout><ErrorBoundary><AdminOverview /></ErrorBoundary></AdminLayout></AdminRoute>} />
-                <Route path="/admin/sync" element={<AdminRoute><AdminLayout><ErrorBoundary><AdminSync /></ErrorBoundary></AdminLayout></AdminRoute>} />
-                <Route path="/admin/sync/jobs/:jobId" element={<AdminRoute><AdminLayout><ErrorBoundary><AdminSyncJobDetail /></ErrorBoundary></AdminLayout></AdminRoute>} />
-                <Route path="/admin/audit" element={<AdminRoute><AdminLayout><ErrorBoundary><AdminAudit /></ErrorBoundary></AdminLayout></AdminRoute>} />
-                <Route path="/admin/support" element={<AdminRoute><AdminLayout><ErrorBoundary><AdminSupport /></ErrorBoundary></AdminLayout></AdminRoute>} />
-                <Route path="/admin/workspaces" element={<AdminRoute><AdminLayout><ErrorBoundary><AdminWorkspaces /></ErrorBoundary></AdminLayout></AdminRoute>} />
-                <Route path="/admin/users" element={<AdminRoute><AdminLayout><ErrorBoundary><AdminUsers /></ErrorBoundary></AdminLayout></AdminRoute>} />
-                <Route path="/admin/subscriptions" element={<AdminRoute><AdminLayout><ErrorBoundary><AdminSubscriptions /></ErrorBoundary></AdminLayout></AdminRoute>} />
+                <Route path="/admin/sync" element={<AdminRoute allowedRoles={[]}><AdminLayout><ErrorBoundary><AdminSync /></ErrorBoundary></AdminLayout></AdminRoute>} />
+                <Route path="/admin/sync/jobs/:jobId" element={<AdminRoute allowedRoles={[]}><AdminLayout><ErrorBoundary><AdminSyncJobDetail /></ErrorBoundary></AdminLayout></AdminRoute>} />
+                <Route path="/admin/audit" element={<AdminRoute allowedRoles={[]}><AdminLayout><ErrorBoundary><AdminAudit /></ErrorBoundary></AdminLayout></AdminRoute>} />
+                <Route path="/admin/support" element={<AdminRoute allowedRoles={["workspace_admin"]}><AdminLayout><ErrorBoundary><AdminSupport /></ErrorBoundary></AdminLayout></AdminRoute>} />
+                <Route path="/admin/workspaces" element={<AdminRoute allowedRoles={["workspace_admin"]}><AdminLayout><ErrorBoundary><AdminWorkspaces /></ErrorBoundary></AdminLayout></AdminRoute>} />
+                <Route path="/admin/users" element={<AdminRoute allowedRoles={[]}><AdminLayout><ErrorBoundary><AdminUsers /></ErrorBoundary></AdminLayout></AdminRoute>} />
+                <Route path="/admin/subscriptions" element={<AdminRoute allowedRoles={["subscription_manager"]}><AdminLayout><ErrorBoundary><AdminSubscriptions /></ErrorBoundary></AdminLayout></AdminRoute>} />
+                <Route path="/admin/settings" element={<AdminRoute><AdminLayout><ErrorBoundary><AdminSettings /></ErrorBoundary></AdminLayout></AdminRoute>} />
                 <Route path="/dashboard/admin/sync" element={<Navigate to="/admin/sync" replace />} />
 
                 {/* Redirects from old routes */}

@@ -10,6 +10,7 @@ import {
   LogOut,
   ArrowLeft,
   ShieldCheck,
+  Settings as SettingsIcon,
 } from "lucide-react";
 
 import {
@@ -29,15 +30,26 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdminSupportThreads } from "@/hooks/useSupportChat";
+import { useAdminRole, AdminRole } from "@/hooks/useAdminRole";
 
-const items = [
+type Item = {
+  title: string;
+  url: string;
+  icon: typeof LayoutDashboard;
+  exact?: boolean;
+  badge?: "support";
+  roles?: Exclude<AdminRole, null>[]; // omit = any admin
+};
+
+const ALL_ITEMS: Item[] = [
   { title: "Overview", url: "/admin", icon: LayoutDashboard, exact: true },
-  { title: "Workspaces", url: "/admin/workspaces", icon: Building2 },
-  { title: "Users", url: "/admin/users", icon: Users },
-  { title: "Subscriptions", url: "/admin/subscriptions", icon: CreditCard },
-  { title: "Support", url: "/admin/support", icon: LifeBuoy, badge: "support" as const },
-  { title: "Sync", url: "/admin/sync", icon: RefreshCw },
-  { title: "Audit Log", url: "/admin/audit", icon: Activity },
+  { title: "Workspaces", url: "/admin/workspaces", icon: Building2, roles: ["admin", "workspace_admin"] },
+  { title: "Users", url: "/admin/users", icon: Users, roles: ["admin"] },
+  { title: "Subscriptions", url: "/admin/subscriptions", icon: CreditCard, roles: ["admin", "subscription_manager"] },
+  { title: "Support", url: "/admin/support", icon: LifeBuoy, badge: "support", roles: ["admin", "workspace_admin"] },
+  { title: "Sync", url: "/admin/sync", icon: RefreshCw, roles: ["admin"] },
+  { title: "Audit Log", url: "/admin/audit", icon: Activity, roles: ["admin"] },
+  { title: "Settings", url: "/admin/settings", icon: SettingsIcon },
 ];
 
 export function AdminSidebar() {
@@ -45,10 +57,12 @@ export function AdminSidebar() {
   const collapsed = state === "collapsed";
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const { data: role } = useAdminRole();
 
-  // Unread support badge — uses existing admin hook (RLS-gated to admins).
   const { data: threads = [] } = useAdminSupportThreads("open");
   const openCount = threads.filter((t) => (t.unread_for_admin ?? 0) > 0).length;
+
+  const items = ALL_ITEMS.filter((i) => !i.roles || (role && i.roles.includes(role)));
 
   const isActive = (url: string, exact?: boolean) =>
     exact ? pathname === url : pathname === url || pathname.startsWith(url + "/");
