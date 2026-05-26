@@ -25,7 +25,6 @@ import {
   Loader2,
 } from "lucide-react";
 
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -76,11 +75,11 @@ export default function AdminAudit() {
 
   if (adminLoading) {
     return (
-      <DashboardLayout title="Admin Audit">
+      <>
         <div className="flex items-center justify-center h-64">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
-      </DashboardLayout>
+      </>
     );
   }
   if (!isAdmin) return <Navigate to="/admin/login" replace />;
@@ -142,7 +141,7 @@ export default function AdminAudit() {
   const dailySync = [...dailyMap.values()];
 
   return (
-    <DashboardLayout title="Admin Audit">
+    <>
       <div className="max-w-7xl mx-auto space-y-6">
         <div>
           <Button variant="ghost" onClick={() => navigate("/admin/sync")} className="mb-3 -ml-2">
@@ -336,7 +335,7 @@ export default function AdminAudit() {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
+    </>
   );
 }
 

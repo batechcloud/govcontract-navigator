@@ -1309,6 +1309,38 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_list_subscriptions: {
+        Args: never
+        Returns: {
+          created_at: string
+          current_period_end: string
+          current_period_start: string
+          email: string
+          monthly_price: number
+          plan_name: string
+          status: string
+          subscription_id: string
+          user_id: string
+          yearly_price: number
+        }[]
+      }
+      admin_list_users: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          first_name: string
+          is_suspended: boolean
+          last_active_at: string
+          last_name: string
+          plan_name: string
+          role: Database["public"]["Enums"]["workspace_role"]
+          subscription_status: string
+          user_id: string
+          workspace_id: string
+          workspace_name: string
+        }[]
+      }
       admin_list_workspace_members: {
         Args: { _workspace_id: string }
         Returns: {
@@ -1335,6 +1367,30 @@ export type Database = {
           workspace_created_at: string
           workspace_id: string
           workspace_name: string
+        }[]
+      }
+      admin_overview_stats: {
+        Args: never
+        Returns: {
+          active_subscriptions: number
+          cancellations_30d: number
+          failed_sync_records: number
+          last_sync_at: string
+          mrr_cents: number
+          open_support_threads: number
+          signups_30d: number
+          signups_7d: number
+          signups_today: number
+          suspended_users: number
+          total_users: number
+          total_workspaces: number
+        }[]
+      }
+      admin_signups_timeseries: {
+        Args: { _days?: number }
+        Returns: {
+          day: string
+          signups: number
         }[]
       }
       check_and_increment_rate_limit: {

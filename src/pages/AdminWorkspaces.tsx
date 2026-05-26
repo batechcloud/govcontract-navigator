@@ -13,7 +13,6 @@ import {
   Activity,
 } from "lucide-react";
 
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -115,7 +114,7 @@ export default function AdminWorkspaces() {
   };
 
   return (
-    <DashboardLayout title="Workspaces (Admin)">
+    <>
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
@@ -126,17 +125,6 @@ export default function AdminWorkspaces() {
               Manage all workspace owners and their accounts. Suspending an owner immediately signs
               them out and blocks future sign-ins.
             </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate("/admin/sync")}>
-              Sync
-            </Button>
-            <Button variant="outline" onClick={() => navigate("/admin/support")}>
-              Support
-            </Button>
-            <Button variant="outline" onClick={() => navigate("/admin/audit")}>
-              <Activity className="w-4 h-4 mr-2" /> Audit
-            </Button>
           </div>
         </div>
 
@@ -253,7 +241,7 @@ export default function AdminWorkspaces() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </DashboardLayout>
+    </>
   );
 }
 

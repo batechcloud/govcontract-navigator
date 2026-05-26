@@ -17,7 +17,6 @@ import {
   Loader2,
 } from "lucide-react";
 
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -144,11 +143,11 @@ export default function AdminSync() {
 
   if (adminLoading) {
     return (
-      <DashboardLayout title="Sync Console">
+      <>
         <div className="flex items-center justify-center h-64">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
@@ -172,7 +171,7 @@ export default function AdminSync() {
       : null;
 
   return (
-    <DashboardLayout title="SAM.gov Sync Console">
+    <>
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
@@ -180,17 +179,6 @@ export default function AdminSync() {
             <p className="text-sm text-muted-foreground mt-1">
               Manage contract data ingestion. The platform serves users from this internal database — never from a live SAM.gov call.
             </p>
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            <Button variant="outline" onClick={() => navigate("/admin/workspaces")}>
-              Workspaces
-            </Button>
-            <Button variant="outline" onClick={() => navigate("/admin/support")}>
-              Support
-            </Button>
-            <Button variant="outline" onClick={() => navigate("/admin/audit")}>
-              <Activity className="w-4 h-4 mr-2" /> View Audit
-            </Button>
           </div>
         </div>
 
@@ -416,7 +404,7 @@ export default function AdminSync() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </DashboardLayout>
+    </>
   );
 }
 
