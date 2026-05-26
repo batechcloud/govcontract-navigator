@@ -11,7 +11,9 @@ import {
   ChevronDown,
   ChevronRight,
   Activity,
+  UserCog,
 } from "lucide-react";
+import { startImpersonation } from "@/lib/impersonation";
 
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -290,20 +292,36 @@ function WorkspaceRow({
           )}
         </TableCell>
         <TableCell className="text-right">
-          {row.is_suspended ? (
+          <div className="flex items-center justify-end gap-2">
             <Button
               size="sm"
               variant="outline"
-              className="border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10"
-              onClick={onActionClick}
+              onClick={async () => {
+                try {
+                  toast.message(`Switching to ${row.owner_email}…`);
+                  await startImpersonation(row.owner_id);
+                } catch (e) {
+                  toast.error((e as Error).message || "Impersonation failed");
+                }
+              }}
             >
-              <ShieldCheck className="w-4 h-4 mr-1" /> Reactivate
+              <UserCog className="w-4 h-4 mr-1" /> Impersonate
             </Button>
-          ) : (
-            <Button size="sm" variant="destructive" onClick={onActionClick}>
-              <ShieldOff className="w-4 h-4 mr-1" /> Suspend
-            </Button>
-          )}
+            {row.is_suspended ? (
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10"
+                onClick={onActionClick}
+              >
+                <ShieldCheck className="w-4 h-4 mr-1" /> Reactivate
+              </Button>
+            ) : (
+              <Button size="sm" variant="destructive" onClick={onActionClick}>
+                <ShieldOff className="w-4 h-4 mr-1" /> Suspend
+              </Button>
+            )}
+          </div>
         </TableCell>
       </TableRow>
       {expanded && (
