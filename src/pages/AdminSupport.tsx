@@ -64,7 +64,7 @@ export default function AdminSupport() {
 
   if (adminLoading) {
     return (
-      <DashboardLayout>
+      <DashboardLayout title="Support Inbox">
         <div className="flex items-center justify-center h-[60vh]">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
@@ -74,7 +74,7 @@ export default function AdminSupport() {
   if (!isAdmin) return <Navigate to="/admin/login" replace />;
 
   return (
-    <DashboardLayout>
+    <DashboardLayout title="Support Inbox">
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <LifeBuoy className="w-6 h-6 text-primary" />
