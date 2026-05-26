@@ -27,6 +27,8 @@ import {
 import { useCompanyProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
 import { useConversations, useConversationMessages } from "@/hooks/useConversations";
+import { useFeatureAccess, useIncrementUsage } from "@/hooks/useFeatureAccess";
+import { UsageLimitBanner } from "@/components/subscription/UsageLimitBanner";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +51,8 @@ export default function AIOpportunityChat() {
   const { user } = useAuth();
   const { data: companyProfile } = useCompanyProfile();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { data: chatAccess } = useFeatureAccess("ai_chat");
+  const incrementChatUsage = useIncrementUsage();
 
   // Conversation state
   const { conversations, createConversation, deleteConversation, updateTitle } = useConversations();
