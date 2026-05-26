@@ -288,7 +288,11 @@ const CompanyProfile = () => {
   return (
     <DashboardLayout title="My Business">
       <PageContainer variant="narrow" className="space-y-6">
-        {/* Basic Info */}
+        {readOnly && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+            You have <strong>view-only</strong> access to this workspace. Ask the workspace owner to upgrade your role to Editor to make changes.
+          </div>
+        )}
         <Card variant="glass">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
