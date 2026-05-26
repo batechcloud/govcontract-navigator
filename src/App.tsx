@@ -55,6 +55,10 @@ const AdminAudit = lazy(() => import("./pages/AdminAudit"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const AdminSupport = lazy(() => import("./pages/AdminSupport"));
 const AdminWorkspaces = lazy(() => import("./pages/AdminWorkspaces"));
+const AdminOverview = lazy(() => import("./pages/AdminOverview"));
+const AdminUsers = lazy(() => import("./pages/AdminUsers"));
+const AdminSubscriptions = lazy(() => import("./pages/AdminSubscriptions"));
+import { AdminLayout } from "@/components/admin/AdminLayout";
 
 const queryClient = new QueryClient({
   defaultOptions: {
