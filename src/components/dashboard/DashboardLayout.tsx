@@ -156,6 +156,7 @@ export const DashboardLayout = ({ children, title }: DashboardLayoutProps) => {
               { icon: Heart, label: "Saved", href: "/dashboard/tracked" },
               { icon: FileText, label: "Proposals", href: "/dashboard/proposals" },
               { icon: Sparkles, label: "AI Help", href: "/dashboard/ai" },
+              { icon: BarChart3, label: "Intel", href: "/dashboard/usaspending" },
             ].map((item) => {
               const isActive = location.pathname === item.href;
               return (
