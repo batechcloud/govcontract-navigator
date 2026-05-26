@@ -234,6 +234,7 @@ export default function AIOpportunityChat() {
       // Persist assistant message
       if (assistantSoFar) {
         await addMessage.mutateAsync({ conversationId: convId, role: "assistant", content: assistantSoFar });
+        incrementChatUsage.mutate("ai_chat");
       }
     } catch (err) {
       console.error("Chat error:", err);
