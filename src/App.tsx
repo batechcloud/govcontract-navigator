@@ -59,6 +59,7 @@ const AdminOverview = lazy(() => import("./pages/AdminOverview"));
 const AdminUsers = lazy(() => import("./pages/AdminUsers"));
 const AdminSubscriptions = lazy(() => import("./pages/AdminSubscriptions"));
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { ImpersonationBanner } from "@/components/impersonation/ImpersonationBanner";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -106,6 +107,7 @@ const App = () => (
           <Toaster />
           <BrowserRouter>
             <Suspense fallback={<PageLoader />}>
+              <ImpersonationBanner />
               <Routes>
                 {/* Public routes */}
                 <Route path="/" element={<ErrorBoundary><Index /></ErrorBoundary>} />
