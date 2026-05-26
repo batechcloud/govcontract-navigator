@@ -37,6 +37,8 @@ export const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => 
   const location = useLocation();
   const { signOut } = useAuth();
   const { data: profile } = useProfile();
+  const [supportOpen, setSupportOpen] = useState(false);
+  const { data: unread = 0 } = useSupportUnreadCount();
 
   const userName = profile?.first_name || "User";
 
