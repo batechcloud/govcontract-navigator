@@ -414,15 +414,41 @@ export default function Settings() {
             <TabsContent value="billing">
               <div className="space-y-6">
                 {/* Account Status Card */}
-                <div className="bg-card/50 backdrop-blur-xl border border-border/50 rounded-xl p-6">
-                  <div className="flex items-center justify-between">
+                <div className="bg-card/50 backdrop-blur-xl border border-border/50 rounded-xl p-6 space-y-4">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
                     <h3 className="font-semibold text-foreground flex items-center gap-2">
                       <Crown className="w-5 h-5 text-accent" />
-                      Account Status
+                      Current Plan
                     </h3>
-                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-success/20 text-success border border-success/30">
-                      Active
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium border ${
+                      subscription?.status === "active"
+                        ? "bg-success/20 text-success border-success/30"
+                        : "bg-muted/30 text-muted-foreground border-border/40"
+                    }`}>
+                      {subscription?.status === "active" ? "Active" : (subscription?.status || "Inactive")}
                     </span>
+                  </div>
+                  <div className="grid sm:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Plan</p>
+                      <p className="font-medium text-foreground">{subscription?.plan?.display_name || "Starter"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Price</p>
+                      <p className="font-medium text-foreground">
+                        {subscription?.plan?.monthly_price
+                          ? `$${(subscription.plan.monthly_price / 100).toFixed(0)}/mo`
+                          : "Free"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Renews</p>
+                      <p className="font-medium text-foreground">
+                        {subscription?.current_period_end
+                          ? new Date(subscription.current_period_end).toLocaleDateString()
+                          : "—"}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
