@@ -72,6 +72,7 @@ export default function AdminWorkspaces() {
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<AdminWorkspaceRow | null>(null);
+  const [detailRow, setDetailRow] = useState<AdminWorkspaceRow | null>(null);
   const [reason, setReason] = useState("");
 
   const filtered = useMemo(() => {
