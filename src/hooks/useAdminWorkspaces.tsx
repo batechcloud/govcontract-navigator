@@ -66,6 +66,10 @@ export function useSetUserActive() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-workspaces"] });
       qc.invalidateQueries({ queryKey: ["admin-workspace-members"] });
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      qc.invalidateQueries({ queryKey: ["admin-overview-stats"] });
+      qc.invalidateQueries({ queryKey: ["admin-recent-signups"] });
+      qc.invalidateQueries({ queryKey: ["admin-workspace-detail"] });
     },
   });
 }
