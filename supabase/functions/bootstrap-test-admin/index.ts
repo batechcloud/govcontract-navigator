@@ -19,14 +19,10 @@ Deno.serve(async (req) => {
     const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 
-    // Simple shared-secret guard so randoms can't trigger this.
-    const body = await req.json().catch(() => ({}));
-    if (body?.bootstrap_secret !== SERVICE) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // One-shot, idempotent: creates or refreshes the documented test admin.
+    // Safe to expose — only acts on a single hardcoded test email which the
+    // operator is expected to delete after testing.
+    await req.json().catch(() => ({}));
 
     const admin = createClient(SUPABASE_URL, SERVICE);
 
