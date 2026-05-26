@@ -259,18 +259,14 @@ export default function AdminWorkspaces() {
 
 function WorkspaceRow({
   row,
-  expanded,
-  onToggleExpand,
   onActionClick,
   onOpenDetail,
 }: {
   row: AdminWorkspaceRow;
-  expanded: boolean;
-  onToggleExpand: () => void;
   onActionClick: () => void;
   onOpenDetail: () => void;
 }) {
-  const { data: members = [], isLoading } = useAdminWorkspaceMembers(expanded ? row.workspace_id : null);
+
 
   return (
     <TableRow>
