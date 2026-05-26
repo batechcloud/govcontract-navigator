@@ -192,10 +192,6 @@ export default function AdminWorkspaces() {
                 <WorkspaceRow
                   key={r.workspace_id}
                   row={r}
-                  expanded={expanded === r.workspace_id}
-                  onToggleExpand={() =>
-                    setExpanded(expanded === r.workspace_id ? null : r.workspace_id)
-                  }
                   onActionClick={() => {
                     setConfirm(r);
                     setReason("");
