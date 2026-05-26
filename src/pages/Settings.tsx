@@ -42,11 +42,6 @@ export default function Settings() {
       setFirstName(profile.first_name || "");
       setLastName(profile.last_name || "");
       setAvatarUrl(profile.avatar_url);
-      const prefs = (profile.notification_preferences as Record<string, unknown>) || {};
-      setNotifOpportunities(prefs.opportunities !== false);
-      setNotifDeadlines(prefs.deadlines !== false);
-      setNotifDigest(prefs.digest === true);
-      setNotifCompetitors(prefs.competitors !== false);
     }
   }, [profile]);
 
@@ -141,38 +136,8 @@ export default function Settings() {
     }
   };
 
-  const handleSaveNotifications = async () => {
-    if (!user) return;
-    setSavingNotifs(true);
-    try {
-      // Merge into existing preferences rather than overwrite — Onboarding
-      // writes a different shape (email_frequency, quiet_hours_*) into this
-      // same JSON column, and a plain UPDATE would clobber it.
-      const { data: cur } = await supabase
-        .from("profiles")
-        .select("notification_preferences")
-        .eq("id", user.id)
-        .maybeSingle();
-      const merged = {
-        ...(cur?.notification_preferences as Record<string, unknown> | null ?? {}),
-        opportunities: notifOpportunities,
-        deadlines: notifDeadlines,
-        digest: notifDigest,
-        competitors: notifCompetitors,
-      };
-      const { error } = await supabase
-        .from("profiles")
-        .update({ notification_preferences: merged })
-        .eq("id", user.id);
-      if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
-      toast.success("Preferences saved!", { description: "Your notification settings have been updated." });
-    } catch (error: any) {
-      toast.error("Error", { description: error.message });
-    } finally {
-      setSavingNotifs(false);
-    }
-  };
+
+
 
 
   return (
