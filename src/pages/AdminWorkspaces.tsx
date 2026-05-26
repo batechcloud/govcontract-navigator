@@ -262,11 +262,13 @@ function WorkspaceRow({
   expanded,
   onToggleExpand,
   onActionClick,
+  onOpenDetail,
 }: {
   row: AdminWorkspaceRow;
   expanded: boolean;
   onToggleExpand: () => void;
   onActionClick: () => void;
+  onOpenDetail: () => void;
 }) {
   const { data: members = [], isLoading } = useAdminWorkspaceMembers(expanded ? row.workspace_id : null);
 
@@ -278,7 +280,14 @@ function WorkspaceRow({
             {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           </Button>
         </TableCell>
-        <TableCell className="font-medium">{row.workspace_name}</TableCell>
+        <TableCell>
+          <button
+            onClick={onOpenDetail}
+            className="font-medium text-left hover:text-primary hover:underline"
+          >
+            {row.workspace_name}
+          </button>
+        </TableCell>
         <TableCell>
           <div className="text-sm">{ownerLabel(row)}</div>
           <div className="text-xs text-muted-foreground">{row.owner_email}</div>
