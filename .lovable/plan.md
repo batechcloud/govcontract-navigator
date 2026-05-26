@@ -1,76 +1,83 @@
-## Add Support Chat (workspace ↔ support team)
+# Superadmin Workspaces Dashboard
 
-A shared support thread per workspace. Owner and all members can post; superadmins reply from a new Admin Support Inbox page. Polls every 30s. Image/PDF attachments supported.
+Give superadmins a dedicated page to see every workspace owner and suspend / reactivate their account, plus a temporary superadmin login you can use right now to test it.
 
-### 1. Database (single migration)
+## 1. New page: `/admin/workspaces`
 
-- **`support_threads`** — one row per workspace.
-  - `id`, `workspace_id` (unique), `subject` (default "Workspace support"), `status` ('open' | 'pending' | 'resolved'), `last_message_at`, `last_message_preview`, `unread_for_workspace` int, `unread_for_admin` int, timestamps.
-- **`support_messages`** — chronological messages.
-  - `id`, `thread_id`, `sender_id` (auth user id), `sender_type` ('workspace' | 'admin' | 'system'), `body` text, `attachments` jsonb (array of `{ path, name, mime, size }`), `created_at`.
-- Indexes on `support_messages(thread_id, created_at)` and `support_threads(workspace_id)`, `support_threads(status, last_message_at desc)`.
-- **GRANTs** for `authenticated` and `service_role` on both tables.
-- **RLS**
-  - Threads: workspace members SELECT/UPDATE their own thread (via `same_workspace_as` on `owner_id` lookup or direct workspace_id check using `my_workspace_id()`); admins (`is_admin(auth.uid())`) SELECT/UPDATE all.
-  - Messages: workspace members SELECT messages whose thread belongs to their workspace; INSERT allowed with `sender_id = auth.uid()` and `sender_type = 'workspace'`. Admins SELECT all and INSERT with `sender_type = 'admin'`.
-- Trigger on `support_messages` insert: update parent thread's `last_message_at`, `last_message_preview`, increment the opposite-side unread counter, set status to `open` when a workspace user posts.
-- Helper `get_or_create_support_thread(_workspace_id uuid)` SECURITY DEFINER returning the thread id, used by the client on first open.
+Added next to the existing admin sections (Sync, Audit, Support, Workspaces).
 
-### 2. Storage
+**Table columns**
+- Workspace name
+- Owner name + email
+- Plan (from `user_subscriptions` → `subscription_plans.display_name`, fallback "Starter")
+- Members count
+- Created date
+- Status badge: **Active** / **Suspended**
+- Actions: `Deactivate` (red) or `Reactivate` (green), plus `View members` expand
 
-- New private bucket `support-attachments`.
-- RLS on `storage.objects`:
-  - Workspace members upload/read files prefixed `workspace/<workspace_id>/...`.
-  - Admins read all under the bucket.
-- 10MB per file limit enforced client-side. Allowed mimes: `image/*`, `application/pdf`.
+**Filters / UX**
+- Search box (owner email, owner name, workspace name)
+- Status filter: All / Active / Suspended
+- Sort by created date / members
+- Confirmation dialog before deactivating, with a reason field
 
-### 3. Edge functions
+**Expand row** shows all members of that workspace (name, email, role) — read-only.
 
-None required for v1 — all reads/writes go through Supabase client + RLS. Trigger handles thread bookkeeping.
+## 2. Backend
 
-### 4. Frontend — workspace side
+### New SQL (migration)
+- `profiles.is_suspended` already exists ✅ — reused as the source of truth.
+- Add SECURITY DEFINER RPC `admin_list_workspaces()` returning one row per workspace with owner info, plan, member count, status, last-active. Restricted to `is_admin(auth.uid())`.
+- Add `sync_audit_log` entry on every suspend/reactivate (table already exists).
 
-- **`src/hooks/useSupportThread.tsx`**
-  - `useSupportThread()` — RPC `get_or_create_support_thread`, then `useQuery` for thread row.
-  - `useSupportMessages(threadId)` — message list, `refetchInterval: 30_000` while visible.
-  - `useSendSupportMessage()` — upload attachments to storage, then insert message row.
-- **`src/components/support/SupportChatPanel.tsx`** — Sheet/drawer with header (subject, status badge, "Typical reply within 24h" microcopy), scrollable message list, input area with file attach + send button. Uses AI Elements–style bubbles (own = right-aligned filled, admin = left-aligned subtle surface, system = centered muted). Auto-scroll to bottom on new messages.
-- **Sidebar entry** — add a "Support" item near the bottom of the main sidebar (icon: `LifeBuoy`) with an unread dot when `unread_for_workspace > 0`. Clicking opens the Sheet panel (not a route). Visible to every workspace member (owner + editor + viewer).
-- Mark thread read: when the panel opens, reset `unread_for_workspace = 0`.
+### New edge function: `admin-set-user-active`
+- Manual JWT verification + `is_admin` check (rejects non-admins).
+- Input (Zod): `{ user_id: uuid, active: boolean, reason?: string }`.
+- Uses service role to:
+  1. Update `profiles.is_suspended`.
+  2. Call `supabase.auth.admin.updateUserById(user_id, { ban_duration: active ? 'none' : '876000h' })` so the suspended user is actually logged out and blocked from signing in.
+  3. Insert audit log row (`action: 'user_suspended' | 'user_reactivated'`, details include actor, target, reason).
+- Returns `{ ok: true }`.
 
-### 5. Frontend — admin side
+### Frontend hook
+- `useAdminWorkspaces()` — React Query, calls the RPC.
+- `useSetUserActive()` — mutation calling the edge function, invalidates `admin-workspaces`.
 
-- **`src/pages/admin/SupportInbox.tsx`** (new) under `AdminRoute` at `/admin/support`.
-  - Left column: list of all threads, ordered by `last_message_at desc`. Each row: workspace name, last preview, time ago, unread badge, status pill, filter chips (Open / Pending / Resolved / All), search.
-  - Right column: selected thread conversation reusing `SupportMessageList` + admin composer. Status dropdown (Open / Pending / Resolved). On open, reset `unread_for_admin = 0`.
-- Add **Support** link to the admin sidebar.
+## 3. Navigation
+- Add `Workspaces` item (Building2 icon) to the admin sidebar between Sync and Support.
 
-### 6. Polling & sidebar badge
+## 4. Temporary superadmin credentials (for you to test)
 
-- Lightweight workspace-side hook `useSupportUnreadCount()` that queries `support_threads.unread_for_workspace` for the workspace every 30s; drives the sidebar dot.
-- Admin sidebar gets a parallel `useAdminSupportUnreadCount()` summing `unread_for_admin` across open threads.
+The admin allowlist is the `admin_emails` table, populated from the `ADMIN_EMAILS` secret. To give you a working test login I will, in the migration:
 
-### Out of scope
+1. Insert `superadmin.test@gcnavigator.dev` into `admin_emails` (idempotent, no-op if already present).
+2. Create the user via Supabase auth admin in a one-shot edge function `bootstrap-test-admin` that I run once, with these credentials:
+   - **Email:** `superadmin.test@gcnavigator.dev`
+   - **Password:** `TempAdmin!2026Change`
+   - Email auto-confirmed.
+3. After you log in at `/admin/login` you can change the password from Supabase Auth or delete the user when done.
 
-- No realtime subscriptions (poll only).
-- No email notifications.
-- No typing indicators, read receipts, reactions.
-- No per-message editing/deletion.
-- No file types beyond images and PDFs.
-- No SLAs / business-hours logic — UI just shows "Typical reply within 24h" microcopy.
+⚠️ Please rotate or delete this account after testing — credentials in chat are not a long-term secret.
 
-### Files to create
+## Out of scope
+- Editing plans / billing from this page
+- Bulk actions
+- Deleting workspaces (suspension only; existing `delete_user_cascade` not exposed here)
+- Realtime updates (manual refresh / React Query refetch)
 
-- Migration (tables, indexes, RLS, trigger, helper RPC, bucket + storage policies).
-- `src/hooks/useSupportThread.tsx`
-- `src/components/support/SupportChatPanel.tsx`
-- `src/components/support/SupportMessageList.tsx`
-- `src/components/support/SupportComposer.tsx`
-- `src/pages/admin/SupportInbox.tsx`
+## Files
 
-### Files to edit
+**Create**
+- `supabase/migrations/<ts>_admin_workspaces.sql` (RPC + seed admin email)
+- `supabase/functions/admin-set-user-active/index.ts`
+- `supabase/functions/bootstrap-test-admin/index.ts` (one-shot)
+- `src/pages/AdminWorkspaces.tsx`
+- `src/hooks/useAdminWorkspaces.tsx`
 
-- Main sidebar component (add Support item + unread dot)
-- Admin sidebar component (add Support link)
-- `src/App.tsx` (lazy route `/admin/support`)
-- Memory index (new `mem://features/support-chat` entry)
+**Edit**
+- `src/App.tsx` — register `/admin/workspaces` route
+- Admin sidebar component — add nav item
+- `supabase/config.toml` — register two new functions
+- `mem://index.md` + new `mem://features/admin-workspaces`
+
+Approve and I'll build it, then give you the test login to try.
