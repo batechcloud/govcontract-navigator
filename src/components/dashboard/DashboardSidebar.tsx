@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,10 +11,13 @@ import {
   Settings,
   X,
   LogOut,
+  LifeBuoy,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { cn } from "@/lib/utils";
+import { SupportChatPanel } from "@/components/support/SupportChatPanel";
+import { useSupportUnreadCount } from "@/hooks/useSupportChat";
 
 const sidebarItems = [
   { icon: LayoutDashboard, label: "Home", href: "/dashboard" },
