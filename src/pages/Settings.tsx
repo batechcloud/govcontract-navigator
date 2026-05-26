@@ -203,6 +203,10 @@ export default function Settings() {
                 <Shield className="w-4 h-4" />
                 Security
               </TabsTrigger>
+              <TabsTrigger value="users" className="flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                Users
+              </TabsTrigger>
               <TabsTrigger value="billing" className="flex items-center gap-2">
                 <CreditCard className="w-4 h-4" />
                 Billing
