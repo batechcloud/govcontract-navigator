@@ -1,65 +1,56 @@
-## Workspace detail view for admins
+## Admin Dashboard Audit Report
 
-Add a "View details" action on each workspace row in `/admin/workspaces` that opens a full-height side drawer (Sheet) with richer account info and per-member actions. Keep the existing inline expand/suspend/impersonate row controls untouched.
+Scope: `/admin`, `/admin/workspaces`, `/admin/users`, `/admin/subscriptions`, `/admin/support`, `/admin/sync` (+ job detail), `/admin/audit`, `/admin/settings` (+ login). I read each page, traced every `supabase.rpc()` / `functions.invoke()` call, and verified every RPC and edge function exists with the right signature and permissions.
 
-### What the drawer shows
+---
 
-**Header**
-- Workspace name, plan badge, status badge (Active / Suspended)
-- Owner name, email, avatar initials
-- Quick actions: Impersonate owner, Suspend / Reactivate owner, Open support thread
+### ✅ What works correctly
 
-**Overview cards**
-- Created on (full date + relative)
-- Owner signed up (from `auth.users.created_at` of owner)
-- Owner last active (from `profiles.last_active_at`)
-- Member count + breakdown by role (owner / editor / viewer)
-- Plan name, subscription status, current period end (from `user_subscriptions` + `subscription_plans`)
-- Usage snapshot: # tracked contracts, # saved searches, # proposals (counts only)
+- **AdminOverview** — 8 KPI cards all navigate to the right section; signups chart, system health, top workspaces, latest activity all clickable; welcome message renders with profile name + fallback to email.
+- **AdminWorkspaces** — list, search, status filter, suspend/reactivate, impersonate, and detail drawer (members + counts + activity + role changes + removal) all wired to existing RPCs/functions.
+- **AdminSync** — start full / incremental, cancel, retry failed, live progress with ETA, recent jobs table → job detail page. All `sam-sync-control` actions exist.
+- **AdminAudit** — pulls last 30d from `sync_audit_log` (RLS-protected to admins), charts and recent-events list work.
+- **AdminSupport** — thread list, filters, conversation pane, status changes, composer; all hooks in `useSupportChat` resolve.
+- **AdminSubscriptions** — read-only list + MRR/Active/Churned KPIs.
+- **AdminUsers** — search, status filter, suspend/reactivate.
+- **AdminSettings** — Profile / Account / Security tabs for everyone; Team tab gated to superadmin; invite / role-change / remove all hit existing edge functions.
+- **AdminLogin** — sign-in, allowlist re-check, audit logging, invite flow all good.
 
-**Members table**
-- Columns: Name, Email, Role, Joined, Last active, Status
-- Per-row actions (owner-of-workspace excluded from destructive ones):
-  - Change role: viewer ↔ editor (reuse existing `workspace-update-role` edge function path is owner-only; we'll add an admin-side action via existing `admin-set-user-active` for suspend, and a new admin RPC for role change — see Technical)
-  - Suspend / Reactivate member (reuses `admin-set-user-active`)
-  - Impersonate member (reuses `startImpersonation`)
-  - Remove from workspace (new admin action)
+---
 
-**Recent activity**
-- Last 10 entries from `sync_audit_log` filtered by `details->>'workspace_id' = <id>` OR `actor_id` in workspace members.
+### 🐞 Bugs (functional)
 
-### How to open it
+1. **Overview "Recent signups" only ever shows the logged-in admin.**
+   `useAdminRecentSignups` queries `profiles` directly, but `profiles` RLS is `auth.uid() = id`, so admins can only read their own row. Needs a `SECURITY DEFINER` RPC (e.g. `admin_recent_signups(_limit int)`) gated by `is_admin(auth.uid())`.
 
-- New "Details" button on each workspace row (between Impersonate and Suspend), and clicking the workspace name also opens the drawer.
-- Drawer state via local `useState<AdminWorkspaceRow | null>`; uses shadcn `Sheet` (right side, `sm:max-w-2xl`).
+2. **Suspending a user from AdminUsers doesn't refresh the table.**
+   `useSetUserActive` invalidates `admin-workspaces` and `admin-workspace-members` only. Missing invalidations for `admin-users` and `admin-overview-stats` — the Users row keeps showing "Active" until a manual reload.
 
-### Technical
+3. **AdminLogin always redirects to `/admin/sync` after sign-in.**
+   `/admin/sync` is restricted to superadmin (`role: ["admin"]` in sidebar, `allowedRoles={[]}` on the route). `workspace_admin` and `subscription_manager` sign in successfully, hit `/admin/sync`, get bounced by `AdminRoute` to `/admin`. Should send them to `/admin` directly.
 
-New hook `useAdminWorkspaceDetail(workspaceId)` calls a new SECURITY DEFINER RPC `admin_workspace_detail(_workspace_id uuid)` returning a single JSON row with:
-- owner signup date, last active
-- subscription { plan, status, period_end }
-- counts { tracked_contracts, saved_searches, proposals }
-- role breakdown
+4. **AdminAudit "Back to console" button points at `/admin/sync`.**
+   Same issue as #3 — works for superadmin, wrong destination conceptually. Should go to `/admin`.
 
-Reuse existing `admin_list_workspace_members` for member rows (already returns joined_at, is_suspended, role). Add `last_active_at` to its return.
+5. **AdminSync non-admin redirect points to `/dashboard`** instead of `/admin/login` (every other admin page redirects to `/admin/login`). Inconsistent, can confuse non-authed users.
 
-New edge functions (admin-only, manual JWT verify, follow existing pattern in `admin-team-*`):
-- `admin-workspace-set-member-role` — body `{ workspace_id, user_id, role }`, updates `workspace_members.role`, blocks changing owner.
-- `admin-workspace-remove-member` — body `{ workspace_id, user_id }`, deletes from `workspace_members`, blocks removing owner.
+---
 
-Recent activity: client-side query `sync_audit_log.select().or('actor_id.in.(...)','details->>workspace_id.eq.<id>').order(created_at desc).limit(10)`.
+### ✨ Polish (consistency / UX)
 
-### Files
+6. **AdminUsers has no Impersonate / Details actions** — AdminWorkspaces does. Adding Impersonate per row would let admins jump into any user's account, not just workspace owners.
+7. **AdminWorkspaces & AdminUsers RPCs hide deleted/orphaned rows silently** — `admin_list_workspaces` LEFT JOINs `auth.users`; if owner email is null the row renders "—". Cosmetic, not a bug.
+8. **AdminSync `Navigate to="/dashboard"`** could be `/admin/login` to match the rest.
 
-- New: `src/components/admin/WorkspaceDetailDrawer.tsx`
-- New: `src/hooks/useAdminWorkspaceDetail.tsx`
-- Edit: `src/pages/AdminWorkspaces.tsx` (add Details button + drawer mount, make workspace name clickable)
-- Edit: `src/hooks/useAdminWorkspaces.tsx` (add `last_active_at` to member type; add member-role / remove mutations)
-- New SQL migration: `admin_workspace_detail` RPC + add `last_active_at` to `admin_list_workspace_members`
-- New edge functions: `admin-workspace-set-member-role`, `admin-workspace-remove-member` (+ `supabase/config.toml` entries)
+---
 
-### Out of scope
+### Proposed fix plan (in order)
 
-- Editing workspace name / plan
-- Billing changes (stay in `/admin/subscriptions`)
-- Inviting new members from the admin drawer (owners do this from their workspace settings)
+If you approve, I'll do them as one focused pass:
+
+1. **DB migration** — add `admin_recent_signups(_limit int)` security-definer RPC; update `useAdminRecentSignups` to call it.
+2. **Hook fix** — extend `useSetUserActive` to invalidate `admin-users` and `admin-overview-stats`.
+3. **Routing fixes** — AdminLogin success → `/admin`; AdminAudit back button → `/admin`; AdminSync unauthorized → `/admin/login`.
+4. **(Optional UX)** — Add Impersonate + open-detail to AdminUsers rows (mirrors AdminWorkspaces).
+
+Tell me which of these to ship — say "all 4", "just 1–3", or pick individually.
