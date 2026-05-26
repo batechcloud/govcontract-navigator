@@ -28,6 +28,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTrackedContracts } from "@/hooks/useTrackedContracts";
+import { useFeatureAccess, useIncrementUsage } from "@/hooks/useFeatureAccess";
+import { UsageLimitBanner } from "@/components/subscription/UsageLimitBanner";
+import { UpgradePrompt } from "@/components/subscription/FeatureGate";
+import { useSubscription } from "@/hooks/useSubscription";
 
 const GENERATION_STEPS = [
   { label: "Analyzing your business profile", icon: Building2, duration: 5000 },
@@ -43,6 +47,9 @@ export default function ProposalGenerator() {
   const queryClient = useQueryClient();
   const { data: companyProfile, isLoading: profileLoading } = useCompanyProfile();
   const { data: trackedContracts = [] } = useTrackedContracts();
+  const { data: proposalAccess } = useFeatureAccess("proposal_generator");
+  const { data: subscription } = useSubscription();
+  const incrementUsage = useIncrementUsage();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStep, setGenerationStep] = useState(0);
   const [generatedProposalId, setGeneratedProposalId] = useState<string | null>(null);
@@ -118,6 +125,15 @@ export default function ProposalGenerator() {
       return;
     }
 
+    if (!proposalAccess?.can_use) {
+      if (!proposalAccess?.has_access) {
+        toast.error("Upgrade required to generate proposals");
+      } else {
+        toast.error("You've reached your monthly proposal limit");
+      }
+      return;
+    }
+
     setIsGenerating(true);
     setGenerationStep(0);
 
@@ -135,6 +151,7 @@ export default function ProposalGenerator() {
       if (data?.error) throw new Error(data.error);
 
       setGeneratedProposalId(data.proposal.id);
+      incrementUsage.mutate("proposal_generator");
       queryClient.invalidateQueries({ queryKey: ["proposals"] });
       toast.success("Proposal generated successfully!");
       fireConfetti();
@@ -241,14 +258,27 @@ export default function ProposalGenerator() {
           )}
         </motion.div>
 
-        {!generatedProposalId ? (
+        {proposalAccess && !proposalAccess.has_access ? (
+          <UpgradePrompt
+            featureCode="proposal_generator"
+            currentPlan={subscription?.plan?.display_name || "Starter"}
+            hasAccess={false}
+          />
+        ) : !generatedProposalId ? (
           <motion.div
             className="bg-card/50 backdrop-blur-xl border border-border/50 rounded-xl p-8"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
+            <UsageLimitBanner
+              featureCode="proposal_generator"
+              featureName="AI Proposals"
+              className="mb-6"
+              showAlways
+            />
             <div className="space-y-6">
+
 
               {/* Tracked Contract Picker */}
               {trackedContracts.length > 0 && (

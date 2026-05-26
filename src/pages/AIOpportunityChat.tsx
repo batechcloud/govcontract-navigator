@@ -27,6 +27,8 @@ import {
 import { useCompanyProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
 import { useConversations, useConversationMessages } from "@/hooks/useConversations";
+import { useFeatureAccess, useIncrementUsage } from "@/hooks/useFeatureAccess";
+import { UsageLimitBanner } from "@/components/subscription/UsageLimitBanner";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +51,8 @@ export default function AIOpportunityChat() {
   const { user } = useAuth();
   const { data: companyProfile } = useCompanyProfile();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { data: chatAccess } = useFeatureAccess("ai_chat");
+  const incrementChatUsage = useIncrementUsage();
 
   // Conversation state
   const { conversations, createConversation, deleteConversation, updateTitle } = useConversations();
@@ -101,6 +105,14 @@ export default function AIOpportunityChat() {
   const sendMessage = async (text: string) => {
     const userText = text.trim();
     if (!userText || isLoading) return;
+    if (chatAccess && !chatAccess.can_use) {
+      toast.error(
+        chatAccess.has_access
+          ? "You've reached your monthly AI chat limit"
+          : "Upgrade required to use AI chat"
+      );
+      return;
+    }
 
     const userMsg: Message = { role: "user", content: userText };
     const newMessages = [...messages, userMsg];
@@ -222,6 +234,7 @@ export default function AIOpportunityChat() {
       // Persist assistant message
       if (assistantSoFar) {
         await addMessage.mutateAsync({ conversationId: convId, role: "assistant", content: assistantSoFar });
+        incrementChatUsage.mutate("ai_chat");
       }
     } catch (err) {
       console.error("Chat error:", err);
@@ -358,6 +371,8 @@ export default function AIOpportunityChat() {
               )}
             </div>
           </div>
+
+          <UsageLimitBanner featureCode="ai_chat" featureName="AI Chat" />
 
           {/* Chat area */}
           <Card variant="glass" className="flex-1 overflow-hidden flex flex-col min-h-0">

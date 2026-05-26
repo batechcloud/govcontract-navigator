@@ -2,13 +2,13 @@ import { useState, useRef, useEffect } from "react";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { motion } from "framer-motion";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
-import { User, Bell, Shield, CreditCard, Camera, Loader2, Check, Crown, ExternalLink, Download, FileText, Calendar, ChevronRight, Users, Building2 } from "lucide-react";
+import { User, Shield, CreditCard, Camera, Loader2, Check, Crown, ExternalLink, Download, FileText, Calendar, ChevronRight, Users, Building2 } from "lucide-react";
 import { BusinessTab } from "@/components/settings/BusinessTab";
 import { UsersTab } from "@/components/settings/UsersTab";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
@@ -34,25 +34,14 @@ export default function Settings() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
-  const [savingNotifs, setSavingNotifs] = useState(false);
 
-  // Notification preferences state
-  const notifPrefs = (profile?.notification_preferences as Record<string, unknown>) || {};
-  const [notifOpportunities, setNotifOpportunities] = useState<boolean>(() => notifPrefs.opportunities !== false);
-  const [notifDeadlines, setNotifDeadlines] = useState<boolean>(() => notifPrefs.deadlines !== false);
-  const [notifDigest, setNotifDigest] = useState<boolean>(() => notifPrefs.digest === true);
-  const [notifCompetitors, setNotifCompetitors] = useState<boolean>(() => notifPrefs.competitors !== false);
+
 
   useEffect(() => {
     if (profile) {
       setFirstName(profile.first_name || "");
       setLastName(profile.last_name || "");
       setAvatarUrl(profile.avatar_url);
-      const prefs = (profile.notification_preferences as Record<string, unknown>) || {};
-      setNotifOpportunities(prefs.opportunities !== false);
-      setNotifDeadlines(prefs.deadlines !== false);
-      setNotifDigest(prefs.digest === true);
-      setNotifCompetitors(prefs.competitors !== false);
     }
   }, [profile]);
 
@@ -147,38 +136,8 @@ export default function Settings() {
     }
   };
 
-  const handleSaveNotifications = async () => {
-    if (!user) return;
-    setSavingNotifs(true);
-    try {
-      // Merge into existing preferences rather than overwrite — Onboarding
-      // writes a different shape (email_frequency, quiet_hours_*) into this
-      // same JSON column, and a plain UPDATE would clobber it.
-      const { data: cur } = await supabase
-        .from("profiles")
-        .select("notification_preferences")
-        .eq("id", user.id)
-        .maybeSingle();
-      const merged = {
-        ...(cur?.notification_preferences as Record<string, unknown> | null ?? {}),
-        opportunities: notifOpportunities,
-        deadlines: notifDeadlines,
-        digest: notifDigest,
-        competitors: notifCompetitors,
-      };
-      const { error } = await supabase
-        .from("profiles")
-        .update({ notification_preferences: merged })
-        .eq("id", user.id);
-      if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
-      toast.success("Preferences saved!", { description: "Your notification settings have been updated." });
-    } catch (error: any) {
-      toast.error("Error", { description: error.message });
-    } finally {
-      setSavingNotifs(false);
-    }
-  };
+
+
 
 
   return (
@@ -199,10 +158,6 @@ export default function Settings() {
               <TabsTrigger value="profile" className="flex items-center gap-2">
                 <User className="w-4 h-4" />
                 Profile
-              </TabsTrigger>
-              <TabsTrigger value="notifications" className="flex items-center gap-2">
-                <Bell className="w-4 h-4" />
-                Notifications
               </TabsTrigger>
               <TabsTrigger value="security" className="flex items-center gap-2">
                 <Shield className="w-4 h-4" />
@@ -313,55 +268,6 @@ export default function Settings() {
               </div>
             </TabsContent>
 
-            {/* Notifications Tab */}
-            <TabsContent value="notifications">
-              <div className="bg-card/50 backdrop-blur-xl border border-border/50 rounded-xl p-6 space-y-6">
-                <h3 className="font-semibold text-foreground">Notification Preferences</h3>
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-foreground">New Opportunity Matches</p>
-                      <p className="text-sm text-muted-foreground">Get notified when new contracts match your profile</p>
-                    </div>
-                    <Switch checked={notifOpportunities} onCheckedChange={setNotifOpportunities} />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-foreground">Deadline Reminders</p>
-                      <p className="text-sm text-muted-foreground">Receive reminders before response deadlines</p>
-                    </div>
-                    <Switch checked={notifDeadlines} onCheckedChange={setNotifDeadlines} />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-foreground">Weekly Digest</p>
-                      <p className="text-sm text-muted-foreground">Receive a weekly summary of opportunities</p>
-                    </div>
-                    <Switch checked={notifDigest} onCheckedChange={setNotifDigest} />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-foreground">Competitor Activity</p>
-                      <p className="text-sm text-muted-foreground">Get alerts about tracked competitor wins</p>
-                    </div>
-                    <Switch checked={notifCompetitors} onCheckedChange={setNotifCompetitors} />
-                  </div>
-                </div>
-
-                <Button
-                  onClick={handleSaveNotifications}
-                  disabled={savingNotifs}
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground"
-                >
-                  {savingNotifs ? (
-                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
-                  ) : (
-                    <><Check className="w-4 h-4 mr-2" /> Save Preferences</>
-                  )}
-                </Button>
-              </div>
-            </TabsContent>
 
             {/* Security Tab */}
             <TabsContent value="security">

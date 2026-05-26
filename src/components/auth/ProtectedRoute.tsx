@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { SuspendedScreen } from "./SuspendedScreen";
 
 const BrandedLoader = ({ message = "Restoring your session…" }: { message?: string }) => (
   <div className="min-h-screen flex items-center justify-center bg-background">
@@ -48,6 +49,10 @@ export function ProtectedRoute({ children, requireOnboarding = true }: Protected
 
   if (!user) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
+
+  if (profile?.is_suspended) {
+    return <SuspendedScreen />;
   }
 
   if (requireOnboarding && profile && !profile.onboarding_completed) {
