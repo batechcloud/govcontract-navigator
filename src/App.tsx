@@ -145,12 +145,14 @@ const App = () => (
                 <Route path="/dashboard/contract/:contractId" element={<ProtectedRoute><ErrorBoundary><ContractDetail /></ErrorBoundary></ProtectedRoute>} />
                 {/* Separate admin area with its own login */}
                 <Route path="/admin/login" element={<ErrorBoundary><AdminLogin /></ErrorBoundary>} />
-                <Route path="/admin" element={<Navigate to="/admin/sync" replace />} />
-                <Route path="/admin/sync" element={<AdminRoute><ErrorBoundary><AdminSync /></ErrorBoundary></AdminRoute>} />
-                <Route path="/admin/sync/jobs/:jobId" element={<AdminRoute><ErrorBoundary><AdminSyncJobDetail /></ErrorBoundary></AdminRoute>} />
-                <Route path="/admin/audit" element={<AdminRoute><ErrorBoundary><AdminAudit /></ErrorBoundary></AdminRoute>} />
-                <Route path="/admin/support" element={<AdminRoute><ErrorBoundary><AdminSupport /></ErrorBoundary></AdminRoute>} />
-                <Route path="/admin/workspaces" element={<AdminRoute><ErrorBoundary><AdminWorkspaces /></ErrorBoundary></AdminRoute>} />
+                <Route path="/admin" element={<AdminRoute><AdminLayout><ErrorBoundary><AdminOverview /></ErrorBoundary></AdminLayout></AdminRoute>} />
+                <Route path="/admin/sync" element={<AdminRoute><AdminLayout><ErrorBoundary><AdminSync /></ErrorBoundary></AdminLayout></AdminRoute>} />
+                <Route path="/admin/sync/jobs/:jobId" element={<AdminRoute><AdminLayout><ErrorBoundary><AdminSyncJobDetail /></ErrorBoundary></AdminLayout></AdminRoute>} />
+                <Route path="/admin/audit" element={<AdminRoute><AdminLayout><ErrorBoundary><AdminAudit /></ErrorBoundary></AdminLayout></AdminRoute>} />
+                <Route path="/admin/support" element={<AdminRoute><AdminLayout><ErrorBoundary><AdminSupport /></ErrorBoundary></AdminLayout></AdminRoute>} />
+                <Route path="/admin/workspaces" element={<AdminRoute><AdminLayout><ErrorBoundary><AdminWorkspaces /></ErrorBoundary></AdminLayout></AdminRoute>} />
+                <Route path="/admin/users" element={<AdminRoute><AdminLayout><ErrorBoundary><AdminUsers /></ErrorBoundary></AdminLayout></AdminRoute>} />
+                <Route path="/admin/subscriptions" element={<AdminRoute><AdminLayout><ErrorBoundary><AdminSubscriptions /></ErrorBoundary></AdminLayout></AdminRoute>} />
                 <Route path="/dashboard/admin/sync" element={<Navigate to="/admin/sync" replace />} />
 
                 {/* Redirects from old routes */}
