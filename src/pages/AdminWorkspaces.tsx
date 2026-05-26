@@ -247,6 +247,12 @@ export default function AdminWorkspaces() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <WorkspaceDetailDrawer
+        row={detailRow}
+        open={!!detailRow}
+        onOpenChange={(o) => !o && setDetailRow(null)}
+      />
     </>
   );
 }
