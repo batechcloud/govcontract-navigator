@@ -14,7 +14,6 @@ import {
   Clock,
 } from "lucide-react";
 
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -98,28 +97,28 @@ export default function AdminSyncJobDetail() {
 
   if (adminLoading) {
     return (
-      <DashboardLayout title="Job Detail">
+      <>
         <div className="flex items-center justify-center h-64">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
-      </DashboardLayout>
+      </>
     );
   }
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   if (job.isLoading) {
     return (
-      <DashboardLayout title="Job Detail">
+      <>
         <div className="flex items-center justify-center h-64">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
   if (job.error || !job.data) {
     return (
-      <DashboardLayout title="Job Detail">
+      <>
         <div className="max-w-3xl mx-auto p-6">
           <Button variant="ghost" onClick={() => navigate("/admin/sync")} className="mb-4">
             <ArrowLeft className="w-4 h-4 mr-2" /> Back
@@ -130,7 +129,7 @@ export default function AdminSyncJobDetail() {
             </CardContent>
           </Card>
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
@@ -203,7 +202,7 @@ export default function AdminSyncJobDetail() {
   timeline.sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime());
 
   return (
-    <DashboardLayout title="Sync Job Detail">
+    <>
       <div className="max-w-5xl mx-auto space-y-6">
         <div>
           <Button variant="ghost" onClick={() => navigate("/admin/sync")} className="mb-3 -ml-2">
@@ -320,7 +319,7 @@ export default function AdminSyncJobDetail() {
           </Card>
         )}
       </div>
-    </DashboardLayout>
+    </>
   );
 }
 

@@ -3,7 +3,6 @@ import { formatDistanceToNow } from "date-fns";
 import { LifeBuoy, Loader2, Search } from "lucide-react";
 import { Navigate } from "react-router-dom";
 
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -64,17 +63,17 @@ export default function AdminSupport() {
 
   if (adminLoading) {
     return (
-      <DashboardLayout title="Support Inbox">
+      <>
         <div className="flex items-center justify-center h-[60vh]">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
-      </DashboardLayout>
+      </>
     );
   }
   if (!isAdmin) return <Navigate to="/admin/login" replace />;
 
   return (
-    <DashboardLayout title="Support Inbox">
+    <>
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <LifeBuoy className="w-6 h-6 text-primary" />
@@ -175,7 +174,7 @@ export default function AdminSupport() {
           </Card>
         </div>
       </div>
-    </DashboardLayout>
+    </>
   );
 }
 

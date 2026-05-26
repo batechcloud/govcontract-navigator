@@ -13,7 +13,6 @@ import {
   Activity,
 } from "lucide-react";
 
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -115,7 +114,7 @@ export default function AdminWorkspaces() {
   };
 
   return (
-    <DashboardLayout title="Workspaces (Admin)">
+    <>
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
@@ -253,7 +252,7 @@ export default function AdminWorkspaces() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </DashboardLayout>
+    </>
   );
 }
 

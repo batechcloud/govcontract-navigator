@@ -17,7 +17,6 @@ import {
   Loader2,
 } from "lucide-react";
 
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -144,11 +143,11 @@ export default function AdminSync() {
 
   if (adminLoading) {
     return (
-      <DashboardLayout title="Sync Console">
+      <>
         <div className="flex items-center justify-center h-64">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
@@ -172,7 +171,7 @@ export default function AdminSync() {
       : null;
 
   return (
-    <DashboardLayout title="SAM.gov Sync Console">
+    <>
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
@@ -416,7 +415,7 @@ export default function AdminSync() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </DashboardLayout>
+    </>
   );
 }
 
