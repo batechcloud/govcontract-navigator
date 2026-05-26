@@ -1,20 +1,24 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { useAdminRole, AdminRole } from "@/hooks/useAdminRole";
 import { isImpersonating } from "@/lib/impersonation";
 
 /**
- * Guards admin-only routes. Single server-side check via is_admin() RPC.
- * Non-admins (including unauthenticated users) are sent to /admin/login.
- * While impersonating a workspace owner, admin pages are not accessible.
+ * Guards admin-only routes. Optionally accepts allowedRoles to restrict
+ * which admin tiers can access. Superadmin ('admin') always passes.
  */
-export const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+export const AdminRoute = ({
+  children,
+  allowedRoles,
+}: {
+  children: React.ReactNode;
+  /** If omitted, any admin-tier role is allowed. */
+  allowedRoles?: Exclude<AdminRole, null>[];
+}) => {
   const { user, loading } = useAuth();
-  const { data: isAdmin, isLoading: checking } = useIsAdmin();
+  const { data: role, isLoading: checking } = useAdminRole();
 
-  if (isImpersonating()) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  if (isImpersonating()) return <Navigate to="/dashboard" replace />;
 
   if (loading || (user && checking)) {
     return (
@@ -24,8 +28,10 @@ export const AdminRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  if (!user || !isAdmin) {
-    return <Navigate to="/admin/login" replace />;
+  if (!user || !role) return <Navigate to="/admin/login" replace />;
+
+  if (allowedRoles && role !== "admin" && !allowedRoles.includes(role)) {
+    return <Navigate to="/admin" replace />;
   }
 
   return <>{children}</>;
