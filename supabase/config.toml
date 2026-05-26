@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.workspace-remove-user]
 verify_jwt = false
+
+[functions.workspace-update-role]
+verify_jwt = false
