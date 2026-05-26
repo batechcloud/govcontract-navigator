@@ -125,6 +125,15 @@ export default function ProposalGenerator() {
       return;
     }
 
+    if (!proposalAccess?.can_use) {
+      if (!proposalAccess?.has_access) {
+        toast.error("Upgrade required to generate proposals");
+      } else {
+        toast.error("You've reached your monthly proposal limit");
+      }
+      return;
+    }
+
     setIsGenerating(true);
     setGenerationStep(0);
 
@@ -142,6 +151,7 @@ export default function ProposalGenerator() {
       if (data?.error) throw new Error(data.error);
 
       setGeneratedProposalId(data.proposal.id);
+      incrementUsage.mutate("proposal_generator");
       queryClient.invalidateQueries({ queryKey: ["proposals"] });
       toast.success("Proposal generated successfully!");
       fireConfetti();
