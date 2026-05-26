@@ -1160,6 +1160,65 @@ export type Database = {
         }
         Relationships: []
       }
+      workspace_members: {
+        Row: {
+          created_at: string
+          id: string
+          invited_by: string | null
+          role: Database["public"]["Enums"]["workspace_role"]
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invited_by?: string | null
+          role?: Database["public"]["Enums"]["workspace_role"]
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invited_by?: string | null
+          role?: Database["public"]["Enums"]["workspace_role"]
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_members_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspaces: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -1182,6 +1241,7 @@ export type Database = {
           usage_limit: number
         }[]
       }
+      delete_user_cascade: { Args: { _user_id: string }; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1194,6 +1254,9 @@ export type Database = {
         Returns: number
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_workspace_owner: { Args: { _workspace_id: string }; Returns: boolean }
+      my_workspace_id: { Args: never; Returns: string }
+      same_workspace_as: { Args: { _other_user: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user" | "superadmin"
@@ -1204,6 +1267,7 @@ export type Database = {
         | "failed"
         | "cancelled"
       sync_job_type: "full" | "incremental" | "manual"
+      workspace_role: "owner" | "member"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1340,6 +1404,7 @@ export const Constants = {
         "cancelled",
       ],
       sync_job_type: ["full", "incremental", "manual"],
+      workspace_role: ["owner", "member"],
     },
   },
 } as const
