@@ -200,6 +200,7 @@ export default function AdminWorkspaces() {
                     setConfirm(r);
                     setReason("");
                   }}
+                  onOpenDetail={() => setDetailRow(r)}
                 />
               ))}
             </TableBody>
