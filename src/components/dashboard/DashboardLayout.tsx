@@ -27,6 +27,7 @@ import {
 import { DashboardSidebar } from "./DashboardSidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
+import { useTrackActivity } from "@/hooks/useTrackActivity";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -40,6 +41,7 @@ export const DashboardLayout = ({ children, title }: DashboardLayoutProps) => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { data: profile } = useProfile();
+  useTrackActivity();
 
   const initials = profile
     ? `${(profile.first_name?.[0] || "").toUpperCase()}${(profile.last_name?.[0] || "").toUpperCase()}` || "U"
