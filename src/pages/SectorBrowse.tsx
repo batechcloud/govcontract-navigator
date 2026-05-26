@@ -87,7 +87,7 @@ export default function SectorBrowse() {
           {!isLoading && (
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-xs border-primary/30 text-primary">
-                {totalFromApi > 0 ? `${totalFromApi.toLocaleString()} total on SAM.gov` : `${contracts.length} loaded`}
+                {contracts.length.toLocaleString()} loaded{totalFromApi > contracts.length ? ` of ${totalFromApi.toLocaleString()}` : ""}
               </Badge>
               <Button variant="ghost" size="icon" onClick={() => refetch()} className="h-8 w-8">
                 <RefreshCw className="w-4 h-4" />
@@ -99,7 +99,7 @@ export default function SectorBrowse() {
         {/* Data source indicator */}
         {!isLoading && !isError && contracts.length > 0 && (
           <p className="text-xs text-muted-foreground/70 mb-4">
-            Live data from <span className="text-primary font-medium">SAM.gov</span> · {contracts.length} opportunities loaded · {classified} classified by NAICS
+            Sector counts reflect the {contracts.length.toLocaleString()} most recent opportunities cached from <span className="text-primary font-medium">SAM.gov</span> · {classified} classified by NAICS
           </p>
         )}
 
