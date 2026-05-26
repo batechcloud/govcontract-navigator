@@ -12,7 +12,9 @@ import {
   ChevronRight,
   Activity,
   UserCog,
+  Eye,
 } from "lucide-react";
+import WorkspaceDetailDrawer from "@/components/admin/WorkspaceDetailDrawer";
 import { startImpersonation } from "@/lib/impersonation";
 
 import { Card } from "@/components/ui/card";
