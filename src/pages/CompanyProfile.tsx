@@ -551,7 +551,7 @@ const CompanyProfile = () => {
                       <Button variant="ghost" size="sm" onClick={() => handleDownloadDoc(doc)} title="Download">
                         <Download className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteDoc(doc)} className="text-destructive hover:text-destructive" title="Delete">
+                      <Button variant="ghost" size="sm" onClick={() => handleDeleteDoc(doc)} className="text-destructive hover:text-destructive" title="Delete" disabled={readOnly}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
