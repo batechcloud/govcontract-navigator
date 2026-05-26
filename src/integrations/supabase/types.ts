@@ -707,6 +707,91 @@ export type Database = {
         }
         Relationships: []
       }
+      support_messages: {
+        Row: {
+          attachments: Json
+          body: string
+          created_at: string
+          id: string
+          sender_id: string | null
+          sender_type: Database["public"]["Enums"]["support_sender_type"]
+          thread_id: string
+        }
+        Insert: {
+          attachments?: Json
+          body?: string
+          created_at?: string
+          id?: string
+          sender_id?: string | null
+          sender_type: Database["public"]["Enums"]["support_sender_type"]
+          thread_id: string
+        }
+        Update: {
+          attachments?: Json
+          body?: string
+          created_at?: string
+          id?: string
+          sender_id?: string | null
+          sender_type?: Database["public"]["Enums"]["support_sender_type"]
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "support_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_threads: {
+        Row: {
+          created_at: string
+          id: string
+          last_message_at: string | null
+          last_message_preview: string | null
+          status: Database["public"]["Enums"]["support_thread_status"]
+          subject: string
+          unread_for_admin: number
+          unread_for_workspace: number
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          status?: Database["public"]["Enums"]["support_thread_status"]
+          subject?: string
+          unread_for_admin?: number
+          unread_for_workspace?: number
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          status?: Database["public"]["Enums"]["support_thread_status"]
+          subject?: string
+          unread_for_admin?: number
+          unread_for_workspace?: number
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_threads_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sync_audit_log: {
         Row: {
           action: string
@@ -1242,6 +1327,7 @@ export type Database = {
         }[]
       }
       delete_user_cascade: { Args: { _user_id: string }; Returns: undefined }
+      get_or_create_support_thread: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1261,6 +1347,8 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user" | "superadmin"
+      support_sender_type: "workspace" | "admin" | "system"
+      support_thread_status: "open" | "pending" | "resolved"
       sync_job_status:
         | "queued"
         | "running"
@@ -1397,6 +1485,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user", "superadmin"],
+      support_sender_type: ["workspace", "admin", "system"],
+      support_thread_status: ["open", "pending", "resolved"],
       sync_job_status: [
         "queued",
         "running",
