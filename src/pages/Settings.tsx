@@ -200,10 +200,6 @@ export default function Settings() {
                 <User className="w-4 h-4" />
                 Profile
               </TabsTrigger>
-              <TabsTrigger value="notifications" className="flex items-center gap-2">
-                <Bell className="w-4 h-4" />
-                Notifications
-              </TabsTrigger>
               <TabsTrigger value="security" className="flex items-center gap-2">
                 <Shield className="w-4 h-4" />
                 Security
@@ -313,55 +309,6 @@ export default function Settings() {
               </div>
             </TabsContent>
 
-            {/* Notifications Tab */}
-            <TabsContent value="notifications">
-              <div className="bg-card/50 backdrop-blur-xl border border-border/50 rounded-xl p-6 space-y-6">
-                <h3 className="font-semibold text-foreground">Notification Preferences</h3>
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-foreground">New Opportunity Matches</p>
-                      <p className="text-sm text-muted-foreground">Get notified when new contracts match your profile</p>
-                    </div>
-                    <Switch checked={notifOpportunities} onCheckedChange={setNotifOpportunities} />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-foreground">Deadline Reminders</p>
-                      <p className="text-sm text-muted-foreground">Receive reminders before response deadlines</p>
-                    </div>
-                    <Switch checked={notifDeadlines} onCheckedChange={setNotifDeadlines} />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-foreground">Weekly Digest</p>
-                      <p className="text-sm text-muted-foreground">Receive a weekly summary of opportunities</p>
-                    </div>
-                    <Switch checked={notifDigest} onCheckedChange={setNotifDigest} />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-foreground">Competitor Activity</p>
-                      <p className="text-sm text-muted-foreground">Get alerts about tracked competitor wins</p>
-                    </div>
-                    <Switch checked={notifCompetitors} onCheckedChange={setNotifCompetitors} />
-                  </div>
-                </div>
-
-                <Button
-                  onClick={handleSaveNotifications}
-                  disabled={savingNotifs}
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground"
-                >
-                  {savingNotifs ? (
-                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
-                  ) : (
-                    <><Check className="w-4 h-4 mr-2" /> Save Preferences</>
-                  )}
-                </Button>
-              </div>
-            </TabsContent>
 
             {/* Security Tab */}
             <TabsContent value="security">
