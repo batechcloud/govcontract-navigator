@@ -24,11 +24,20 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Loader2, UserPlus, Trash2, Crown, Copy, RefreshCw, Users } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Loader2, UserPlus, Trash2, Crown, Copy, RefreshCw, Users, Eye, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useWorkspace } from "@/hooks/useWorkspace";
+import { useWorkspace, normalizeRole } from "@/hooks/useWorkspace";
+
+type InviteRole = "viewer" | "editor";
 
 function randomPassword(): string {
   const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -58,15 +67,18 @@ export function UsersTab() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [tempPassword, setTempPassword] = useState("");
+  const [inviteRole, setInviteRole] = useState<InviteRole>("viewer");
   const [submitting, setSubmitting] = useState(false);
   const [createdPassword, setCreatedPassword] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null);
 
   const resetForm = () => {
     setFirstName("");
     setLastName("");
     setEmail("");
     setTempPassword("");
+    setInviteRole("viewer");
     setCreatedPassword(null);
   };
 
@@ -78,6 +90,7 @@ export function UsersTab() {
           email: email.trim(),
           first_name: firstName.trim() || undefined,
           last_name: lastName.trim() || undefined,
+          role: inviteRole,
           temp_password: tempPassword,
         },
       });
@@ -110,6 +123,29 @@ export function UsersTab() {
     }
   };
 
+  const handleRoleChange = async (userId: string, role: InviteRole) => {
+    setUpdatingRoleId(userId);
+    try {
+      const { data: res, error } = await supabase.functions.invoke("workspace-update-role", {
+        body: { user_id: userId, role },
+      });
+      if (error) throw error;
+      if ((res as any)?.error) throw new Error((res as any).error);
+      toast.success(`Role updated to ${role}`);
+      queryClient.invalidateQueries({ queryKey: ["workspace"] });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to update role");
+    } finally {
+      setUpdatingRoleId(null);
+    }
+  };
+
+  const roleBadgeClass = (role: "owner" | "editor" | "viewer") => {
+    if (role === "owner") return "bg-accent/20 text-accent border-accent/30";
+    if (role === "editor") return "bg-primary/15 text-primary border-primary/30";
+    return "bg-muted/30 text-muted-foreground border-border/40";
+  };
+
   return (
     <div className="bg-card/50 backdrop-blur-xl border border-border/50 rounded-xl p-6 space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -120,7 +156,7 @@ export function UsersTab() {
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
             {isOwner
-              ? "Invite teammates to share tracked contracts, proposals, saved searches, and your company profile."
+              ? "Invite teammates as Viewers (read-only) or Editors (full access) to shared contracts, proposals, saved searches, and your company profile."
               : "You are a member of this workspace. Only the owner can invite or remove users."}
           </p>
         </div>
@@ -208,6 +244,33 @@ export function UsersTab() {
                       />
                     </div>
                     <div>
+                      <Label htmlFor="role">Access level</Label>
+                      <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as InviteRole)}>
+                        <SelectTrigger id="role">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="viewer">
+                            <div className="flex items-center gap-2">
+                              <Eye className="w-4 h-4" />
+                              Viewer (read-only)
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="editor">
+                            <div className="flex items-center gap-2">
+                              <Pencil className="w-4 h-4" />
+                              Editor (full access)
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {inviteRole === "viewer"
+                          ? "Can see contracts, proposals, saved searches. Cannot make changes."
+                          : "Full access to create, edit, and delete shared workspace data."}
+                      </p>
+                    </div>
+                    <div>
                       <Label htmlFor="pw">Temporary password</Label>
                       <div className="flex gap-2">
                         <Input
@@ -277,6 +340,7 @@ export function UsersTab() {
               ((m.first_name?.[0] || "") + (m.last_name?.[0] || "")).toUpperCase() ||
               (m.email?.[0] || "U").toUpperCase();
             const isSelf = m.user_id === user?.id;
+            const normalized = normalizeRole(m.role);
             return (
               <div
                 key={m.id}
@@ -294,18 +358,44 @@ export function UsersTab() {
                     {m.email && <p className="text-xs text-muted-foreground truncate">{m.email}</p>}
                   </div>
                 </div>
-                <span
-                  className={`text-xs px-2 py-1 rounded-full border flex items-center gap-1 ${
-                    m.role === "owner"
-                      ? "bg-accent/20 text-accent border-accent/30"
-                      : "bg-muted/30 text-muted-foreground border-border/40"
-                  }`}
-                >
-                  {m.role === "owner" && <Crown className="w-3 h-3" />}
-                  {m.role}
-                </span>
+                <div>
+                  {isOwner && !isSelf && normalized !== "owner" ? (
+                    <Select
+                      value={normalized}
+                      onValueChange={(v) => handleRoleChange(m.user_id, v as InviteRole)}
+                      disabled={updatingRoleId === m.user_id}
+                    >
+                      <SelectTrigger className="h-8 w-[120px] text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="viewer">
+                          <span className="flex items-center gap-1.5">
+                            <Eye className="w-3 h-3" /> Viewer
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="editor">
+                          <span className="flex items-center gap-1.5">
+                            <Pencil className="w-3 h-3" /> Editor
+                          </span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full border flex items-center gap-1 capitalize ${roleBadgeClass(
+                        normalized,
+                      )}`}
+                    >
+                      {normalized === "owner" && <Crown className="w-3 h-3" />}
+                      {normalized === "editor" && <Pencil className="w-3 h-3" />}
+                      {normalized === "viewer" && <Eye className="w-3 h-3" />}
+                      {normalized}
+                    </span>
+                  )}
+                </div>
                 <div className="w-20 flex justify-end">
-                  {isOwner && !isSelf && m.role !== "owner" ? (
+                  {isOwner && !isSelf && normalized !== "owner" ? (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button
