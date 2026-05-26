@@ -68,6 +68,8 @@ const DOCUMENT_CATEGORIES = [
 const CompanyProfile = () => {
   const { user } = useAuth();
   const { data: companyProfile, isLoading } = useCompanyProfile();
+  const { canEdit, role } = useWorkspacePermissions();
+  const readOnly = role !== null && !canEdit;
   const queryClient = useQueryClient();
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
