@@ -1267,7 +1267,7 @@ export type Database = {
         | "failed"
         | "cancelled"
       sync_job_type: "full" | "incremental" | "manual"
-      workspace_role: "owner" | "member"
+      workspace_role: "owner" | "member" | "viewer" | "editor"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1404,7 +1404,7 @@ export const Constants = {
         "cancelled",
       ],
       sync_job_type: ["full", "incremental", "manual"],
-      workspace_role: ["owner", "member"],
+      workspace_role: ["owner", "member", "viewer", "editor"],
     },
   },
 } as const
