@@ -176,14 +176,14 @@ export default function AdminWorkspaces() {
             <TableBody>
               {isLoading && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-10">
+                  <TableCell colSpan={7} className="text-center py-10">
                     <Loader2 className="w-5 h-5 animate-spin inline" />
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                     No workspaces match.
                   </TableCell>
                 </TableRow>
