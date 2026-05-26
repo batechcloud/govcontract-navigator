@@ -405,6 +405,11 @@ export default function Settings() {
               </div>
             </TabsContent>
 
+            {/* Users Tab */}
+            <TabsContent value="users">
+              <UsersTab />
+            </TabsContent>
+
             {/* Billing Tab */}
             <TabsContent value="billing">
               <div className="space-y-6">
