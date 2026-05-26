@@ -40,9 +40,10 @@ Deno.serve(async (req) => {
     if (tErr || !target?.user?.email) return json({ error: "Target user not found" }, 404);
     const targetEmail = target.user.email;
 
-    // Prevent admin-on-admin impersonation
-    const { data: targetIsAdmin } = await admin.rpc("is_admin", { _user_id: targetUserId });
-    if (targetIsAdmin) return json({ error: "Cannot impersonate another admin" }, 403);
+    // Prevent impersonating yourself (no-op)
+    if (targetUserId === adminId) {
+      return json({ error: "Cannot impersonate yourself" }, 400);
+    }
 
     // Mint a session for the target user via magiclink
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
