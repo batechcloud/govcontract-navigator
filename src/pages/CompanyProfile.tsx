@@ -40,6 +40,7 @@ import { PscCodeSelector } from "@/components/company/PscCodeSelector";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useCompanyProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
+import { useWorkspacePermissions } from "@/hooks/useWorkspace";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
@@ -67,6 +68,8 @@ const DOCUMENT_CATEGORIES = [
 const CompanyProfile = () => {
   const { user } = useAuth();
   const { data: companyProfile, isLoading } = useCompanyProfile();
+  const { canEdit, role } = useWorkspacePermissions();
+  const readOnly = role !== null && !canEdit;
   const queryClient = useQueryClient();
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -285,7 +288,11 @@ const CompanyProfile = () => {
   return (
     <DashboardLayout title="My Business">
       <PageContainer variant="narrow" className="space-y-6">
-        {/* Basic Info */}
+        {readOnly && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+            You have <strong>view-only</strong> access to this workspace. Ask the workspace owner to upgrade your role to Editor to make changes.
+          </div>
+        )}
         <Card variant="glass">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -502,7 +509,7 @@ const CompanyProfile = () => {
               <Button
                 variant="outline"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
+                disabled={isUploading || readOnly}
                 className="flex-1 sm:flex-none"
               >
                 {isUploading ? (
@@ -544,7 +551,7 @@ const CompanyProfile = () => {
                       <Button variant="ghost" size="sm" onClick={() => handleDownloadDoc(doc)} title="Download">
                         <Download className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteDoc(doc)} className="text-destructive hover:text-destructive" title="Delete">
+                      <Button variant="ghost" size="sm" onClick={() => handleDeleteDoc(doc)} className="text-destructive hover:text-destructive" title="Delete" disabled={readOnly}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
@@ -556,7 +563,7 @@ const CompanyProfile = () => {
         </Card>
 
         <div className="flex justify-end">
-          <Button variant="hero" size="lg" onClick={handleSave} disabled={isSaving}>
+          <Button variant="hero" size="lg" onClick={handleSave} disabled={isSaving || readOnly}>
             {isSaving ? (
               <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
             ) : (

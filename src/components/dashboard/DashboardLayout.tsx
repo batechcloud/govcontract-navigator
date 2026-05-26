@@ -1,5 +1,5 @@
 import { useState, ReactNode } from "react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,16 +93,17 @@ export const DashboardLayout = ({ children, title }: DashboardLayoutProps) => {
                   }}
                 />
               </div>
-              <Tooltip>
-                <TooltipTrigger asChild>
+              <Popover>
+                <PopoverTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative">
                     <Bell className="w-5 h-5" />
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Notifications coming soon</p>
-                </TooltipContent>
-              </Tooltip>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-72">
+                  <p className="font-medium text-foreground text-sm">Notifications</p>
+                  <p className="text-xs text-muted-foreground mt-1">You're all caught up — no new alerts.</p>
+                </PopoverContent>
+              </Popover>
 
               {/* User Profile Dropdown */}
               <DropdownMenu>
