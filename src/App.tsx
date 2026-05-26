@@ -53,6 +53,7 @@ const AdminSync = lazy(() => import("./pages/AdminSync"));
 const AdminSyncJobDetail = lazy(() => import("./pages/AdminSyncJobDetail"));
 const AdminAudit = lazy(() => import("./pages/AdminAudit"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
+const AdminSupport = lazy(() => import("./pages/AdminSupport"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -143,6 +144,7 @@ const App = () => (
                 <Route path="/admin/sync" element={<AdminRoute><ErrorBoundary><AdminSync /></ErrorBoundary></AdminRoute>} />
                 <Route path="/admin/sync/jobs/:jobId" element={<AdminRoute><ErrorBoundary><AdminSyncJobDetail /></ErrorBoundary></AdminRoute>} />
                 <Route path="/admin/audit" element={<AdminRoute><ErrorBoundary><AdminAudit /></ErrorBoundary></AdminRoute>} />
+                <Route path="/admin/support" element={<AdminRoute><ErrorBoundary><AdminSupport /></ErrorBoundary></AdminRoute>} />
                 <Route path="/dashboard/admin/sync" element={<Navigate to="/admin/sync" replace />} />
 
                 {/* Redirects from old routes */}
