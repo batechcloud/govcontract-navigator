@@ -2,9 +2,12 @@ import { ReactNode } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "./AdminSidebar";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdminRole, ROLE_LABEL } from "@/hooks/useAdminRole";
+import { Badge } from "@/components/ui/badge";
 
 export function AdminLayout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const { data: role } = useAdminRole();
 
   return (
     <SidebarProvider>
@@ -15,9 +18,11 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           <header className="h-12 flex items-center justify-between border-b border-border/60 px-3 sticky top-0 z-30 bg-background/80 backdrop-blur">
             <div className="flex items-center gap-2">
               <SidebarTrigger />
-              <span className="text-xs uppercase tracking-wider text-muted-foreground hidden sm:inline">
-                Superadmin
-              </span>
+              {role && (
+                <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
+                  {ROLE_LABEL[role]}
+                </Badge>
+              )}
             </div>
             {user?.email && (
               <div className="text-xs text-muted-foreground truncate max-w-[40vw]">
@@ -32,3 +37,4 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     </SidebarProvider>
   );
 }
+

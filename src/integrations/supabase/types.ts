@@ -1324,6 +1324,18 @@ export type Database = {
           yearly_price: number
         }[]
       }
+      admin_list_team: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          first_name: string
+          last_active_at: string
+          last_name: string
+          role: string
+          user_id: string
+        }[]
+      }
       admin_list_users: {
         Args: never
         Returns: {
@@ -1393,6 +1405,8 @@ export type Database = {
           signups: number
         }[]
       }
+      can_impersonate: { Args: { _user_id: string }; Returns: boolean }
+      can_manage_subscriptions: { Args: { _user_id: string }; Returns: boolean }
       check_and_increment_rate_limit: {
         Args: { _api_name: string; _daily_limit: number; _user_id: string }
         Returns: {
@@ -1412,6 +1426,7 @@ export type Database = {
       }
       delete_user_cascade: { Args: { _user_id: string }; Returns: undefined }
       get_or_create_support_thread: { Args: never; Returns: string }
+      has_admin_access: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1430,7 +1445,13 @@ export type Database = {
       same_workspace_as: { Args: { _other_user: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "user" | "superadmin"
+      app_role:
+        | "admin"
+        | "moderator"
+        | "user"
+        | "superadmin"
+        | "subscription_manager"
+        | "workspace_admin"
       support_sender_type: "workspace" | "admin" | "system"
       support_thread_status: "open" | "pending" | "resolved"
       sync_job_status:
@@ -1568,7 +1589,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "moderator", "user", "superadmin"],
+      app_role: [
+        "admin",
+        "moderator",
+        "user",
+        "superadmin",
+        "subscription_manager",
+        "workspace_admin",
+      ],
       support_sender_type: ["workspace", "admin", "system"],
       support_thread_status: ["open", "pending", "resolved"],
       sync_job_status: [

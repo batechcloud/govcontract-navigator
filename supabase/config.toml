@@ -74,3 +74,12 @@ verify_jwt = false
 
 [functions.admin-impersonate-end]
 verify_jwt = false
+
+[functions.admin-team-invite]
+verify_jwt = false
+
+[functions.admin-team-update-role]
+verify_jwt = false
+
+[functions.admin-team-remove]
+verify_jwt = false
