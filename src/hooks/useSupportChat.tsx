@@ -61,15 +61,20 @@ export function useMyWorkspaceSupportThread(enabled = true) {
 /** Lightweight unread badge for sidebar. Polls every 30s. */
 export function useSupportUnreadCount() {
   const { user } = useAuth();
+  const { workspace } = useWorkspace();
+  const workspaceId = workspace?.id;
   return useQuery({
-    queryKey: ["support-unread", user?.id],
-    enabled: !!user,
+    queryKey: ["support-unread", user?.id, workspaceId],
+    enabled: !!user && !!workspaceId,
     refetchInterval: 30_000,
     refetchOnWindowFocus: true,
     queryFn: async () => {
+      // Scope by workspace_id explicitly — admin-flagged owners can see all
+      // threads via RLS, which would otherwise break maybeSingle().
       const { data } = await supabase
         .from("support_threads")
         .select("unread_for_workspace")
+        .eq("workspace_id", workspaceId)
         .maybeSingle();
       return (data as any)?.unread_for_workspace ?? 0;
     },
