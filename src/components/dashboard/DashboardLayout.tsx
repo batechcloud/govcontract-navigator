@@ -101,17 +101,21 @@ export const DashboardLayout = ({ children, title }: DashboardLayoutProps) => {
                   }}
                 />
               </div>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="icon" className="relative">
-                    <Bell className="w-5 h-5" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="end" className="w-72">
-                  <p className="font-medium text-foreground text-sm">Notifications</p>
-                  <p className="text-xs text-muted-foreground mt-1">You're all caught up — no new alerts.</p>
-                </PopoverContent>
-              </Popover>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative"
+                onClick={() => setSupportOpen(true)}
+                aria-label="Notifications"
+              >
+                <Bell className="w-5 h-5" />
+                {unread > 0 && (
+                  <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold flex items-center justify-center border border-background">
+                    {unread > 9 ? "9+" : unread}
+                  </span>
+                )}
+              </Button>
+
 
               {/* User Profile Dropdown */}
               <DropdownMenu>
