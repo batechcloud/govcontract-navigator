@@ -3,6 +3,7 @@ import { supabase as supabaseTyped } from "@/integrations/supabase/client";
 // Types not yet regenerated for support_* tables / RPC. Use loose typing.
 const supabase = supabaseTyped as any;
 import { useAuth } from "./useAuth";
+import { useWorkspace } from "./useWorkspace";
 
 export type SupportThread = {
   id: string;
