@@ -29,6 +29,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { useTrackActivity } from "@/hooks/useTrackActivity";
 import { useWorkspaceSupportNotifier } from "@/hooks/useSupportNotifier";
+import { useSupportUnreadCount } from "@/hooks/useSupportChat";
 import { SupportChatPanel } from "@/components/support/SupportChatPanel";
 
 interface DashboardLayoutProps {
