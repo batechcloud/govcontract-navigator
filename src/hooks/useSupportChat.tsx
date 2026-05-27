@@ -61,8 +61,8 @@ export function useMyWorkspaceSupportThread(enabled = true) {
 /** Lightweight unread badge for sidebar. Polls every 30s. */
 export function useSupportUnreadCount() {
   const { user } = useAuth();
-  const { workspace } = useWorkspace();
-  const workspaceId = workspace?.id;
+  const { data: ws } = useWorkspace();
+  const workspaceId = ws?.workspace?.id;
   return useQuery({
     queryKey: ["support-unread", user?.id, workspaceId],
     enabled: !!user && !!workspaceId,
