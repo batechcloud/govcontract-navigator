@@ -47,6 +47,7 @@ export const DashboardLayout = ({ children, title }: DashboardLayoutProps) => {
   const { data: profile } = useProfile();
   useTrackActivity();
   useWorkspaceSupportNotifier(() => setSupportOpen(true));
+  const { data: unread = 0 } = useSupportUnreadCount();
 
   const initials = profile
     ? `${(profile.first_name?.[0] || "").toUpperCase()}${(profile.last_name?.[0] || "").toUpperCase()}` || "U"
