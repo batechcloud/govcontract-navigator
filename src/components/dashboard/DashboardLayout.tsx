@@ -28,6 +28,8 @@ import { DashboardSidebar } from "./DashboardSidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { useTrackActivity } from "@/hooks/useTrackActivity";
+import { useWorkspaceSupportNotifier } from "@/hooks/useSupportNotifier";
+import { SupportChatPanel } from "@/components/support/SupportChatPanel";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -37,11 +39,13 @@ interface DashboardLayoutProps {
 export const DashboardLayout = ({ children, title }: DashboardLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [headerSearch, setHeaderSearch] = useState("");
+  const [supportOpen, setSupportOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { data: profile } = useProfile();
   useTrackActivity();
+  useWorkspaceSupportNotifier(() => setSupportOpen(true));
 
   const initials = profile
     ? `${(profile.first_name?.[0] || "").toUpperCase()}${(profile.last_name?.[0] || "").toUpperCase()}` || "U"
@@ -179,6 +183,7 @@ export const DashboardLayout = ({ children, title }: DashboardLayoutProps) => {
           </div>
         </nav>
       </div>
+      <SupportChatPanel open={supportOpen} onOpenChange={setSupportOpen} />
     </div>
   );
 };
