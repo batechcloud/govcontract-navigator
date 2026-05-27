@@ -4,10 +4,12 @@ import { AdminSidebar } from "./AdminSidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminRole, ROLE_LABEL } from "@/hooks/useAdminRole";
 import { Badge } from "@/components/ui/badge";
+import { useAdminSupportNotifier } from "@/hooks/useSupportNotifier";
 
 export function AdminLayout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const { data: role } = useAdminRole();
+  useAdminSupportNotifier();
 
   return (
     <SidebarProvider>
