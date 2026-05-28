@@ -46,11 +46,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import {
-import { usePageTitle } from "@/hooks/usePageTitle";
   useAdminWorkspaces,
   useSetUserActive,
   AdminWorkspaceRow,
 } from "@/hooks/useAdminWorkspaces";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 type StatusFilter = "all" | "active" | "suspended";
 
