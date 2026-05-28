@@ -16,8 +16,8 @@ import {
 } from "@/components/ui/collapsible";
 import {
   CheckCircle2, Clock, DollarSign, Shield, Users, ChevronDown,
-  RotateCcw, Settings2, Zap, Search, MapPin, Building2,
-  FileText, CreditCard,
+  RotateCcw, Settings2, Zap, MapPin, Building2,
+  FileText,
 } from "lucide-react";
 import { NaicsCodeSelector } from "@/components/company/NaicsCodeSelector";
 import { PscCodeSelector } from "@/components/company/PscCodeSelector";
@@ -314,16 +314,6 @@ export function FilterSection(props: FilterSectionProps) {
                     <SelectContent>
                       <SelectItem value="any">Any type</SelectItem>
                       {opportunityTypeOptions.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-medium flex items-center gap-1"><CreditCard className="w-2.5 h-2.5" /> Payment</Label>
-                  <Select value={advContractType || "any"} onValueChange={(val) => setAdvContractType(val === "any" ? "" : val)}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="any">Any type</SelectItem>
-                      {contractTypeOptions.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
