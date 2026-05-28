@@ -11,6 +11,7 @@ import WelcomeStep from "@/components/onboarding/WelcomeStep";
 import CompanyInfoStep from "@/components/onboarding/CompanyInfoStep";
 import CapabilitiesStep from "@/components/onboarding/CapabilitiesStep";
 import PreferencesStep from "@/components/onboarding/PreferencesStep";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export interface OnboardingData {
   // Company Info
@@ -33,6 +34,7 @@ export interface OnboardingData {
 }
 
 const initialData: OnboardingData = {
+  usePageTitle("Welcome");
   companyName: "",
   samUei: "",
   cageCode: "",

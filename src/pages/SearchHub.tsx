@@ -58,8 +58,10 @@ import { SaveSearchModal } from "@/components/search/SaveSearchModal";
 import { SavedSearchesList } from "@/components/search/SavedSearchesList";
 import { FilterSection } from "@/components/search/FilterSection";
 import { ResultsPagination } from "@/components/search/ResultsPagination";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const quickFilterMap: Record<string, { set_aside?: string[]; opportunity_type?: string; subKeyword: string }> = {
+  usePageTitle("Search Contracts");
   "Small Business": { set_aside: ["Small Business"], subKeyword: "small business" },
   "Veteran-Owned": { set_aside: ["SDVOSB", "VOSB"], subKeyword: "veteran" },
   "Woman-Owned": { set_aside: ["WOSB", "EDWOSB"], subKeyword: "woman" },

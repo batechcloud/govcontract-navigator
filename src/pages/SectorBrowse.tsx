@@ -8,12 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { SECTOR_NAICS, SECTOR_CONFIG, SECTOR_COLORS } from "@/config/sectors";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 /**
  * Classify a contract's NAICS code into one or more sector keys.
  * Matches on 4-digit prefix.
  */
 function classifyBySector(naicsCode) {
+  usePageTitle("Browse Sectors");
   if (!naicsCode) return [];
   const prefix = naicsCode.toString().substring(0, 4);
   const matches = [];

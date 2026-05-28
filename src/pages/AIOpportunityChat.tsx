@@ -31,6 +31,7 @@ import { useFeatureAccess, useIncrementUsage } from "@/hooks/useFeatureAccess";
 import { UsageLimitBanner } from "@/components/subscription/UsageLimitBanner";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-opportunity-chat`;
 
@@ -48,6 +49,7 @@ const SUGGESTED_QUESTIONS = [
 ];
 
 export default function AIOpportunityChat() {
+  usePageTitle("AI Assistant");
   const { user } = useAuth();
   const { data: companyProfile } = useCompanyProfile();
   const [searchParams, setSearchParams] = useSearchParams();

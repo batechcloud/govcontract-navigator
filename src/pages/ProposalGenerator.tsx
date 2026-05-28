@@ -31,6 +31,7 @@ import { useFeatureAccess, useIncrementUsage } from "@/hooks/useFeatureAccess";
 import { UsageLimitBanner } from "@/components/subscription/UsageLimitBanner";
 import { UpgradePrompt } from "@/components/subscription/FeatureGate";
 import { useSubscription } from "@/hooks/useSubscription";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const GENERATION_STEPS = [
   { label: "Analyzing your business profile", icon: Building2, duration: 5000 },
@@ -40,6 +41,7 @@ const GENERATION_STEPS = [
 ];
 
 export default function ProposalGenerator() {
+  usePageTitle("Generate Proposal");
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
