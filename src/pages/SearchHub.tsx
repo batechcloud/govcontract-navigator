@@ -654,7 +654,10 @@ const SearchHub = () => {
       return;
     }
 
-    // Re-run search with updated filters (buildCombinedFilters uses activeFilters state, but we need newActiveFilters)
+    // Rebuild filters with the *new* activeFilters list. Mirrors
+    // buildCombinedFilters but accepts the override so we don't have to
+    // wait for state to flush. Critically, this preserves profile-NAICS
+    // merging ("Match my industry") which the old inline build dropped.
     const quickSetAsides = newActiveFilters.flatMap(key => {
       const qf = quickFilterMap[key];
       return qf?.set_aside || [];
@@ -679,9 +682,14 @@ const SearchHub = () => {
       if (bMax) maxVal = parseInt(bMax);
     }
 
+    const profileNaics = (matchMyProfile && advNaics.length === 0)
+      ? (companyProfile?.naics_codes?.filter(Boolean) ?? [])
+      : [];
+    const effectiveNaics = advNaics.length > 0 ? advNaics : profileNaics;
+
     const combinedFilters = {
       keywords: searchQuery.trim() ? [searchQuery.trim()] : [],
-      naics_codes: advNaics,
+      naics_codes: effectiveNaics,
       psc_codes: advPsc,
       set_aside: mergedSetAsides,
       agencies: advAgency ? [advAgency] : [],
@@ -692,8 +700,6 @@ const SearchHub = () => {
       ...(deadlineDate ? { deadline_before: deadlineDate } : {}),
       active_only: activeOnly,
       expiring_soon: expiringSoon,
-      // Was missing — toggling a quick filter silently dropped the "New this week"
-      // filter even though the pill stayed lit.
       new_this_week: newThisWeek,
     };
 
