@@ -234,7 +234,7 @@ const ContractDetail = () => {
       try {
         // Read attachments from local contracts cache only.
         const { data } = await supabase
-          .from("contracts" as any)
+          .from("sam_opportunities_compat" as any)
           .select("resource_links")
           .eq("contract_id", contractId)
           .maybeSingle();

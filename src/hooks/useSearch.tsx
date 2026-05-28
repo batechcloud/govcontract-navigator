@@ -107,7 +107,7 @@ export function useSearchContracts() {
       limit?: number;
     }) => {
       const myReqId = ++requestIdRef.current;
-      let query = supabase.from("contracts" as any).select("*", { count: "exact" });
+      let query = supabase.from("sam_opportunities_compat" as any).select("*", { count: "exact" });
       query = applyContractFilters(query, filters);
 
       query = query

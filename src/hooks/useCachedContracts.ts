@@ -94,7 +94,7 @@ export function useCachedSearch() {
     setIsSearching(true);
     try {
       let query = supabase
-        .from("contracts" as any)
+        .from("sam_opportunities_compat" as any)
         .select("*", { count: "exact" });
 
       // Date-toggle filters specific to this hook (not part of SearchFilters).
@@ -166,7 +166,7 @@ export function useCacheCount() {
     queryKey: ["contracts-count"],
     queryFn: async () => {
       const { count, error } = await supabase
-        .from("contracts" as any)
+        .from("sam_opportunities_compat" as any)
         .select("*", { count: "exact", head: true });
       if (error) throw error;
       return count || 0;
