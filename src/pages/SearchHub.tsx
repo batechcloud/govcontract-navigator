@@ -577,14 +577,16 @@ const SearchHub = () => {
     } catch (error) {}
   };
 
-  const handleLoadMoreFromApi = async () => {
-    // Same logic as before — bump the local query's limit by a page. No
-    // longer triggers an admin sync (which ignored the user's filters).
-    const nextSyncPage = syncPage + 1;
-    setSyncPage(nextSyncPage);
+  // Jump to an absolute page (0-indexed). Resets the legacy syncPage counter
+  // (no longer accumulates results) and scrolls the result list to the top.
+  const handleGoToPage = async (page: number) => {
+    setCurrentPage(page);
+    setSyncPage(0);
     const filters = buildCombinedFilters();
-    const newLimit = (nextSyncPage + 1) * 25;
-    await cachedSearch.searchLocal(filters as any, 0, newLimit);
+    await cachedSearch.searchLocal(filters as any, page, 25);
+    if (resultListRef.current) {
+      resultListRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
   const handleSyncFromApi = async () => {
