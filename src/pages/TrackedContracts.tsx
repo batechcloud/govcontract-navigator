@@ -35,7 +35,7 @@ const TrackedContracts = () => {
 
   const handleViewChange = (v: "board" | "list") => {
     setView(v);
-    try { localStorage.setItem("opp-view", v); } catch {}
+    try { localStorage.setItem("opp-view", v); } catch { /* localStorage unavailable */ }
   };
 
   const filtered = useMemo(() => {
