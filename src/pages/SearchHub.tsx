@@ -589,7 +589,7 @@ const SearchHub = () => {
   const handleSyncFromApi = async () => {
     const filters = buildCombinedFilters();
     setSyncPage(0);
-    const syncResult = await syncFromApi.mutateAsync({ filters: filters as any, page: 0, limit: 25 });
+    const syncResult = await syncFromApi.mutateAsync();
     setApiTotal(syncResult.apiTotal);
     await cachedSearch.searchLocal(filters as any, 0, 25);
   };
