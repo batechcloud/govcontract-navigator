@@ -58,6 +58,7 @@ import { useSavedSearches, SavedSearch } from "@/hooks/useSavedSearches";
 import { SaveSearchModal } from "@/components/search/SaveSearchModal";
 import { SavedSearchesList } from "@/components/search/SavedSearchesList";
 import { FilterSection } from "@/components/search/FilterSection";
+import { ResultsPagination } from "@/components/search/ResultsPagination";
 
 const quickFilterMap: Record<string, { set_aside?: string[]; opportunity_type?: string; subKeyword: string }> = {
   "Small Business": { set_aside: ["Small Business"], subKeyword: "small business" },
