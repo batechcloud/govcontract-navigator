@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/collapsible";
 import {
   CheckCircle2, Clock, DollarSign, Shield, Users, ChevronDown,
-  RotateCcw, Settings2, Zap, MapPin, Building2,
+  RotateCcw, Settings2, Zap, Search, MapPin, Building2,
   FileText,
 } from "lucide-react";
 import { NaicsCodeSelector } from "@/components/company/NaicsCodeSelector";
