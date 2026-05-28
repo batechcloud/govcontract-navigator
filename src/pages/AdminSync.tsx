@@ -257,11 +257,14 @@ export default function AdminSync() {
                   <Button
                     className="w-full"
                     onClick={() => trigger.mutate(src)}
-                    disabled={trigger.isPending}
+                    disabled={trigger.isPending || (src === "sam" && samRateLimited)}
+                    title={src === "sam" ? samDisabledTitle : undefined}
                   >
-                    <Play className="w-4 h-4 mr-2" /> Run Sync Now
+                    <Play className="w-4 h-4 mr-2" />
+                    {src === "sam" && samRateLimited ? "Quota Reached" : "Run Sync Now"}
                   </Button>
                 )}
+
 
               </CardContent>
             </Card>
