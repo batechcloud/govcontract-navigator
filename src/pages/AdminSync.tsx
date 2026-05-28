@@ -102,7 +102,7 @@ export default function AdminSync() {
       }, 1500);
     },
     onError: (e: Error) => toast.error(e.message),
-    onError: (e: Error) => toast.error(e.message),
+
   });
 
   const cancel = useMutation({
