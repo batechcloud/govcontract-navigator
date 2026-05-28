@@ -1,452 +1,256 @@
-import { useEffect, useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { formatDistanceToNow } from "date-fns";
-import { motion } from "framer-motion";
+import { formatDistanceToNow, format } from "date-fns";
 import { toast } from "sonner";
 import {
-  Play,
-  RefreshCw,
-  Square,
-  RotateCw,
-  Activity,
-  Database,
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
-  Loader2,
+  Play, Database, Clock, Activity, Loader2, CheckCircle2, XCircle, AlertCircle, RefreshCw,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 
-type SyncJob = {
+type Source = "sam" | "usaspending";
+
+type SyncRun = {
   id: string;
-  job_type: "full" | "incremental" | "manual";
-  status: "queued" | "running" | "completed" | "failed" | "cancelled";
+  source: Source;
+  status: "running" | "success" | "failure";
   started_at: string;
   finished_at: string | null;
-  current_offset: number;
-  total_records: number | null;
+  records_fetched: number;
   records_inserted: number;
   records_updated: number;
-  records_failed: number;
-  posted_from: string | null;
-  posted_to: string | null;
+  pages: number;
   last_error: string | null;
-  cancel_requested: boolean;
+  manual: boolean;
+  window_from: string | null;
+  window_to: string | null;
 };
 
-type StatusResp = {
-  running_job: SyncJob | null;
-  contracts_count: number;
-  failed_count: number;
-  last_synced_at: string | null;
+const SOURCE_META: Record<Source, { label: string; table: string; sub: string }> = {
+  sam: { label: "SAM.gov Opportunities", table: "sam_opportunities", sub: "Federal contract opportunities" },
+  usaspending: { label: "USASpending.gov Awards", table: "usaspending_awards", sub: "Prime contract awards" },
 };
 
-async function callControl<T = unknown>(action: string, body: Record<string, unknown> = {}): Promise<T> {
-  const { data, error } = await supabase.functions.invoke("sam-sync-control", {
-    body: { action, ...body },
-  });
-  if (error) throw new Error(error.message || `Failed: ${action}`);
-  if ((data as any)?.error) throw new Error((data as any).error);
-  return data as T;
+function statusBadge(s: string) {
+  if (s === "success") return <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30" variant="outline"><CheckCircle2 className="w-3 h-3 mr-1" />success</Badge>;
+  if (s === "failure") return <Badge className="bg-red-500/15 text-red-400 border-red-500/30" variant="outline"><XCircle className="w-3 h-3 mr-1" />failure</Badge>;
+  if (s === "running") return <Badge className="bg-blue-500/15 text-blue-400 border-blue-500/30" variant="outline"><Loader2 className="w-3 h-3 mr-1 animate-spin" />running</Badge>;
+  return <Badge variant="outline">{s}</Badge>;
 }
-
-const STATUS_COLORS: Record<string, string> = {
-  running: "bg-blue-500/15 text-blue-400 border-blue-500/30",
-  completed: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  failed: "bg-red-500/15 text-red-400 border-red-500/30",
-  cancelled: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-  queued: "bg-muted text-muted-foreground border-border",
-};
 
 export default function AdminSync() {
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const qc = useQueryClient();
-  const navigate = useNavigate();
-  const [confirmFullOpen, setConfirmFullOpen] = useState(false);
-  const [progressStartedAt, setProgressStartedAt] = useState<number | null>(null);
 
-  const status = useQuery<StatusResp>({
-    queryKey: ["sync-status"],
-    queryFn: () => callControl<StatusResp>("status"),
-    enabled: !!isAdmin,
-    refetchInterval: (q) => (q.state.data?.running_job ? 3000 : 30000),
-  });
-
-  const jobs = useQuery<{ jobs: SyncJob[] }>({
-    queryKey: ["sync-jobs"],
-    queryFn: () => callControl("list_jobs"),
-    enabled: !!isAdmin,
-    refetchInterval: (q) => (status.data?.running_job ? 5000 : 60000),
-  });
-
-  const failed = useQuery<{ failed: any[] }>({
-    queryKey: ["sync-failed"],
-    queryFn: () => callControl("list_failed"),
-    enabled: !!isAdmin,
-  });
-
-  const startMutation = useMutation({
-    mutationFn: (action: "start_full" | "start_incremental") => callControl(action),
-    onSuccess: () => {
-      toast.success("Sync started");
-      setProgressStartedAt(Date.now());
-      qc.invalidateQueries({ queryKey: ["sync-status"] });
-      qc.invalidateQueries({ queryKey: ["sync-jobs"] });
+  const runs = useQuery({
+    queryKey: ["sync-runs"],
+    queryFn: async (): Promise<SyncRun[]> => {
+      const { data, error } = await supabase
+        .from("sync_runs")
+        .select("*")
+        .order("started_at", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return data as SyncRun[];
     },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const cancelMutation = useMutation({
-    mutationFn: (jobId: string) => callControl("cancel", { job_id: jobId }),
-    onSuccess: () => {
-      toast.info("Cancellation requested");
-      qc.invalidateQueries({ queryKey: ["sync-status"] });
+    enabled: !!isAdmin,
+    refetchInterval: (q) => {
+      const has = q.state.data?.some((r) => r.status === "running");
+      return has ? 5_000 : 30_000;
     },
-    onError: (e: Error) => toast.error(e.message),
   });
 
-  const retryMutation = useMutation({
-    mutationFn: () => callControl("retry_failed"),
-    onSuccess: (d: any) => {
-      toast.success(`Retrying ${d?.retried || 0} failed page(s)`);
-      qc.invalidateQueries({ queryKey: ["sync-status"] });
-      qc.invalidateQueries({ queryKey: ["sync-jobs"] });
-      qc.invalidateQueries({ queryKey: ["sync-failed"] });
+  const counts = useQuery({
+    queryKey: ["sync-counts"],
+    queryFn: async () => {
+      const [sam, usa] = await Promise.all([
+        supabase.from("sam_opportunities").select("*", { count: "exact", head: true }),
+        supabase.from("usaspending_awards").select("*", { count: "exact", head: true }),
+      ]);
+      return { sam: sam.count || 0, usaspending: usa.count || 0 };
+    },
+    enabled: !!isAdmin,
+    refetchInterval: 30_000,
+  });
+
+  const trigger = useMutation({
+    mutationFn: async (source: "sam" | "usaspending" | "both") => {
+      const { data, error } = await supabase.functions.invoke("admin-run-sync", {
+        body: { source },
+      });
+      if (error) throw new Error(error.message || "Failed to start sync");
+      if ((data as any)?.error) throw new Error((data as any).error);
+      return data;
+    },
+    onSuccess: (_d, source) => {
+      toast.success(`Started ${source === "both" ? "both syncs" : source + " sync"}`);
+      setTimeout(() => {
+        qc.invalidateQueries({ queryKey: ["sync-runs"] });
+        qc.invalidateQueries({ queryKey: ["sync-counts"] });
+      }, 1500);
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   if (adminLoading) {
     return (
-      <>
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-        </div>
-      </>
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
     );
   }
+  if (!isAdmin) return <Navigate to="/admin/login" replace />;
 
-  if (!isAdmin) {
-    return <Navigate to="/admin/login" replace />;
-  }
-
-  const running = status.data?.running_job;
-  const progress =
-    running && running.total_records
-      ? Math.min(100, Math.round((running.current_offset / running.total_records) * 100))
-      : null;
-
-  const elapsedSec = running
-    ? (Date.now() - new Date(running.started_at).getTime()) / 1000
-    : 0;
-  const recsPerSec = running && elapsedSec > 0 ? running.current_offset / elapsedSec : 0;
-  const eta =
-    running && running.total_records && recsPerSec > 0
-      ? Math.max(0, Math.round((running.total_records - running.current_offset) / recsPerSec))
-      : null;
+  const lastBySource = (s: Source) => runs.data?.find((r) => r.source === s && r.status !== "running");
+  const runningBySource = (s: Source) => runs.data?.find((r) => r.source === s && r.status === "running");
 
   return (
-    <>
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-3xl font-heading font-bold text-foreground">SAM.gov Sync Console</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Manage contract data ingestion. The platform serves users from this internal database — never from a live SAM.gov call.
-            </p>
-          </div>
+    <div className="max-w-7xl mx-auto space-y-6">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-3xl font-heading font-bold text-foreground">Data Sync</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Nightly at 02:00 UTC. Users query the local database — never the live APIs.
+          </p>
         </div>
-
-        {/* Top metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <MetricCard
-            icon={<Database className="w-5 h-5" />}
-            label="Contracts in DB"
-            value={status.data?.contracts_count?.toLocaleString() ?? "—"}
-          />
-          <MetricCard
-            icon={<Clock className="w-5 h-5" />}
-            label="Last sync"
-            value={
-              status.data?.last_synced_at
-                ? formatDistanceToNow(new Date(status.data.last_synced_at), { addSuffix: true })
-                : "Never"
-            }
-          />
-          <MetricCard
-            icon={<AlertTriangle className="w-5 h-5" />}
-            label="Failed pages"
-            value={status.data?.failed_count?.toString() ?? "0"}
-            tone={status.data?.failed_count ? "warn" : "default"}
-          />
-          <MetricCard
-            icon={<Activity className="w-5 h-5" />}
-            label="Active job"
-            value={running ? running.job_type : "Idle"}
-            tone={running ? "active" : "default"}
-          />
-        </div>
-
-        {/* Action buttons */}
-        <Card className="glass">
-          <CardHeader>
-            <CardTitle className="text-base">Controls</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-3">
-            <Button
-              onClick={() => setConfirmFullOpen(true)}
-              disabled={!!running || startMutation.isPending}
-            >
-              <Play className="w-4 h-4 mr-2" /> Run Full Import
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => startMutation.mutate("start_incremental")}
-              disabled={!!running || startMutation.isPending}
-            >
-              <RefreshCw className="w-4 h-4 mr-2" /> Run Incremental Sync
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => running && cancelMutation.mutate(running.id)}
-              disabled={!running || running.cancel_requested}
-            >
-              <Square className="w-4 h-4 mr-2" /> Stop Current Job
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => retryMutation.mutate()}
-              disabled={!status.data?.failed_count || retryMutation.isPending}
-            >
-              <RotateCw className="w-4 h-4 mr-2" /> Retry Failed Records
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Live progress */}
-        {running && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => trigger.mutate("both")}
+            disabled={trigger.isPending}
           >
-            <Card className="glass border-primary/40">
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between text-base">
-                  <span>Job in progress · {running.job_type}</span>
-                  <Badge className={STATUS_COLORS[running.status]} variant="outline">
-                    {running.cancel_requested ? "cancelling" : running.status}
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>
-                      {running.current_offset.toLocaleString()} /{" "}
-                      {running.total_records?.toLocaleString() || "?"} records
-                    </span>
-                    <span>{progress !== null ? `${progress}%` : "—"}</span>
-                  </div>
-                  <Progress value={progress ?? 0} />
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                  <Stat label="Inserted/Updated" value={running.records_inserted.toLocaleString()} />
-                  <Stat label="Failed" value={running.records_failed.toString()} />
-                  <Stat label="Records/sec" value={recsPerSec ? recsPerSec.toFixed(1) : "—"} />
-                  <Stat
-                    label="ETA"
-                    value={eta !== null ? `${Math.floor(eta / 60)}m ${eta % 60}s` : "—"}
-                  />
-                </div>
-                {running.posted_from && (
-                  <p className="text-xs text-muted-foreground">
-                    Window: {running.posted_from} → {running.posted_to}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-
-        {/* Recent jobs */}
-        <Card className="glass">
-          <CardHeader>
-            <CardTitle className="text-base">Recent Jobs</CardTitle>
-          </CardHeader>
-          <CardContent className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Started</TableHead>
-                  <TableHead>Duration</TableHead>
-                  <TableHead className="text-right">Inserted</TableHead>
-                  <TableHead className="text-right">Failed</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(jobs.data?.jobs || []).map((j) => {
-                  const dur =
-                    j.finished_at
-                      ? Math.round(
-                          (new Date(j.finished_at).getTime() - new Date(j.started_at).getTime()) /
-                            1000,
-                        )
-                      : null;
-                  return (
-                    <TableRow
-                      key={j.id}
-                      className="cursor-pointer hover:bg-muted/40 transition-colors"
-                      onClick={() => navigate(`/admin/sync/jobs/${j.id}`)}
-                    >
-                      <TableCell className="capitalize">{j.job_type}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={STATUS_COLORS[j.status]}>
-                          {j.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(j.started_at), { addSuffix: true })}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {dur !== null ? `${Math.floor(dur / 60)}m ${dur % 60}s` : "—"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {j.records_inserted.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right">{j.records_failed}</TableCell>
-                    </TableRow>
-                  );
-                })}
-                {!jobs.data?.jobs?.length && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-6">
-                      No sync jobs yet.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-        {/* Failed records */}
-        {!!failed.data?.failed?.length && (
-          <Card className="glass border-amber-500/30">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-400" />
-                Failed Records ({failed.data.failed.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {failed.data.failed.slice(0, 10).map((f: any) => (
-                <div
-                  key={f.id}
-                  className="text-xs border border-border/50 rounded p-2 bg-card/50"
-                >
-                  <div className="font-mono text-muted-foreground">{f.error}</div>
-                  <div className="text-[10px] text-muted-foreground/70 mt-1">
-                    {f.payload?.postedFrom} → {f.payload?.postedTo} · offset{" "}
-                    {f.payload?.offset ?? 0} · attempts {f.attempts}
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
+            <RefreshCw className="w-4 h-4 mr-2" /> Run All
+          </Button>
+        </div>
       </div>
 
-      <AlertDialog open={confirmFullOpen} onOpenChange={setConfirmFullOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Run Full Import?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This walks every SAM.gov opportunity from the last 6 months. It can take a long time and will use a lot of API quota.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                setConfirmFullOpen(false);
-                startMutation.mutate("start_full");
-              }}
-            >
-              Start Full Import
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
-  );
-}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {(Object.keys(SOURCE_META) as Source[]).map((src) => {
+          const meta = SOURCE_META[src];
+          const last = lastBySource(src);
+          const running = runningBySource(src);
+          const recordCount = src === "sam" ? counts.data?.sam : counts.data?.usaspending;
+          return (
+            <Card key={src} className="glass">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center justify-between text-base">
+                  <span className="flex items-center gap-2">
+                    <Database className="w-4 h-4 text-primary" />
+                    {meta.label}
+                  </span>
+                  {running ? statusBadge("running") : last ? statusBadge(last.status) : <Badge variant="outline">idle</Badge>}
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">{meta.sub}</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Records in DB</div>
+                    <div className="text-2xl font-heading font-semibold text-foreground">
+                      {recordCount?.toLocaleString() ?? "—"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> Last sync
+                    </div>
+                    <div className="text-sm text-foreground">
+                      {last?.finished_at
+                        ? formatDistanceToNow(new Date(last.finished_at), { addSuffix: true })
+                        : "Never"}
+                    </div>
+                    {last?.records_inserted ? (
+                      <div className="text-[10px] text-muted-foreground">
+                        +{last.records_inserted.toLocaleString()} records · {last.pages}p
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+                {last?.last_error && (
+                  <div className="text-xs p-2 rounded bg-red-500/10 border border-red-500/30 text-red-300 flex gap-2 items-start">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span className="break-all">{last.last_error}</span>
+                  </div>
+                )}
+                <Button
+                  className="w-full"
+                  onClick={() => trigger.mutate(src)}
+                  disabled={!!running || trigger.isPending}
+                >
+                  {running ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Syncing…</>
+                  ) : (
+                    <><Play className="w-4 h-4 mr-2" /> Run Sync Now</>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
 
-function MetricCard({
-  icon,
-  label,
-  value,
-  tone = "default",
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  tone?: "default" | "warn" | "active";
-}) {
-  const toneClass =
-    tone === "warn"
-      ? "border-amber-500/30"
-      : tone === "active"
-      ? "border-primary/40"
-      : "";
-  return (
-    <Card className={`glass ${toneClass}`}>
-      <CardContent className="p-4 flex items-center gap-3">
-        <div className="text-muted-foreground">{icon}</div>
-        <div className="min-w-0">
-          <div className="text-xs uppercase tracking-wider text-muted-foreground">
-            {label}
-          </div>
-          <div className="text-lg font-heading font-semibold text-foreground truncate">
-            {value}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className="text-base font-semibold text-foreground">{value}</div>
+      <Card className="glass">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Activity className="w-4 h-4" /> Recent Sync Runs
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Source</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Started</TableHead>
+                <TableHead>Duration</TableHead>
+                <TableHead className="text-right">Fetched</TableHead>
+                <TableHead className="text-right">Inserted</TableHead>
+                <TableHead className="text-right">Pages</TableHead>
+                <TableHead>Trigger</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(runs.data || []).slice(0, 10).map((r) => {
+                const dur = r.finished_at
+                  ? Math.round((new Date(r.finished_at).getTime() - new Date(r.started_at).getTime()) / 1000)
+                  : null;
+                return (
+                  <TableRow key={r.id}>
+                    <TableCell className="font-medium capitalize">{r.source}</TableCell>
+                    <TableCell>{statusBadge(r.status)}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {format(new Date(r.started_at), "MMM d, HH:mm")}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {dur !== null ? `${Math.floor(dur / 60)}m ${dur % 60}s` : "—"}
+                    </TableCell>
+                    <TableCell className="text-right">{r.records_fetched.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">{r.records_inserted.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">{r.pages}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {r.manual ? "Manual" : "Cron"}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {!runs.data?.length && (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-6">
+                    No sync runs yet. The first run will be triggered by the 02:00 UTC cron, or you can run one manually above.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }
