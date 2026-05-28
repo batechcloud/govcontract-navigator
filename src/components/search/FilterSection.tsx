@@ -17,7 +17,7 @@ import {
 import {
   CheckCircle2, Clock, DollarSign, Shield, Users, ChevronDown,
   RotateCcw, Settings2, Zap, Search, MapPin, Building2,
-  FileText, CreditCard,
+  FileText,
 } from "lucide-react";
 import { NaicsCodeSelector } from "@/components/company/NaicsCodeSelector";
 import { PscCodeSelector } from "@/components/company/PscCodeSelector";
@@ -93,7 +93,6 @@ const whoCanBidPills = [
   { label: "Woman-Owned", icon: "👩‍💼", tooltip: "Reserved for woman-owned businesses" },
   { label: "Minority-Owned", icon: "🤝", tooltip: "Reserved for minority-owned businesses" },
   { label: "HUBZone", icon: "📍", tooltip: "Businesses in underutilized areas" },
-  { label: "Federal", icon: "🏛️", tooltip: "U.S. federal government agencies" },
 ];
 
 const agencyOptions = [
@@ -123,13 +122,10 @@ const opportunityTypeOptions = [
   { value: "Special Notice", label: "Special Notice" },
 ];
 
-const contractTypeOptions = [
-  { value: "FFP", label: "Fixed Price" },
-  { value: "IDIQ", label: "Flexible Qty" },
-  { value: "BPA", label: "Blanket Agmt" },
-  { value: "T&M", label: "Hourly + Mat" },
-  { value: "Cost-Plus", label: "Cost + Fee" },
-];
+// NOTE: Payment-type (FFP/IDIQ/BPA/etc.) filter was removed — the
+// `contract_type` column in sam_opportunities stores opportunity types
+// ("Solicitation", "Sources Sought", …), not payment vehicles, so the
+// Payment select never matched anything. Use the Type select instead.
 
 const setAsideOptions = [
   { value: "Small Business", label: "Small Business" },
@@ -139,9 +135,7 @@ const setAsideOptions = [
   { value: "HUBZone", label: "HUBZone" },
   { value: "SDVOSB", label: "SDVOSB" },
   { value: "VOSB", label: "VOSB" },
-  { value: "SDB", label: "Small Disadv." },
 ];
-
 // ── Pill component ─────────────────────────────────────
 
 function Pill({
@@ -320,16 +314,6 @@ export function FilterSection(props: FilterSectionProps) {
                     <SelectContent>
                       <SelectItem value="any">Any type</SelectItem>
                       {opportunityTypeOptions.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-medium flex items-center gap-1"><CreditCard className="w-2.5 h-2.5" /> Payment</Label>
-                  <Select value={advContractType || "any"} onValueChange={(val) => setAdvContractType(val === "any" ? "" : val)}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Any" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="any">Any type</SelectItem>
-                      {contractTypeOptions.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>

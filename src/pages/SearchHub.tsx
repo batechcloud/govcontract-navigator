@@ -58,6 +58,7 @@ import { useSavedSearches, SavedSearch } from "@/hooks/useSavedSearches";
 import { SaveSearchModal } from "@/components/search/SaveSearchModal";
 import { SavedSearchesList } from "@/components/search/SavedSearchesList";
 import { FilterSection } from "@/components/search/FilterSection";
+import { ResultsPagination } from "@/components/search/ResultsPagination";
 
 const quickFilterMap: Record<string, { set_aside?: string[]; opportunity_type?: string; subKeyword: string }> = {
   "Small Business": { set_aside: ["Small Business"], subKeyword: "small business" },
@@ -576,14 +577,16 @@ const SearchHub = () => {
     } catch (error) {}
   };
 
-  const handleLoadMoreFromApi = async () => {
-    // Same logic as before — bump the local query's limit by a page. No
-    // longer triggers an admin sync (which ignored the user's filters).
-    const nextSyncPage = syncPage + 1;
-    setSyncPage(nextSyncPage);
+  // Jump to an absolute page (0-indexed). Resets the legacy syncPage counter
+  // (no longer accumulates results) and scrolls the result list to the top.
+  const handleGoToPage = async (page: number) => {
+    setCurrentPage(page);
+    setSyncPage(0);
     const filters = buildCombinedFilters();
-    const newLimit = (nextSyncPage + 1) * 25;
-    await cachedSearch.searchLocal(filters as any, 0, newLimit);
+    await cachedSearch.searchLocal(filters as any, page, 25);
+    if (resultListRef.current) {
+      resultListRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
   const handleSyncFromApi = async () => {
@@ -651,7 +654,10 @@ const SearchHub = () => {
       return;
     }
 
-    // Re-run search with updated filters (buildCombinedFilters uses activeFilters state, but we need newActiveFilters)
+    // Rebuild filters with the *new* activeFilters list. Mirrors
+    // buildCombinedFilters but accepts the override so we don't have to
+    // wait for state to flush. Critically, this preserves profile-NAICS
+    // merging ("Match my industry") which the old inline build dropped.
     const quickSetAsides = newActiveFilters.flatMap(key => {
       const qf = quickFilterMap[key];
       return qf?.set_aside || [];
@@ -676,9 +682,14 @@ const SearchHub = () => {
       if (bMax) maxVal = parseInt(bMax);
     }
 
+    const profileNaics = (matchMyProfile && advNaics.length === 0)
+      ? (companyProfile?.naics_codes?.filter(Boolean) ?? [])
+      : [];
+    const effectiveNaics = advNaics.length > 0 ? advNaics : profileNaics;
+
     const combinedFilters = {
       keywords: searchQuery.trim() ? [searchQuery.trim()] : [],
-      naics_codes: advNaics,
+      naics_codes: effectiveNaics,
       psc_codes: advPsc,
       set_aside: mergedSetAsides,
       agencies: advAgency ? [advAgency] : [],
@@ -689,8 +700,6 @@ const SearchHub = () => {
       ...(deadlineDate ? { deadline_before: deadlineDate } : {}),
       active_only: activeOnly,
       expiring_soon: expiringSoon,
-      // Was missing — toggling a quick filter silently dropped the "New this week"
-      // filter even though the pill stayed lit.
       new_this_week: newThisWeek,
     };
 
@@ -1268,25 +1277,14 @@ const SearchHub = () => {
                 )}
               </div>
 
-              {cachedSearch.results.length > 0 && cachedSearch.total > cachedSearch.results.length && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex flex-col items-center gap-2 mt-6"
-                >
-                  <Button
-                    variant="outline"
-                    onClick={handleLoadMoreFromApi}
-                    disabled={cachedSearch.isSearching}
-                    className="gap-2"
-                  >
-                    <ArrowUp className="w-4 h-4 rotate-180" />
-                    {cachedSearch.isSearching ? "Loading..." : "Load More"}
-                  </Button>
-                  <p className="text-xs text-muted-foreground">
-                    {(cachedSearch.total - cachedSearch.results.length).toLocaleString()} more matching contracts
-                  </p>
-                </motion.div>
+              {cachedSearch.results.length > 0 && cachedSearch.total > 25 && (
+                <ResultsPagination
+                  page={currentPage}
+                  pageSize={25}
+                  total={cachedSearch.total}
+                  onChange={handleGoToPage}
+                  disabled={cachedSearch.isSearching}
+                />
               )}
             </div>
           </TabsContent>
