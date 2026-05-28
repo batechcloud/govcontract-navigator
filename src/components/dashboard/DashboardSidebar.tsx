@@ -40,8 +40,6 @@ export const DashboardSidebar = ({ isOpen, onClose }: DashboardSidebarProps) => 
   const [supportOpen, setSupportOpen] = useState(false);
   const { data: unread = 0 } = useSupportUnreadCount();
 
-  const userName = profile?.first_name || "User";
-
   // Admin console lives at /admin (separate login). Not exposed in main sidebar.
   const items = sidebarItems;
 

@@ -33,7 +33,6 @@ import {
   Bookmark,
   ExternalLink,
   Heart,
-  RotateCcw,
   MessageSquare,
   RefreshCw,
   CheckCircle2,

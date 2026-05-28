@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { motion } from "framer-motion";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
-import { User, Shield, CreditCard, Camera, Loader2, Check, Crown, ExternalLink, Download, FileText, Calendar, ChevronRight, Users, Building2 } from "lucide-react";
+import { User, Shield, CreditCard, Camera, Loader2, Check, Crown, ExternalLink, FileText, Users, Building2 } from "lucide-react";
 import { BusinessTab } from "@/components/settings/BusinessTab";
 import { UsersTab } from "@/components/settings/UsersTab";
 import { Button } from "@/components/ui/button";

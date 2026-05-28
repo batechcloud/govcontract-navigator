@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import {
@@ -8,9 +8,6 @@ import {
   Loader2,
   ShieldOff,
   ShieldCheck,
-  ChevronDown,
-  ChevronRight,
-  Activity,
   UserCog,
   Eye,
 } from "lucide-react";
@@ -50,7 +47,6 @@ import {
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import {
   useAdminWorkspaces,
-  useAdminWorkspaceMembers,
   useSetUserActive,
   AdminWorkspaceRow,
 } from "@/hooks/useAdminWorkspaces";
@@ -63,7 +59,6 @@ function ownerLabel(r: AdminWorkspaceRow) {
 }
 
 export default function AdminWorkspaces() {
-  const navigate = useNavigate();
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const { data: rows = [], isLoading } = useAdminWorkspaces();
   const setActive = useSetUserActive();

@@ -1,8 +1,7 @@
-import { motion, animate } from "framer-motion";
+import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Star, Quote, Building2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useEffect, useState } from "react";
 
 const testimonials = [
   {
