@@ -95,7 +95,12 @@ async function fetchPage(apiKey: string, postedFrom: string, postedTo: string, o
       const resp = await fetch(`${SAM_API_BASE}?${params}`, { headers: { Accept: "application/json" } });
       if (resp.ok) return { ok: true as const, data: await resp.json() };
       const body = (await resp.text()).slice(0, 300);
-      if (resp.status !== 429 && resp.status < 500) return { ok: false as const, status: resp.status, body };
+      // Daily quota — do NOT retry. SAM.gov resets at midnight UTC, retrying in
+      // seconds just wastes more quota and keeps the sync spinning.
+      if (resp.status === 429) {
+        return { ok: false as const, status: 429, body, rateLimited: true as const };
+      }
+      if (resp.status < 500) return { ok: false as const, status: resp.status, body };
     } catch (err) {
       if (attempt === backoffs.length) return { ok: false as const, status: 0, body: String(err) };
     }
@@ -103,6 +108,8 @@ async function fetchPage(apiKey: string, postedFrom: string, postedTo: string, o
   }
   return { ok: false as const, status: 0, body: "exhausted retries" };
 }
+
+const RATE_LIMIT_MSG = "SAM.gov daily API quota reached. Sync paused until reset (midnight UTC).";
 
 async function runSync(supabase: SupabaseClient, runId: string, manual: boolean) {
   const deadline = Date.now() + WALL_TIME_BUDGET_MS;
@@ -115,7 +122,6 @@ async function runSync(supabase: SupabaseClient, runId: string, manual: boolean)
   const since = cursor?.last_synced_at
     ? new Date(cursor.last_synced_at)
     : new Date(Date.now() - MAX_LOOKBACK_DAYS * 86_400_000);
-  // Cap at MAX_LOOKBACK_DAYS even if the cursor is older.
   const minSince = new Date(Date.now() - MAX_LOOKBACK_DAYS * 86_400_000);
   const effectiveSince = since < minSince ? minSince : since;
   const now = new Date();
@@ -133,13 +139,13 @@ async function runSync(supabase: SupabaseClient, runId: string, manual: boolean)
   let inserted = 0;
   let total: number | null = null;
   let cancelled = false;
+  let rateLimited = false;
 
   while (true) {
     if (Date.now() > deadline) {
       console.log(`SAM sync hit wall-time at offset=${offset}`);
       break;
     }
-    // Cooperative cancellation check
     const { data: rrow } = await supabase
       .from("sync_runs").select("cancel_requested").eq("id", runId).maybeSingle();
     if (rrow?.cancel_requested) {
@@ -150,6 +156,11 @@ async function runSync(supabase: SupabaseClient, runId: string, manual: boolean)
     const res = await fetchPage(apiKey, postedFrom, postedTo, offset);
     pages++;
     if (!res.ok) {
+      if ((res as { rateLimited?: boolean }).rateLimited) {
+        console.warn(`SAM sync hit 429 rate limit at offset=${offset} — aborting run.`);
+        rateLimited = true;
+        break;
+      }
       throw new Error(`SAM page fetch failed (${res.status}): ${res.body}`);
     }
     const opps = res.data.opportunitiesData || res.data.data || [];
@@ -175,8 +186,9 @@ async function runSync(supabase: SupabaseClient, runId: string, manual: boolean)
     await sleep(300);
   }
 
-  return { fetched, inserted, pages, window_from: effectiveSince, window_to: now, cancelled };
+  return { fetched, inserted, pages, window_from: effectiveSince, window_to: now, cancelled, rateLimited };
 }
+
 
 
 Deno.serve(async (req) => {
@@ -207,14 +219,20 @@ Deno.serve(async (req) => {
 
   try {
     const result = await runSync(supabase, run.id, !!body.manual);
+    const status = result.cancelled
+      ? "cancelled"
+      : result.rateLimited
+        ? "rate_limited"
+        : "success";
     await supabase.from("sync_runs").update({
-      status: result.cancelled ? "cancelled" : "success",
+      status,
       finished_at: new Date().toISOString(),
       records_fetched: result.fetched,
       records_inserted: result.inserted,
       pages: result.pages,
+      last_error: result.rateLimited ? RATE_LIMIT_MSG : null,
     }).eq("id", run.id);
-    if (!result.cancelled) {
+    if (!result.cancelled && !result.rateLimited) {
       await supabase.from("sync_cursors").upsert({
         source: "sam",
         last_synced_at: result.window_to.toISOString(),
@@ -226,6 +244,7 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err) {
+
     const msg = err instanceof Error ? err.message : String(err);
     await supabase.from("sync_runs").update({
       status: "failure",

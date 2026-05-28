@@ -57,18 +57,41 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    const wantsSam = source === "sam" || source === "both";
+    if (wantsSam) {
+      // Block re-running SAM if the most recent run (within 24h) was rate-limited.
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: recent } = await admin
+        .from("sync_runs")
+        .select("status, started_at")
+        .eq("source", "sam")
+        .gte("started_at", since)
+        .order("started_at", { ascending: false })
+        .limit(1);
+      if (recent?.[0]?.status === "rate_limited") {
+        // Reset is daily at 00:00 UTC.
+        const reset = new Date();
+        reset.setUTCHours(24, 0, 0, 0);
+        return new Response(JSON.stringify({
+          error: "SAM.gov daily API limit reached. Sync will resume automatically after midnight UTC.",
+          rate_limited: true,
+          reset_at: reset.toISOString(),
+        }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
     const targets = source === "both"
       ? ["nightly-sync-sam", "nightly-sync-usaspending"]
       : [source === "sam" ? "nightly-sync-sam" : "nightly-sync-usaspending"];
 
     // Fire-and-forget so the UI returns immediately; the sync runs in background.
     for (const t of targets) {
-      // intentionally not awaited
       invoke(t, userId).catch((e) => console.error(`invoke ${t}:`, e));
     }
 
     return new Response(JSON.stringify({ ok: true, started: targets }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return new Response(JSON.stringify({ error: msg }),
