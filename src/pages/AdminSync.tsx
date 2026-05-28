@@ -2,8 +2,9 @@ import { Navigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow, format } from "date-fns";
 import { toast } from "sonner";
+import { useEffect, useRef } from "react";
 import {
-  Play, Database, Clock, Activity, Loader2, CheckCircle2, XCircle, AlertCircle, RefreshCw, Square, Ban,
+  Play, Database, Clock, Activity, Loader2, CheckCircle2, XCircle, AlertCircle, RefreshCw, Square, Ban, Gauge,
 } from "lucide-react";
 
 
@@ -21,7 +22,7 @@ type Source = "sam" | "usaspending";
 type SyncRun = {
   id: string;
   source: Source;
-  status: "running" | "success" | "failure" | "cancelled";
+  status: "running" | "success" | "failure" | "cancelled" | "rate_limited";
   started_at: string;
   finished_at: string | null;
   records_fetched: number;
@@ -46,8 +47,10 @@ function statusBadge(s: string) {
   if (s === "failure") return <Badge className="bg-red-500/15 text-red-400 border-red-500/30" variant="outline"><XCircle className="w-3 h-3 mr-1" />failure</Badge>;
   if (s === "running") return <Badge className="bg-blue-500/15 text-blue-400 border-blue-500/30" variant="outline"><Loader2 className="w-3 h-3 mr-1 animate-spin" />running</Badge>;
   if (s === "cancelled") return <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30" variant="outline"><Ban className="w-3 h-3 mr-1" />cancelled</Badge>;
+  if (s === "rate_limited") return <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30" variant="outline"><Gauge className="w-3 h-3 mr-1" />rate limited</Badge>;
   return <Badge variant="outline">{s}</Badge>;
 }
+
 
 
 export default function AdminSync() {
