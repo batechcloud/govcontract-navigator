@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import {
+import { usePageTitle } from "@/hooks/usePageTitle";
   useAdminWorkspaces,
   useSetUserActive,
   AdminWorkspaceRow,
@@ -54,6 +55,7 @@ import {
 type StatusFilter = "all" | "active" | "suspended";
 
 function ownerLabel(r: AdminWorkspaceRow) {
+  usePageTitle("Admin Workspaces");
   const name = [r.owner_first_name, r.owner_last_name].filter(Boolean).join(" ").trim();
   return name || r.owner_email || "—";
 }

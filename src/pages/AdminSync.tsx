@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 type Source = "sam" | "usaspending";
 
@@ -38,6 +39,7 @@ type SyncRun = {
 
 
 const SOURCE_META: Record<Source, { label: string; table: string; sub: string }> = {
+  usePageTitle("Admin Sync");
   sam: { label: "SAM.gov Opportunities", table: "sam_opportunities", sub: "Federal contract opportunities" },
   usaspending: { label: "USASpending.gov Awards", table: "usaspending_awards", sub: "Prime contract awards" },
 };

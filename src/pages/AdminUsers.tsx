@@ -38,10 +38,12 @@ import {
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useAdminUsers, AdminUserRow } from "@/hooks/useAdminUsers";
 import { useSetUserActive } from "@/hooks/useAdminWorkspaces";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 type StatusFilter = "all" | "active" | "suspended";
 
 function nameOf(u: AdminUserRow) {
+  usePageTitle("Admin Users");
   return [u.first_name, u.last_name].filter(Boolean).join(" ").trim() || u.email || "—";
 }
 

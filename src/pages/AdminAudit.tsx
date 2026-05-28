@@ -30,6 +30,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 type AuditRow = {
   id: string;
@@ -40,6 +41,7 @@ type AuditRow = {
 };
 
 const COLORS = {
+  usePageTitle("Admin Audit Log");
   success: "hsl(var(--primary))",
   successAlt: "#10b981",
   fail: "#ef4444",

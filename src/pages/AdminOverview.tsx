@@ -36,8 +36,10 @@ import {
   useAdminRecentAudit,
 } from "@/hooks/useAdminOverview";
 import { useAdminWorkspaces } from "@/hooks/useAdminWorkspaces";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 function formatCurrencyCents(cents: number) {
+  usePageTitle("Admin Overview");
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
