@@ -89,3 +89,16 @@ verify_jwt = false
 
 [functions.admin-workspace-remove-member]
 verify_jwt = false
+
+[functions.nightly-sync-sam]
+verify_jwt = false
+
+[functions.nightly-sync-usaspending]
+verify_jwt = false
+
+[functions.nightly-sync-dispatch]
+verify_jwt = false
+
+[functions.admin-run-sync]
+verify_jwt = false
+
