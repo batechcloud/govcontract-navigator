@@ -1048,6 +1048,7 @@ export type Database = {
       }
       sync_runs: {
         Row: {
+          cancel_requested: boolean
           finished_at: string | null
           id: string
           last_error: string | null
@@ -1064,6 +1065,7 @@ export type Database = {
           window_to: string | null
         }
         Insert: {
+          cancel_requested?: boolean
           finished_at?: string | null
           id?: string
           last_error?: string | null
@@ -1080,6 +1082,7 @@ export type Database = {
           window_to?: string | null
         }
         Update: {
+          cancel_requested?: boolean
           finished_at?: string | null
           id?: string
           last_error?: string | null
