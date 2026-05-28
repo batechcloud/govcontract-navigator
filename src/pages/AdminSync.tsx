@@ -39,7 +39,6 @@ type SyncRun = {
 
 
 const SOURCE_META: Record<Source, { label: string; table: string; sub: string }> = {
-  usePageTitle("Admin Sync");
   sam: { label: "SAM.gov Opportunities", table: "sam_opportunities", sub: "Federal contract opportunities" },
   usaspending: { label: "USASpending.gov Awards", table: "usaspending_awards", sub: "Prime contract awards" },
 };
@@ -56,6 +55,7 @@ function statusBadge(s: string) {
 
 
 export default function AdminSync() {
+  usePageTitle("Admin Sync");
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const qc = useQueryClient();
 

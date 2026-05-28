@@ -61,7 +61,6 @@ import { ResultsPagination } from "@/components/search/ResultsPagination";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 const quickFilterMap: Record<string, { set_aside?: string[]; opportunity_type?: string; subKeyword: string }> = {
-  usePageTitle("Search Contracts");
   "Small Business": { set_aside: ["Small Business"], subKeyword: "small business" },
   "Veteran-Owned": { set_aside: ["SDVOSB", "VOSB"], subKeyword: "veteran" },
   "Woman-Owned": { set_aside: ["WOSB", "EDWOSB"], subKeyword: "woman" },
@@ -76,6 +75,7 @@ const quickFilterMap: Record<string, { set_aside?: string[]; opportunity_type?: 
 };
 
 const SearchHub = () => {
+  usePageTitle("Search Contracts");
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");

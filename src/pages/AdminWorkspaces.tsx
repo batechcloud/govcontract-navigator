@@ -55,12 +55,12 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 type StatusFilter = "all" | "active" | "suspended";
 
 function ownerLabel(r: AdminWorkspaceRow) {
-  usePageTitle("Admin Workspaces");
   const name = [r.owner_first_name, r.owner_last_name].filter(Boolean).join(" ").trim();
   return name || r.owner_email || "—";
 }
 
 export default function AdminWorkspaces() {
+  usePageTitle("Admin Workspaces");
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const { data: rows = [], isLoading } = useAdminWorkspaces();
   const setActive = useSetUserActive();

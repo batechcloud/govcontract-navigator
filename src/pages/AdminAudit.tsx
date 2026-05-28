@@ -41,7 +41,6 @@ type AuditRow = {
 };
 
 const COLORS = {
-  usePageTitle("Admin Audit Log");
   success: "hsl(var(--primary))",
   successAlt: "#10b981",
   fail: "#ef4444",
@@ -62,6 +61,7 @@ export default function AdminAudit() {
   const audit = useQuery({
     queryKey: ["admin-audit", since],
     queryFn: async () => {
+  usePageTitle("Admin Audit Log");
       const { data, error } = await supabase
         .from("sync_audit_log")
         .select("id, action, actor_id, details, created_at")

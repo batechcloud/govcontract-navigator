@@ -32,7 +32,6 @@ type Filter = "all" | "open" | "pending" | "resolved";
 type Row = SupportThread & { workspace_name: string };
 
 const STATUS_COLORS: Record<string, string> = {
-  usePageTitle("Admin Support");
   open: "bg-blue-500/15 text-blue-400 border-blue-500/30",
   pending: "bg-amber-500/15 text-amber-400 border-amber-500/30",
   resolved: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
@@ -47,6 +46,7 @@ export default function AdminSupport() {
   const { data: threads = [], isLoading } = useAdminSupportThreads(filter);
 
   const filtered = useMemo(() => {
+  usePageTitle("Admin Support");
     if (!q.trim()) return threads;
     const needle = q.toLowerCase();
     return threads.filter(

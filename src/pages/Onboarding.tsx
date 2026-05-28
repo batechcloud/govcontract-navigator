@@ -34,7 +34,6 @@ export interface OnboardingData {
 }
 
 const initialData: OnboardingData = {
-  usePageTitle("Welcome");
   companyName: "",
   samUei: "",
   cageCode: "",
@@ -59,6 +58,7 @@ const steps = [
 ];
 
 const Onboarding = () => {
+  usePageTitle("Welcome");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [currentStep, setCurrentStep] = useState(1);

@@ -60,7 +60,6 @@ type FailedRecord = {
 type Resp = { job: SyncJob; audit: AuditEntry[]; failed: FailedRecord[] };
 
 const STATUS_COLORS: Record<string, string> = {
-  usePageTitle("Sync Job Detail");
   running: "bg-blue-500/15 text-blue-400 border-blue-500/30",
   completed: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
   failed: "bg-red-500/15 text-red-400 border-red-500/30",
@@ -85,6 +84,7 @@ export default function AdminSyncJobDetail() {
   const job = useQuery<Resp>({
     queryKey: ["sync-job", jobId],
     queryFn: async () => {
+  usePageTitle("Sync Job Detail");
       const { data, error } = await supabase.functions.invoke("sam-sync-control", {
         body: { action: "get_job", job_id: jobId },
       });
