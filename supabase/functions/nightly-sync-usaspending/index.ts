@@ -20,17 +20,17 @@ const AWARD_FIELDS = [
   "Description",
   "Contract Award Type",
   "type_description",
-  "awarding_agency_name",
-  "awarding_sub_agency_name",
-  "funding_agency_name",
+  "Awarding Agency",
+  "Awarding Sub Agency",
+  "Funding Agency",
   "naics_code",
   "psc_code",
   "Start Date",
   "End Date",
   "Last Modified Date",
-  "place_of_performance_state_code",
-  "place_of_performance_city_name",
-  "place_of_performance_country_code",
+  "Place of Performance State Code",
+  "Place of Performance City Code",
+  "Place of Performance Country Code",
   "type_of_contract_pricing",
   "recipient_uei",
 ];
@@ -45,9 +45,9 @@ function transformRow(r: any) {
     generated_internal_id: r.generated_internal_id || null,
     recipient_name: r["Recipient Name"] || null,
     recipient_uei: r.recipient_uei || null,
-    awarding_agency: r.awarding_agency_name || null,
-    awarding_sub_agency: r.awarding_sub_agency_name || null,
-    funding_agency: r.funding_agency_name || null,
+    awarding_agency: r["Awarding Agency"] || r.awarding_agency_name || null,
+    awarding_sub_agency: r["Awarding Sub Agency"] || r.awarding_sub_agency_name || null,
+    funding_agency: r["Funding Agency"] || r.funding_agency_name || null,
     naics_code: r.naics_code ? String(r.naics_code) : null,
     psc_code: r.psc_code ? String(r.psc_code) : null,
     award_type: r["Contract Award Type"] || r.type_description || null,
@@ -58,13 +58,17 @@ function transformRow(r: any) {
     date_signed: r["Start Date"] || null,
     period_of_performance_start: r["Start Date"] || null,
     period_of_performance_end: r["End Date"] || null,
-    place_of_performance_state: r.place_of_performance_state_code || null,
-    place_of_performance_city: r.place_of_performance_city_name || null,
-    place_of_performance_country: r.place_of_performance_country_code || null,
+    place_of_performance_state:
+      r["Place of Performance State Code"] || r.place_of_performance_state_code || null,
+    place_of_performance_city:
+      r["Place of Performance City Code"] || r.place_of_performance_city_name || null,
+    place_of_performance_country:
+      r["Place of Performance Country Code"] || r.place_of_performance_country_code || null,
     raw: r,
     synced_at: new Date().toISOString(),
   };
 }
+
 
 async function sleep(ms: number) { await new Promise((r) => setTimeout(r, ms)); }
 
