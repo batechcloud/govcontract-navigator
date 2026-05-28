@@ -127,6 +127,20 @@ export default function AdminSync() {
   });
 
 
+  // Toast once whenever a SAM run transitions into rate_limited.
+  const notifiedRunIds = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    for (const r of runs.data ?? []) {
+      if (r.source === "sam" && r.status === "rate_limited" && !notifiedRunIds.current.has(r.id)) {
+        notifiedRunIds.current.add(r.id);
+        toast.error("SAM.gov daily API limit reached", {
+          description: "Sync paused automatically. It will resume after the quota resets at midnight UTC.",
+          duration: 12000,
+        });
+      }
+    }
+  }, [runs.data]);
+
   if (adminLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -138,6 +152,15 @@ export default function AdminSync() {
 
   const lastBySource = (s: Source) => runs.data?.find((r) => r.source === s && r.status !== "running");
   const runningBySource = (s: Source) => runs.data?.find((r) => r.source === s && r.status === "running");
+
+  // SAM is locked out if its most recent run within the last 24h is rate_limited.
+  const samLastRecent = runs.data?.find((r) => r.source === "sam");
+  const samRateLimited = !!samLastRecent
+    && samLastRecent.status === "rate_limited"
+    && Date.now() - new Date(samLastRecent.started_at).getTime() < 24 * 60 * 60 * 1000;
+  const samDisabledTitle = samRateLimited
+    ? "SAM.gov daily quota reached — resumes after midnight UTC"
+    : undefined;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -152,7 +175,8 @@ export default function AdminSync() {
           <Button
             variant="outline"
             onClick={() => trigger.mutate("both")}
-            disabled={trigger.isPending}
+            disabled={trigger.isPending || samRateLimited}
+            title={samDisabledTitle}
           >
             <RefreshCw className="w-4 h-4 mr-2" /> Run All
           </Button>
@@ -167,7 +191,7 @@ export default function AdminSync() {
 
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
         {(Object.keys(SOURCE_META) as Source[]).map((src) => {
           const meta = SOURCE_META[src];
           const last = lastBySource(src);
