@@ -1,45 +1,87 @@
-# Stop SAM.gov sync on rate limit + notify admin
+# Codebase Audit & Cleanup — Phased Plan
 
-## Problem
-When SAM.gov returns HTTP 429 (daily quota exceeded), the sync currently:
-- Retries 4× with 1/2/4/8s backoff (pointless — daily quota only resets at midnight UTC)
-- In `_shared/sam-sync.ts` `runWindow`, a failed page just advances `offset` and keeps querying, burning more 429s and inflating `records_failed`
-- In `nightly-sync-sam`, it throws *after* the retries and marks the run `failure` with a generic message — admin has no idea it was a quota issue and the next manual click immediately tries again
-- The UI shows no toast; the user sees a spinner or a generic error
+No new features. No design/UX changes. Conservative deletions only. Each phase ends with a static check (typecheck/lint/build) plus a manual smoke test in the preview, then I stop and wait for your approval before starting the next phase.
 
-## Fix
+## Ground rules
 
-### 1. Detect 429 explicitly (shared + nightly)
-In `fetchSamPage` (`supabase/functions/_shared/sam-sync.ts`) and `fetchPage` (`supabase/functions/nightly-sync-sam/index.ts`):
-- On `resp.status === 429`, return immediately with `{ ok: false, status: 429, body, rateLimited: true }` — **no retry** (daily quota, retrying in seconds is futile).
-- Keep existing retry/backoff for 5xx only.
+- Do not touch: `src/integrations/supabase/types.ts`, `supabase/config.toml` JWT settings, RLS policies, design tokens, public API contracts of edge functions.
+- Keep all legacy `<Navigate>` redirect routes in `App.tsx` (inbound links may rely on them).
+- Keep exports that are only consumed across module boundaries even if unused inside the file.
+- No DB schema changes unless a phase uncovers an actual bug. If one is needed, I will pause and propose a migration before writing it.
+- Every change is small and reviewable. If a phase grows beyond ~10 files, I split it.
 
-### 2. Abort whole sync on 429 (no continuation, no next page)
-- **`_shared/sam-sync.ts` `runWindow`**: on a 429 result, return `{ outcome: "rate_limited", ... }` (new outcome) instead of treating it as a normal failed page and advancing.
-- **`runFullImport` / `runIncrementalImport`**: when a window returns `rate_limited`, mark job `status='rate_limited'`, set `last_error='SAM.gov daily API quota reached. Sync will resume after reset (midnight UTC).'`, set `finished_at`, **do not call `triggerContinuation`**.
-- **`nightly-sync-sam` `runSync`**: same — break loop, mark `sync_runs.status='rate_limited'` with same `last_error`, do not throw (so the run row reflects the real cause, not a generic failure).
+## Phase 1 — Dead code & redundancy (in-file only)
 
-### 3. Block re-runs while rate-limited
-- **`nightly-sync-dispatch` cron**: before invoking `nightly-sync-sam`, query the latest `sync_runs` for source `sam` *today (UTC)*; if `status='rate_limited'`, skip SAM dispatch and log. USASpending continues unaffected.
-- **`admin-run-sync` edge function**: same guard — return `409 { error: "SAM.gov daily limit reached, try again after 00:00 UTC", reset_at }` if a rate-limited run exists today. (USASpending unaffected.)
+Scope:
+- Remove unused imports, unused local vars, unreferenced helper functions inside a file.
+- Remove commented-out code blocks (not doc comments).
+- Consolidate obvious duplicate helpers into existing `src/lib/` modules only when call sites are identical.
+- Run `depcheck` (read-only) and **report** unused npm deps; remove only ones that are 100% safe (no dynamic import, no peer-dep usage). Anything ambiguous stays.
 
-### 4. DB migration
-Add `'rate_limited'` to the `sync_runs.status` and `sync_jobs.status` CHECK constraints (same pattern as the recent `cancelled` migration).
+Out of scope: deleting components, routes, hooks, or edge functions even if they look unused.
 
-### 5. Admin UI (`src/pages/AdminSync.tsx`)
-- Poll already runs every few seconds. When the latest SAM run's `status` flips to `rate_limited`, fire `toast.error("SAM.gov daily API limit reached. Sync paused until midnight UTC.", { duration: 10000 })` **once per run id** (track last-shown id in a ref to avoid spam).
-- Render a distinct amber "Rate limited" badge (instead of red "failure") in the runs list for that row.
-- When the most recent SAM run is `rate_limited` and still within the same UTC day, disable the "Run SAM sync" / "Run both" buttons with a tooltip showing the reset time; the "Run USAspending" button stays enabled.
-- If the admin clicks anyway and the edge function returns the 409 above, surface its message via `toast.error`.
+Verify: `npm run lint`, `npm run build`, load `/`, `/auth`, `/dashboard`, `/admin/sync` in preview.
 
-## Files touched
-- `supabase/migrations/<new>.sql` — extend status check constraints
-- `supabase/functions/_shared/sam-sync.ts` — 429 detection, new `rate_limited` outcome, no-continuation path
-- `supabase/functions/nightly-sync-sam/index.ts` — 429 detection, `rate_limited` status, no throw
-- `supabase/functions/nightly-sync-dispatch/index.ts` — guard against re-dispatch today
-- `supabase/functions/admin-run-sync/index.ts` — guard + 409 response
-- `src/pages/AdminSync.tsx` — toast on transition, badge, disabled button + tooltip
+## Phase 2 — Broken or incomplete features
 
-## Out of scope
-- USAspending sync (no daily quota issue here)
-- Auto-resume scheduling beyond what the existing nightly cron already does at 02:00 UTC (which is after midnight, so it naturally retries the next day)
+Walk every route in `App.tsx` plus every admin route. For each:
+- Render check via preview (no console errors, no blank screens).
+- Click every primary button/form/link; confirm it triggers its handler and the handler completes.
+- Confirm `supabase.functions.invoke` and direct DB calls handle `{ data, error }` and surface errors via `toast`.
+- Confirm navigation targets exist (no dead `<Link to=...>`).
+
+Deliverable: a short list of actual defects found, with a targeted fix per defect. No speculative refactors.
+
+Verify: re-walk the same routes after fixes.
+
+## Phase 3 — Data & state integrity
+
+- Confirm `ProtectedRoute` and `AdminRoute` redirect unauthenticated users (smoke via incognito-style preview navigation).
+- For every `useQuery`/`useMutation` in `src/hooks/`, confirm loading + empty + error states render something visible. Patch only the ones that silently swallow.
+- Confirm Zustand `contractStore` persist key still hydrates correctly.
+- Re-check RLS-dependent reads from the client surface a toast on error rather than rendering empty.
+
+## Phase 4 — Sync & background jobs
+
+- Verify the `pg_cron` schedule for `nightly-sync-dispatch` exists at 02:00 UTC and points at the right function URL (read `cron.job`).
+- Manually trigger SAM + USASpending from `/admin/sync` and confirm:
+  - `sync_runs` row written with correct status (`success` / `rate_limited` / `failure`).
+  - `sync_metadata.last_synced_at` updates on success.
+  - Rate-limit guard (added last loop) still blocks re-runs within 24h.
+  - Admin page renders the latest run and toast fires once per `rate_limited` run.
+- Check `nightly-sync-dispatch` Edge Function logs for the most recent invocation.
+
+No code changes unless a defect is found.
+
+## Phase 5 — Console, runtime, and type errors
+
+- Open key routes in the preview, collect console errors/warnings, fix only real ones (React key warnings, act warnings, missing deps in `useEffect` that cause real bugs — not cosmetic ones).
+- Run `npm run lint` and fix actionable rule violations. `no-unused-vars` is off in this repo per `eslint.config.js`, so I will not flip it on.
+- `tsc --noEmit` clean pass (project has `strictNullChecks: false`; I will not tighten it).
+
+## Phase 6 — Performance & secret hygiene
+
+- Spot-check for `useEffect` with missing/over-broad deps causing extra fetches; fix only the ones with measurable impact.
+- Confirm large list pages (`SearchHub`, `TrackedContracts`, `AdminUsers`, `AdminWorkspaces`) cap rows (pagination/limit already exists per memory — verify).
+- Grep the client bundle source for any hardcoded keys/secrets. The build's `secretScannerPlugin` should already catch JWTs/API keys; I will verify it runs clean on `npm run build`.
+
+## Phase 7 — Consistency pass
+
+- Naming: only rename when a file/symbol is clearly misnamed and unimported elsewhere. No mass renames.
+- Confirm every page sets a document title via `react-helmet-async` (per memory). Add `<Helmet>` only where missing.
+- Folder structure: report mislocated files; move only with explicit per-file approval.
+
+## Deliverable per phase
+
+Each phase ends with:
+1. List of files changed (or "no changes needed").
+2. List of issues found and how each was fixed.
+3. Smoke-test summary (routes walked, console clean, build green).
+4. Stop and wait for your go-ahead before the next phase.
+
+## Technical notes
+
+- Tools used: ripgrep for usage analysis, `depcheck` for unused deps (report-only first), `tsc --noEmit`, `eslint`, `vite build`, browser tool for preview smoke, `supabase--read_query` for `sync_runs` / `sync_metadata` / `cron.job` inspection, `supabase--edge_function_logs` for dispatcher health.
+- No edits to `types.ts`, no RLS changes, no design token changes, no removal of redirect routes.
+
+Ready to start Phase 1 on approval.
