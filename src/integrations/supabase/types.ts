@@ -1549,7 +1549,84 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      sam_opportunities_compat: {
+        Row: {
+          agency: string | null
+          contract_id: string | null
+          contract_type: string | null
+          created_at: string | null
+          deadline: string | null
+          description: string | null
+          fetched_at: string | null
+          id: string | null
+          location: string | null
+          match_score: number | null
+          naics_code: string | null
+          parent_agency: string | null
+          posted_date: string | null
+          psc_code: string | null
+          raw_data: Json | null
+          resource_links: string[] | null
+          set_aside: string | null
+          solicitation_number: string | null
+          source: string | null
+          title: string | null
+          updated_at: string | null
+          url: string | null
+          value: number | null
+        }
+        Insert: {
+          agency?: string | null
+          contract_id?: string | null
+          contract_type?: string | null
+          created_at?: string | null
+          deadline?: string | null
+          description?: string | null
+          fetched_at?: string | null
+          id?: string | null
+          location?: string | null
+          match_score?: number | null
+          naics_code?: string | null
+          parent_agency?: string | null
+          posted_date?: string | null
+          psc_code?: string | null
+          raw_data?: Json | null
+          resource_links?: string[] | null
+          set_aside?: string | null
+          solicitation_number?: string | null
+          source?: never
+          title?: string | null
+          updated_at?: string | null
+          url?: string | null
+          value?: number | null
+        }
+        Update: {
+          agency?: string | null
+          contract_id?: string | null
+          contract_type?: string | null
+          created_at?: string | null
+          deadline?: string | null
+          description?: string | null
+          fetched_at?: string | null
+          id?: string | null
+          location?: string | null
+          match_score?: number | null
+          naics_code?: string | null
+          parent_agency?: string | null
+          posted_date?: string | null
+          psc_code?: string | null
+          raw_data?: Json | null
+          resource_links?: string[] | null
+          set_aside?: string | null
+          solicitation_number?: string | null
+          source?: never
+          title?: string | null
+          updated_at?: string | null
+          url?: string | null
+          value?: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       admin_list_subscriptions: {
