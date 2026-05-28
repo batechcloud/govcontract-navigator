@@ -153,7 +153,15 @@ export default function AdminSync() {
           >
             <RefreshCw className="w-4 h-4 mr-2" /> Run All
           </Button>
+          <Button
+            variant="destructive"
+            onClick={() => cancel.mutate("both")}
+            disabled={cancel.isPending || !runs.data?.some((r) => r.status === "running")}
+          >
+            <Square className="w-4 h-4 mr-2" /> Stop All
+          </Button>
         </div>
+
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -204,17 +212,29 @@ export default function AdminSync() {
                     <span className="break-all">{last.last_error}</span>
                   </div>
                 )}
-                <Button
-                  className="w-full"
-                  onClick={() => trigger.mutate(src)}
-                  disabled={!!running || trigger.isPending}
-                >
-                  {running ? (
-                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Syncing…</>
-                  ) : (
-                    <><Play className="w-4 h-4 mr-2" /> Run Sync Now</>
-                  )}
-                </Button>
+                {running ? (
+                  <Button
+                    className="w-full"
+                    variant="destructive"
+                    onClick={() => cancel.mutate(src)}
+                    disabled={cancel.isPending || !!running.cancel_requested}
+                  >
+                    {running.cancel_requested ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Stopping…</>
+                    ) : (
+                      <><Square className="w-4 h-4 mr-2" /> Stop Sync</>
+                    )}
+                  </Button>
+                ) : (
+                  <Button
+                    className="w-full"
+                    onClick={() => trigger.mutate(src)}
+                    disabled={trigger.isPending}
+                  >
+                    <Play className="w-4 h-4 mr-2" /> Run Sync Now
+                  </Button>
+                )}
+
               </CardContent>
             </Card>
           );
