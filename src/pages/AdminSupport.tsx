@@ -38,6 +38,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function AdminSupport() {
+  usePageTitle("Admin Support");
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const [filter, setFilter] = useState<Filter>("all");
   const [q, setQ] = useState("");
@@ -46,7 +47,6 @@ export default function AdminSupport() {
   const { data: threads = [], isLoading } = useAdminSupportThreads(filter);
 
   const filtered = useMemo(() => {
-  usePageTitle("Admin Support");
     if (!q.trim()) return threads;
     const needle = q.toLowerCase();
     return threads.filter(

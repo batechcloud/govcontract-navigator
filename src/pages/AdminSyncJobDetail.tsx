@@ -77,6 +77,7 @@ const ACTION_META: Record<string, { label: string; icon: React.ComponentType<{ c
 };
 
 export default function AdminSyncJobDetail() {
+  usePageTitle("Sync Job Detail");
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
@@ -84,7 +85,6 @@ export default function AdminSyncJobDetail() {
   const job = useQuery<Resp>({
     queryKey: ["sync-job", jobId],
     queryFn: async () => {
-  usePageTitle("Sync Job Detail");
       const { data, error } = await supabase.functions.invoke("sam-sync-control", {
         body: { action: "get_job", job_id: jobId },
       });
