@@ -219,14 +219,20 @@ Deno.serve(async (req) => {
 
   try {
     const result = await runSync(supabase, run.id, !!body.manual);
+    const status = result.cancelled
+      ? "cancelled"
+      : result.rateLimited
+        ? "rate_limited"
+        : "success";
     await supabase.from("sync_runs").update({
-      status: result.cancelled ? "cancelled" : "success",
+      status,
       finished_at: new Date().toISOString(),
       records_fetched: result.fetched,
       records_inserted: result.inserted,
       pages: result.pages,
+      last_error: result.rateLimited ? RATE_LIMIT_MSG : null,
     }).eq("id", run.id);
-    if (!result.cancelled) {
+    if (!result.cancelled && !result.rateLimited) {
       await supabase.from("sync_cursors").upsert({
         source: "sam",
         last_synced_at: result.window_to.toISOString(),
@@ -238,6 +244,7 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err) {
+
     const msg = err instanceof Error ? err.message : String(err);
     await supabase.from("sync_runs").update({
       status: "failure",
