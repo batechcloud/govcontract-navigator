@@ -131,7 +131,16 @@ export function applyContractFilters(query: any, filters: ContractQueryFilters):
   if (filters.max_value) query = query.lte("value", filters.max_value);
 
   if (filters.location) {
-    query = query.ilike("location", `%${sanitizeFilterValue(filters.location)}%`);
+    // `location` is freetext like "Columbus, GA", "Pennsylvania", "Various".
+    // Match against the full state name OR its 2-letter postal abbreviation
+    // (the comma-suffix form covers city rows like "Houma, LA").
+    const loc = sanitizeFilterValue(filters.location);
+    const abbr = STATE_ABBR[loc];
+    if (abbr) {
+      query = query.or(`location.ilike.%${loc}%,location.ilike.%, ${abbr}%`);
+    } else {
+      query = query.ilike("location", `%${loc}%`);
+    }
   }
 
   if (filters.opportunity_type) {
