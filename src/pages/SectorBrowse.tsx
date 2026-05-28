@@ -15,7 +15,6 @@ import { usePageTitle } from "@/hooks/usePageTitle";
  * Matches on 4-digit prefix.
  */
 function classifyBySector(naicsCode) {
-  usePageTitle("Browse Sectors");
   if (!naicsCode) return [];
   const prefix = naicsCode.toString().substring(0, 4);
   const matches = [];
@@ -52,6 +51,7 @@ async function fetchSamContracts() {
 }
 
 export default function SectorBrowse() {
+  usePageTitle("Browse Sectors");
   const navigate = useNavigate();
   const [hovered, setHovered] = useState(null);
   const [search, setSearch] = useState("");

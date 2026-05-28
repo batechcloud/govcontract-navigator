@@ -43,11 +43,11 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 type StatusFilter = "all" | "active" | "suspended";
 
 function nameOf(u: AdminUserRow) {
-  usePageTitle("Admin Users");
   return [u.first_name, u.last_name].filter(Boolean).join(" ").trim() || u.email || "—";
 }
 
 export default function AdminUsers() {
+  usePageTitle("Admin Users");
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const { data: rows = [], isLoading } = useAdminUsers();
   const setActive = useSetUserActive();

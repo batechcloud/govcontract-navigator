@@ -24,7 +24,6 @@ import { PIPELINE_STATUSES } from "@/components/tracked/KanbanBoard";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 function getDaysLeft(deadline: string | null) {
-  usePageTitle("Contract Details");
   if (!deadline) return null;
   const days = Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000);
   if (days < 0) return { text: "Expired", cls: "text-destructive", days };
@@ -35,6 +34,7 @@ function getDaysLeft(deadline: string | null) {
 }
 
 function CopySummaryButton({ text }: { text: string }) {
+  usePageTitle("Contract Details");
   const [copied, setCopied] = useState(false);
   const handleCopy = async () => {
     await navigator.clipboard.writeText(text);

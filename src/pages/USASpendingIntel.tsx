@@ -15,7 +15,6 @@ import { USASpendingGuide } from "@/components/usaspending/USASpendingGuide";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 const getDefaultFY = () => {
-  usePageTitle("Spending Intelligence");
   const now = new Date();
   // Federal FY starts Oct 1, so if we're in Oct-Dec, current FY = year+1
   const currentFY = now.getMonth() >= 9 ? now.getFullYear() + 1 : now.getFullYear();
@@ -23,6 +22,7 @@ const getDefaultFY = () => {
 };
 
 const USASpendingIntel = () => {
+  usePageTitle("Spending Intelligence");
   const queryClient = useQueryClient();
   const [fy, setFy] = useState(getDefaultFY());
   const [refreshKey, setRefreshKey] = useState(0);
