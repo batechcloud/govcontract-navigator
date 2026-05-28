@@ -49,17 +49,30 @@ Deno.serve(async (req) => {
     for (const s of sources) {
       const { data: run } = await admin
         .from("sync_runs")
-        .select("id")
+        .select("id, started_at")
         .eq("source", s)
         .eq("status", "running")
         .order("started_at", { ascending: false })
         .limit(1)
         .maybeSingle();
       if (run?.id) {
-        await admin.from("sync_runs").update({ cancel_requested: true }).eq("id", run.id);
+        // Flip cancel flag so any live loop exits at next page boundary.
+        // Also force-finalize the row: if the worker crashed/timed out
+        // without updating status, the UI would otherwise spin forever.
+        // If a live loop is still running it will overwrite finished_at
+        // on its own clean exit — acceptable.
+        await admin
+          .from("sync_runs")
+          .update({
+            cancel_requested: true,
+            status: "cancelled",
+            finished_at: new Date().toISOString(),
+          })
+          .eq("id", run.id);
         cancelled.push({ source: s, run_id: run.id });
       }
     }
+
 
     return new Response(JSON.stringify({ ok: true, cancelled }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } });
