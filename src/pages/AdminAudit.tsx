@@ -30,6 +30,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 type AuditRow = {
   id: string;
@@ -50,6 +51,7 @@ const COLORS = {
 const FAIL_PALETTE = ["#ef4444", "#f59e0b", "#a855f7", "#06b6d4", "#ec4899", "#14b8a6"];
 
 export default function AdminAudit() {
+  usePageTitle("Admin Audit Log");
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const navigate = useNavigate();
 

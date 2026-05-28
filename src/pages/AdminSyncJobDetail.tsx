@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 type SyncJob = {
   id: string;
@@ -76,6 +77,7 @@ const ACTION_META: Record<string, { label: string; icon: React.ComponentType<{ c
 };
 
 export default function AdminSyncJobDetail() {
+  usePageTitle("Sync Job Detail");
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();

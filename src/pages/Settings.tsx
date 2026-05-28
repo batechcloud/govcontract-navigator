@@ -17,8 +17,10 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function Settings() {
+  usePageTitle("Settings");
   const { user, signOut } = useAuth();
   const { data: profile } = useProfile();
   const { data: subscription } = useSubscription();

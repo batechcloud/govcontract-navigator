@@ -36,6 +36,7 @@ import {
   useAdminRecentAudit,
 } from "@/hooks/useAdminOverview";
 import { useAdminWorkspaces } from "@/hooks/useAdminWorkspaces";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 function formatCurrencyCents(cents: number) {
   return new Intl.NumberFormat("en-US", {
@@ -46,6 +47,7 @@ function formatCurrencyCents(cents: number) {
 }
 
 export default function AdminOverview() {
+  usePageTitle("Admin Overview");
   const navigate = useNavigate();
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const { user } = useAuth();

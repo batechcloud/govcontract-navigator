@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useAdminSubscriptions } from "@/hooks/useAdminSubscriptions";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30",
@@ -42,6 +43,7 @@ function fmtCents(cents: number) {
 }
 
 export default function AdminSubscriptions() {
+  usePageTitle("Admin Subscriptions");
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const { data: rows = [], isLoading } = useAdminSubscriptions();
   const [q, setQ] = useState("");

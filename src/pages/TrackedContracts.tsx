@@ -9,6 +9,7 @@ import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useTrackedContracts, useUntrackContract, useUpdateContractStatus, useUpdateContractNotes, TrackedContract } from "@/hooks/useTrackedContracts";
 import { OpportunityFilters } from "@/components/tracked/OpportunityFilters";
 import { NotesModal } from "@/components/tracked/NotesModal";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 // Heavy bundles (DnD, framer-motion, recharts-adjacent) — defer so filters paint first.
 const PipelineAnalytics = lazy(() => import("@/components/tracked/PipelineAnalytics").then(m => ({ default: m.PipelineAnalytics })));
@@ -20,6 +21,7 @@ const SectionFallback = () => (
 );
 
 const TrackedContracts = () => {
+  usePageTitle("Saved Contracts");
   const { data: contracts, isLoading } = useTrackedContracts();
   const untrackContract = useUntrackContract();
   const updateStatus = useUpdateContractStatus();

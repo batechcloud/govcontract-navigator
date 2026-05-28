@@ -5,8 +5,10 @@ import { ProfileTab } from "@/components/admin/settings/ProfileTab";
 import { AccountTab } from "@/components/admin/settings/AccountTab";
 import { SecurityTab } from "@/components/admin/settings/SecurityTab";
 import { TeamTab } from "@/components/admin/settings/TeamTab";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function AdminSettings() {
+  usePageTitle("Admin Settings");
   const { data: role } = useAdminRole();
   const isSuper = role === "admin";
 

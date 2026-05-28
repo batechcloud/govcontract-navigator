@@ -11,6 +11,7 @@ import WelcomeStep from "@/components/onboarding/WelcomeStep";
 import CompanyInfoStep from "@/components/onboarding/CompanyInfoStep";
 import CapabilitiesStep from "@/components/onboarding/CapabilitiesStep";
 import PreferencesStep from "@/components/onboarding/PreferencesStep";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export interface OnboardingData {
   // Company Info
@@ -57,6 +58,7 @@ const steps = [
 ];
 
 const Onboarding = () => {
+  usePageTitle("Welcome");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [currentStep, setCurrentStep] = useState(1);

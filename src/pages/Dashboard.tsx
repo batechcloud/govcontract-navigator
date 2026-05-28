@@ -18,8 +18,10 @@ import { useProfile } from "@/hooks/useProfile";
 import { useTrackedContracts } from "@/hooks/useTrackedContracts";
 import { AIRecommendationsCard } from "@/components/dashboard/AIRecommendationsCard";
 import { ProfileHealthCard } from "@/components/dashboard/ProfileHealthCard";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const Dashboard = () => {
+  usePageTitle("Dashboard");
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { data: trackedContracts, isLoading: contractsLoading } = useTrackedContracts();
 

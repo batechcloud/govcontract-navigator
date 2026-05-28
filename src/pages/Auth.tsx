@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Sparkles, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 // Password strength validation
 const passwordRequirements = [
@@ -19,6 +20,7 @@ const passwordRequirements = [
 ];
 
 const Auth = () => {
+  usePageTitle("Sign In");
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   

@@ -21,6 +21,7 @@ import {
   Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, BorderStyle,
 } from "docx";
 import { saveAs } from "file-saver";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const SECTIONS = [
   { key: "executive_summary", label: "Executive Summary" },
@@ -33,6 +34,7 @@ const SECTIONS = [
 type SectionKey = (typeof SECTIONS)[number]["key"];
 
 export default function ProposalEditor() {
+  usePageTitle("Edit Proposal");
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();

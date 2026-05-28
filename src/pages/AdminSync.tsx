@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 type Source = "sam" | "usaspending";
 
@@ -54,6 +55,7 @@ function statusBadge(s: string) {
 
 
 export default function AdminSync() {
+  usePageTitle("Admin Sync");
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const qc = useQueryClient();
 

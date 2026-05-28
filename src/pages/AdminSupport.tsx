@@ -26,6 +26,7 @@ import {
 } from "@/hooks/useSupportChat";
 import { SupportMessageList } from "@/components/support/SupportMessageList";
 import { SupportComposer } from "@/components/support/SupportComposer";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 type Filter = "all" | "open" | "pending" | "resolved";
 type Row = SupportThread & { workspace_name: string };
@@ -37,6 +38,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function AdminSupport() {
+  usePageTitle("Admin Support");
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const [filter, setFilter] = useState<Filter>("all");
   const [q, setQ] = useState("");

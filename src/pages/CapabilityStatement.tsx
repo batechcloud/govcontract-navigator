@@ -14,8 +14,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, BorderStyle } from "docx";
 import { saveAs } from "file-saver";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function CapabilityStatement() {
+  usePageTitle("Capability Statement");
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: companyProfile } = useCompanyProfile();

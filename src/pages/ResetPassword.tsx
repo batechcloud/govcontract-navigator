@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 async function getRedirectPath(): Promise<string> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -16,6 +17,7 @@ async function getRedirectPath(): Promise<string> {
 }
 
 export default function ResetPassword() {
+  usePageTitle("Reset Password");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);

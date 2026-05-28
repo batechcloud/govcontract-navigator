@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { SECTOR_NAICS, SECTOR_CONFIG, SECTOR_COLORS } from "@/config/sectors";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 /**
  * Classify a contract's NAICS code into one or more sector keys.
@@ -50,6 +51,7 @@ async function fetchSamContracts() {
 }
 
 export default function SectorBrowse() {
+  usePageTitle("Browse Sectors");
   const navigate = useNavigate();
   const [hovered, setHovered] = useState(null);
   const [search, setSearch] = useState("");

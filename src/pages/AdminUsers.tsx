@@ -38,6 +38,7 @@ import {
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useAdminUsers, AdminUserRow } from "@/hooks/useAdminUsers";
 import { useSetUserActive } from "@/hooks/useAdminWorkspaces";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 type StatusFilter = "all" | "active" | "suspended";
 
@@ -46,6 +47,7 @@ function nameOf(u: AdminUserRow) {
 }
 
 export default function AdminUsers() {
+  usePageTitle("Admin Users");
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const { data: rows = [], isLoading } = useAdminUsers();
   const setActive = useSetUserActive();

@@ -58,6 +58,7 @@ import { SaveSearchModal } from "@/components/search/SaveSearchModal";
 import { SavedSearchesList } from "@/components/search/SavedSearchesList";
 import { FilterSection } from "@/components/search/FilterSection";
 import { ResultsPagination } from "@/components/search/ResultsPagination";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const quickFilterMap: Record<string, { set_aside?: string[]; opportunity_type?: string; subKeyword: string }> = {
   "Small Business": { set_aside: ["Small Business"], subKeyword: "small business" },
@@ -74,6 +75,7 @@ const quickFilterMap: Record<string, { set_aside?: string[]; opportunity_type?: 
 };
 
 const SearchHub = () => {
+  usePageTitle("Search Contracts");
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");

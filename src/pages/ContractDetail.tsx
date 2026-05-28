@@ -21,6 +21,7 @@ import { useWinProbability, ContractScoreInput, ContractScoreResult } from "@/ho
 import { WinScoreModal } from "@/components/search/WinScoreModal";
 import { toast } from "sonner";
 import { PIPELINE_STATUSES } from "@/components/tracked/KanbanBoard";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 function getDaysLeft(deadline: string | null) {
   if (!deadline) return null;
@@ -33,6 +34,7 @@ function getDaysLeft(deadline: string | null) {
 }
 
 function CopySummaryButton({ text }: { text: string }) {
+  usePageTitle("Contract Details");
   const [copied, setCopied] = useState(false);
   const handleCopy = async () => {
     await navigator.clipboard.writeText(text);

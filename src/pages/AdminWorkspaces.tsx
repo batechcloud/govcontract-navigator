@@ -50,6 +50,7 @@ import {
   useSetUserActive,
   AdminWorkspaceRow,
 } from "@/hooks/useAdminWorkspaces";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 type StatusFilter = "all" | "active" | "suspended";
 
@@ -59,6 +60,7 @@ function ownerLabel(r: AdminWorkspaceRow) {
 }
 
 export default function AdminWorkspaces() {
+  usePageTitle("Admin Workspaces");
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
   const { data: rows = [], isLoading } = useAdminWorkspaces();
   const setActive = useSetUserActive();

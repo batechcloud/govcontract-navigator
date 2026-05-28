@@ -12,6 +12,7 @@ import { SpendingTrends } from "@/components/usaspending/SpendingTrends";
 import { GeographicSpending } from "@/components/usaspending/GeographicSpending";
 import { SmallBusinessIntel } from "@/components/usaspending/SmallBusinessIntel";
 import { USASpendingGuide } from "@/components/usaspending/USASpendingGuide";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const getDefaultFY = () => {
   const now = new Date();
@@ -21,6 +22,7 @@ const getDefaultFY = () => {
 };
 
 const USASpendingIntel = () => {
+  usePageTitle("Spending Intelligence");
   const queryClient = useQueryClient();
   const [fy, setFy] = useState(getDefaultFY());
   const [refreshKey, setRefreshKey] = useState(0);
