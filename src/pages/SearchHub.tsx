@@ -1271,25 +1271,14 @@ const SearchHub = () => {
                 )}
               </div>
 
-              {cachedSearch.results.length > 0 && cachedSearch.total > cachedSearch.results.length && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex flex-col items-center gap-2 mt-6"
-                >
-                  <Button
-                    variant="outline"
-                    onClick={handleLoadMoreFromApi}
-                    disabled={cachedSearch.isSearching}
-                    className="gap-2"
-                  >
-                    <ArrowUp className="w-4 h-4 rotate-180" />
-                    {cachedSearch.isSearching ? "Loading..." : "Load More"}
-                  </Button>
-                  <p className="text-xs text-muted-foreground">
-                    {(cachedSearch.total - cachedSearch.results.length).toLocaleString()} more matching contracts
-                  </p>
-                </motion.div>
+              {cachedSearch.results.length > 0 && cachedSearch.total > 25 && (
+                <ResultsPagination
+                  page={currentPage}
+                  pageSize={25}
+                  total={cachedSearch.total}
+                  onChange={handleGoToPage}
+                  disabled={cachedSearch.isSearching}
+                />
               )}
             </div>
           </TabsContent>
