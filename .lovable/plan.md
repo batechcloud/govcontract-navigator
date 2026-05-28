@@ -1,28 +1,41 @@
-## Plan
+## Goal
 
-The admin login is working; this 401 is coming from SAM.gov rejecting the `SAM_API_KEY` used by the sync function.
+`/admin/sync` already has **Run Sync Now** / **Run All** buttons. Add a matching **Stop** button so admins can cancel a long-running sync without waiting for the edge-function wall-time budget to expire.
 
-1. **Verify the runtime secret**
-   - Check that `SAM_API_KEY` exists as a Lovable/Supabase runtime secret.
-   - Confirm it is non-empty without exposing the value.
-   - If needed, prompt you to securely re-enter the new SAM.gov key.
+## How cancellation works
 
-2. **Confirm the sync function is using the right secret**
-   - Inspect the SAM sync edge-function code path that calls SAM.gov.
-   - Verify it reads `SAM_API_KEY` and passes it to the SAM.gov Opportunities endpoint in the expected way.
-   - Make no client-side changes and never expose the key in frontend code.
+The nightly sync functions run as a single long-lived loop that pages SAM.gov / USASpending and upserts rows. We can't "kill" the Deno invocation from outside, but we can cooperatively cancel by:
 
-3. **Add a safe credential diagnostic if needed**
-   - If the code path looks correct, add or run a server-side-only diagnostic that tests the SAM.gov endpoint with the stored secret and logs only status/result metadata, never the key.
+1. Setting a `cancel_requested` flag on the `sync_runs` row.
+2. Having the loop re-read that flag after each page (cheap — already updating the row each page) and break out gracefully, marking the run as `cancelled` with whatever was already fetched.
 
-4. **Redeploy/retry the SAM sync function**
-   - Redeploy the affected edge function if the deployed runtime may still be using a stale environment.
-   - Re-run `/admin/sync` and verify the newest `sync_runs` row no longer reports the SAM 401.
+## Changes
 
-5. **If SAM.gov still returns 401**
-   - Treat it as a SAM.gov-side key issue: the key may be inactive, copied with whitespace, tied to the wrong SAM.gov account/environment, or not yet enabled for Opportunities API access.
-   - Use the diagnostic result to give you the exact next action.
+### 1. DB migration
+- Add `cancel_requested boolean not null default false` to `public.sync_runs`.
+- Allow `status = 'cancelled'` (column is plain `text`, so no enum change needed).
 
-<presentation-actions>
-<presentation-link url="https://docs.lovable.dev/tips-tricks/troubleshooting">Troubleshooting docs</presentation-link>
-</presentation-actions>
+### 2. New edge function `admin-cancel-sync`
+- Mirrors `admin-run-sync` auth pattern: requires `Authorization: Bearer <user jwt>`, validates `is_admin(uid)`, rejects otherwise.
+- Body: `{ source: "sam" | "usaspending" | "both" }`.
+- Looks up the most recent `sync_runs` row with `status = 'running'` for each requested source and sets `cancel_requested = true`.
+- Registered in `supabase/config.toml` with `verify_jwt = false` (we validate manually).
+
+### 3. Edge function loop changes
+In both `nightly-sync-sam` and `nightly-sync-usaspending` (and any shared helper):
+- Inside the page loop, after each `sync_runs` progress update, re-query `cancel_requested` for the current `run_id`. If true, break out.
+- On graceful cancel, the outer handler marks the run `status = 'cancelled'`, sets `finished_at`, and keeps the partial counters. Cursor is NOT advanced on cancel.
+
+### 4. AdminSync UI (`src/pages/AdminSync.tsx`)
+- Add a `cancel` mutation calling `admin-cancel-sync`.
+- Per-source card: when a run is `running`, swap the disabled "Syncing…" button for a **Stop Sync** button (destructive variant) that calls `cancel.mutate(src)`. Show "Stopping…" while the flag flips but the loop hasn't seen it yet.
+- Header: add a **Stop All** button next to **Run All**, enabled only when any run is `running`.
+- Status badge: render `cancelled` as a neutral/amber badge (`AlertCircle`), distinct from `failure`.
+- Polling (5s while running) already picks up the new status automatically.
+
+### 5. Types
+Extend the local `SyncRun` union: `status: "running" | "success" | "failure" | "cancelled"` and add optional `cancel_requested: boolean`.
+
+## Out of scope
+- No changes to the nightly cron schedule.
+- No retry/resume UI — cancelled runs simply stop; next nightly (or manual) run picks up from the existing cursor.
