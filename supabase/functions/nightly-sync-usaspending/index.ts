@@ -119,10 +119,18 @@ async function runSync(supabase: SupabaseClient, runId: string) {
   let fetched = 0;
   let inserted = 0;
   let pages = 0;
+  let cancelled = false;
 
   while (true) {
     if (Date.now() > deadline) {
       console.log(`USASpending sync hit wall-time at page=${page}`);
+      break;
+    }
+    const { data: rrow } = await supabase
+      .from("sync_runs").select("cancel_requested").eq("id", runId).maybeSingle();
+    if (rrow?.cancel_requested) {
+      console.log(`USASpending sync cancel requested at page=${page}`);
+      cancelled = true;
       break;
     }
     const res = await fetchPage(startDate, endDate, page);
@@ -132,7 +140,6 @@ async function runSync(supabase: SupabaseClient, runId: string) {
     if (results.length === 0) break;
 
     const rows = results.map(transformRow);
-    // Drop dupes within batch (same award_id repeating across pages on edge cases)
     const seen = new Set<string>();
     const uniqueRows = rows.filter((r: any) => {
       if (seen.has(r.award_id)) return false;
@@ -158,8 +165,9 @@ async function runSync(supabase: SupabaseClient, runId: string) {
     await sleep(250);
   }
 
-  return { fetched, inserted, pages, window_from: since, window_to: now };
+  return { fetched, inserted, pages, window_from: since, window_to: now, cancelled };
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -189,20 +197,23 @@ Deno.serve(async (req) => {
   try {
     const result = await runSync(supabase, run.id);
     await supabase.from("sync_runs").update({
-      status: "success",
+      status: result.cancelled ? "cancelled" : "success",
       finished_at: new Date().toISOString(),
       records_fetched: result.fetched,
       records_inserted: result.inserted,
       pages: result.pages,
     }).eq("id", run.id);
-    await supabase.from("sync_cursors").upsert({
-      source: "usaspending",
-      last_synced_at: result.window_to.toISOString(),
-      last_run_id: run.id,
-      updated_at: new Date().toISOString(),
-    });
+    if (!result.cancelled) {
+      await supabase.from("sync_cursors").upsert({
+        source: "usaspending",
+        last_synced_at: result.window_to.toISOString(),
+        last_run_id: run.id,
+        updated_at: new Date().toISOString(),
+      });
+    }
     return new Response(JSON.stringify({ ok: true, run_id: run.id, ...result }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     await supabase.from("sync_runs").update({

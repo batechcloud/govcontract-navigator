@@ -84,8 +84,12 @@ verify_jwt = false
 [functions.admin-team-remove]
 verify_jwt = false
 
-[functions.admin-workspace-set-member-role]
+[functions.admin-run-sync]
 verify_jwt = false
+
+[functions.admin-cancel-sync]
+verify_jwt = false
+
 
 [functions.admin-workspace-remove-member]
 verify_jwt = false

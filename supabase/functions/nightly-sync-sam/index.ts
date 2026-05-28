@@ -132,10 +132,19 @@ async function runSync(supabase: SupabaseClient, runId: string, manual: boolean)
   let fetched = 0;
   let inserted = 0;
   let total: number | null = null;
+  let cancelled = false;
 
   while (true) {
     if (Date.now() > deadline) {
       console.log(`SAM sync hit wall-time at offset=${offset}`);
+      break;
+    }
+    // Cooperative cancellation check
+    const { data: rrow } = await supabase
+      .from("sync_runs").select("cancel_requested").eq("id", runId).maybeSingle();
+    if (rrow?.cancel_requested) {
+      console.log(`SAM sync cancel requested at offset=${offset}`);
+      cancelled = true;
       break;
     }
     const res = await fetchPage(apiKey, postedFrom, postedTo, offset);
@@ -166,8 +175,9 @@ async function runSync(supabase: SupabaseClient, runId: string, manual: boolean)
     await sleep(300);
   }
 
-  return { fetched, inserted, pages, window_from: effectiveSince, window_to: now };
+  return { fetched, inserted, pages, window_from: effectiveSince, window_to: now, cancelled };
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -198,20 +208,23 @@ Deno.serve(async (req) => {
   try {
     const result = await runSync(supabase, run.id, !!body.manual);
     await supabase.from("sync_runs").update({
-      status: "success",
+      status: result.cancelled ? "cancelled" : "success",
       finished_at: new Date().toISOString(),
       records_fetched: result.fetched,
       records_inserted: result.inserted,
       pages: result.pages,
     }).eq("id", run.id);
-    await supabase.from("sync_cursors").upsert({
-      source: "sam",
-      last_synced_at: result.window_to.toISOString(),
-      last_run_id: run.id,
-      updated_at: new Date().toISOString(),
-    });
+    if (!result.cancelled) {
+      await supabase.from("sync_cursors").upsert({
+        source: "sam",
+        last_synced_at: result.window_to.toISOString(),
+        last_run_id: run.id,
+        updated_at: new Date().toISOString(),
+      });
+    }
     return new Response(JSON.stringify({ ok: true, run_id: run.id, ...result }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     await supabase.from("sync_runs").update({
