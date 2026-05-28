@@ -41,7 +41,7 @@ function getSectorCounts(contracts) {
 async function fetchSamContracts() {
   // Read directly from the local contracts cache — no live SAM.gov call.
   const { data, error, count } = await supabase
-    .from("contracts" as any)
+    .from("sam_opportunities_compat" as any)
     .select("naics_code", { count: "exact" })
     .limit(1000);
   if (error) throw error;

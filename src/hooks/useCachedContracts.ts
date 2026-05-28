@@ -94,7 +94,7 @@ export function useCachedSearch() {
     setIsSearching(true);
     try {
       let query = supabase
-        .from("contracts" as any)
+        .from("sam_opportunities_compat" as any)
         .select("*", { count: "exact" });
 
       // Date-toggle filters specific to this hook (not part of SearchFilters).
@@ -166,7 +166,7 @@ export function useCacheCount() {
     queryKey: ["contracts-count"],
     queryFn: async () => {
       const { count, error } = await supabase
-        .from("contracts" as any)
+        .from("sam_opportunities_compat" as any)
         .select("*", { count: "exact", head: true });
       if (error) throw error;
       return count || 0;
@@ -175,57 +175,27 @@ export function useCacheCount() {
   });
 }
 
-/** Trigger an incremental sync from SAM.gov into the shared contracts table */
+/**
+ * Legacy hook kept for UI compatibility. Users no longer trigger live
+ * SAM.gov syncs — the nightly cron handles ingestion. This hook now just
+ * resolves immediately so callers can still await it without breaking flow.
+ */
 export function useSyncFromApi() {
-  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      filters,
-      page = 0,
-      limit = 25,
-    }: {
-      filters: SearchFilters;
-      page?: number;
-      limit?: number;
-    }) => {
-      if (!user) throw new Error("Must be logged in");
-
-      // Call the incremental sync edge function
-      const { data, error } = await supabase.functions.invoke("sam-sync-incremental", {
-        body: { source: "manual" },
-      });
-
-      if (error) throw new Error(error.message || "Sync failed");
-      if (data?.error) throw new Error(data.error);
-
-      return {
-        synced: data?.synced || 0,
-        apiTotal: data?.synced || 0,
-        warning: null,
-      };
+    mutationFn: async () => {
+      // No-op: data is refreshed nightly by the cron-driven nightly-sync-sam
+      // edge function. Return zero so the UI doesn't claim new inserts.
+      return { synced: 0, apiTotal: 0, warning: null };
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contracts-count"] });
-      queryClient.invalidateQueries({ queryKey: ["rate-limit"] });
-      if (data.synced > 0) {
-        toast.success(`Synced ${data.synced} new contracts from SAM.gov`);
-      } else {
-        toast.info("No new contracts found since last sync");
-      }
-    },
-    onError: (error: Error) => {
-      if (error.message?.includes("Rate limit") || error.message?.includes("daily limit")) {
-        toast.error("Daily search limit reached. Resets at midnight UTC.");
-      } else {
-        toast.error(error.message || "Sync failed");
-      }
     },
   });
 }
 
-/** Refresh a single contract from SAM.gov */
+/** Refresh a single contract from SAM.gov — still uses the targeted edge fn. */
 export function useRefreshContract() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -262,20 +232,24 @@ export function useRefreshContract() {
   });
 }
 
-/** Get sync metadata (last synced time, total count) */
+/** Get last successful sync time for SAM from sync_cursors. */
 export function useSyncMetadata() {
   const { user } = useAuth();
   return useQuery({
     queryKey: ["sync-metadata"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("sync_metadata" as any)
-        .select("*")
-        .eq("id", "sam_sync")
-        .single();
+        .from("sync_cursors" as any)
+        .select("last_synced_at")
+        .eq("source", "sam")
+        .maybeSingle();
       if (error) throw error;
-      return data as unknown as { last_synced_at: string; total_synced: number };
+      return {
+        last_synced_at: (data as any)?.last_synced_at ?? null,
+        total_synced: 0,
+      } as { last_synced_at: string | null; total_synced: number };
     },
     enabled: !!user,
   });
 }
+
