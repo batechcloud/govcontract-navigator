@@ -3,8 +3,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow, format } from "date-fns";
 import { toast } from "sonner";
 import {
-  Play, Database, Clock, Activity, Loader2, CheckCircle2, XCircle, AlertCircle, RefreshCw,
+  Play, Database, Clock, Activity, Loader2, CheckCircle2, XCircle, AlertCircle, RefreshCw, Square, Ban,
 } from "lucide-react";
+
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +21,7 @@ type Source = "sam" | "usaspending";
 type SyncRun = {
   id: string;
   source: Source;
-  status: "running" | "success" | "failure";
+  status: "running" | "success" | "failure" | "cancelled";
   started_at: string;
   finished_at: string | null;
   records_fetched: number;
@@ -31,7 +32,9 @@ type SyncRun = {
   manual: boolean;
   window_from: string | null;
   window_to: string | null;
+  cancel_requested?: boolean;
 };
+
 
 const SOURCE_META: Record<Source, { label: string; table: string; sub: string }> = {
   sam: { label: "SAM.gov Opportunities", table: "sam_opportunities", sub: "Federal contract opportunities" },
@@ -42,8 +45,10 @@ function statusBadge(s: string) {
   if (s === "success") return <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30" variant="outline"><CheckCircle2 className="w-3 h-3 mr-1" />success</Badge>;
   if (s === "failure") return <Badge className="bg-red-500/15 text-red-400 border-red-500/30" variant="outline"><XCircle className="w-3 h-3 mr-1" />failure</Badge>;
   if (s === "running") return <Badge className="bg-blue-500/15 text-blue-400 border-blue-500/30" variant="outline"><Loader2 className="w-3 h-3 mr-1 animate-spin" />running</Badge>;
+  if (s === "cancelled") return <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30" variant="outline"><Ban className="w-3 h-3 mr-1" />cancelled</Badge>;
   return <Badge variant="outline">{s}</Badge>;
 }
+
 
 export default function AdminSync() {
   const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
@@ -97,7 +102,27 @@ export default function AdminSync() {
       }, 1500);
     },
     onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
+
+  const cancel = useMutation({
+    mutationFn: async (source: "sam" | "usaspending" | "both") => {
+      const { data, error } = await supabase.functions.invoke("admin-cancel-sync", {
+        body: { source },
+      });
+      if (error) throw new Error(error.message || "Failed to stop sync");
+      if ((data as any)?.error) throw new Error((data as any).error);
+      return data;
+    },
+    onSuccess: (data: any, source) => {
+      const n = data?.cancelled?.length ?? 0;
+      if (n === 0) toast.info("No running syncs to stop");
+      else toast.success(`Stopping ${source === "both" ? "syncs" : source + " sync"}…`);
+      qc.invalidateQueries({ queryKey: ["sync-runs"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
   if (adminLoading) {
     return (
