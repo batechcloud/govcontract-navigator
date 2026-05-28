@@ -629,6 +629,87 @@ export type Database = {
         }
         Relationships: []
       }
+      sam_opportunities: {
+        Row: {
+          agency: string | null
+          contract_type: string | null
+          created_at: string
+          deadline: string | null
+          description: string | null
+          id: string
+          location: string | null
+          match_score: number | null
+          naics_code: string | null
+          notice_id: string
+          office: string | null
+          parent_agency: string | null
+          posted_date: string | null
+          psc_code: string | null
+          raw: Json | null
+          resource_links: string[] | null
+          set_aside: string | null
+          solicitation_number: string | null
+          sub_agency: string | null
+          synced_at: string
+          title: string | null
+          updated_at: string
+          url: string | null
+          value: number | null
+        }
+        Insert: {
+          agency?: string | null
+          contract_type?: string | null
+          created_at?: string
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          location?: string | null
+          match_score?: number | null
+          naics_code?: string | null
+          notice_id: string
+          office?: string | null
+          parent_agency?: string | null
+          posted_date?: string | null
+          psc_code?: string | null
+          raw?: Json | null
+          resource_links?: string[] | null
+          set_aside?: string | null
+          solicitation_number?: string | null
+          sub_agency?: string | null
+          synced_at?: string
+          title?: string | null
+          updated_at?: string
+          url?: string | null
+          value?: number | null
+        }
+        Update: {
+          agency?: string | null
+          contract_type?: string | null
+          created_at?: string
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          location?: string | null
+          match_score?: number | null
+          naics_code?: string | null
+          notice_id?: string
+          office?: string | null
+          parent_agency?: string | null
+          posted_date?: string | null
+          psc_code?: string | null
+          raw?: Json | null
+          resource_links?: string[] | null
+          set_aside?: string | null
+          solicitation_number?: string | null
+          sub_agency?: string | null
+          synced_at?: string
+          title?: string | null
+          updated_at?: string
+          url?: string | null
+          value?: number | null
+        }
+        Relationships: []
+      }
       saved_searches: {
         Row: {
           created_at: string
@@ -816,6 +897,27 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_cursors: {
+        Row: {
+          last_run_id: string | null
+          last_synced_at: string | null
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          last_run_id?: string | null
+          last_synced_at?: string | null
+          source: string
+          updated_at?: string
+        }
+        Update: {
+          last_run_id?: string | null
+          last_synced_at?: string | null
+          source?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sync_failed_records: {
         Row: {
           attempts: number
@@ -944,6 +1046,57 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_runs: {
+        Row: {
+          finished_at: string | null
+          id: string
+          last_error: string | null
+          manual: boolean
+          pages: number
+          records_fetched: number
+          records_inserted: number
+          records_updated: number
+          source: string
+          started_at: string
+          status: string
+          triggered_by: string | null
+          window_from: string | null
+          window_to: string | null
+        }
+        Insert: {
+          finished_at?: string | null
+          id?: string
+          last_error?: string | null
+          manual?: boolean
+          pages?: number
+          records_fetched?: number
+          records_inserted?: number
+          records_updated?: number
+          source: string
+          started_at?: string
+          status?: string
+          triggered_by?: string | null
+          window_from?: string | null
+          window_to?: string | null
+        }
+        Update: {
+          finished_at?: string | null
+          id?: string
+          last_error?: string | null
+          manual?: boolean
+          pages?: number
+          records_fetched?: number
+          records_inserted?: number
+          records_updated?: number
+          source?: string
+          started_at?: string
+          status?: string
+          triggered_by?: string | null
+          window_from?: string | null
+          window_to?: string | null
+        }
+        Relationships: []
+      }
       tracked_competitors: {
         Row: {
           competitor_cage: string | null
@@ -1046,6 +1199,96 @@ export type Database = {
           status?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      usaspending_awards: {
+        Row: {
+          award_amount: number | null
+          award_id: string
+          award_type: string | null
+          award_type_code: string | null
+          awarding_agency: string | null
+          awarding_sub_agency: string | null
+          base_obligation: number | null
+          created_at: string
+          date_signed: string | null
+          description: string | null
+          funding_agency: string | null
+          generated_internal_id: string | null
+          id: string
+          naics_code: string | null
+          period_of_performance_end: string | null
+          period_of_performance_start: string | null
+          place_of_performance_city: string | null
+          place_of_performance_country: string | null
+          place_of_performance_state: string | null
+          psc_code: string | null
+          raw: Json | null
+          recipient_duns: string | null
+          recipient_name: string | null
+          recipient_uei: string | null
+          set_aside: string | null
+          synced_at: string
+          updated_at: string
+        }
+        Insert: {
+          award_amount?: number | null
+          award_id: string
+          award_type?: string | null
+          award_type_code?: string | null
+          awarding_agency?: string | null
+          awarding_sub_agency?: string | null
+          base_obligation?: number | null
+          created_at?: string
+          date_signed?: string | null
+          description?: string | null
+          funding_agency?: string | null
+          generated_internal_id?: string | null
+          id?: string
+          naics_code?: string | null
+          period_of_performance_end?: string | null
+          period_of_performance_start?: string | null
+          place_of_performance_city?: string | null
+          place_of_performance_country?: string | null
+          place_of_performance_state?: string | null
+          psc_code?: string | null
+          raw?: Json | null
+          recipient_duns?: string | null
+          recipient_name?: string | null
+          recipient_uei?: string | null
+          set_aside?: string | null
+          synced_at?: string
+          updated_at?: string
+        }
+        Update: {
+          award_amount?: number | null
+          award_id?: string
+          award_type?: string | null
+          award_type_code?: string | null
+          awarding_agency?: string | null
+          awarding_sub_agency?: string | null
+          base_obligation?: number | null
+          created_at?: string
+          date_signed?: string | null
+          description?: string | null
+          funding_agency?: string | null
+          generated_internal_id?: string | null
+          id?: string
+          naics_code?: string | null
+          period_of_performance_end?: string | null
+          period_of_performance_start?: string | null
+          place_of_performance_city?: string | null
+          place_of_performance_country?: string | null
+          place_of_performance_state?: string | null
+          psc_code?: string | null
+          raw?: Json | null
+          recipient_duns?: string | null
+          recipient_name?: string | null
+          recipient_uei?: string | null
+          set_aside?: string | null
+          synced_at?: string
+          updated_at?: string
         }
         Relationships: []
       }
