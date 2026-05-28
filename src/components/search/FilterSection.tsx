@@ -122,7 +122,6 @@ const opportunityTypeOptions = [
   { value: "Special Notice", label: "Special Notice" },
 ];
 
-const contractTypeOptions = [
 // NOTE: Payment-type (FFP/IDIQ/BPA/etc.) filter was removed — the
 // `contract_type` column in sam_opportunities stores opportunity types
 // ("Solicitation", "Sources Sought", …), not payment vehicles, so the
