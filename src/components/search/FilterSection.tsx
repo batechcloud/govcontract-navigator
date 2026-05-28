@@ -123,12 +123,10 @@ const opportunityTypeOptions = [
 ];
 
 const contractTypeOptions = [
-  { value: "FFP", label: "Fixed Price" },
-  { value: "IDIQ", label: "Flexible Qty" },
-  { value: "BPA", label: "Blanket Agmt" },
-  { value: "T&M", label: "Hourly + Mat" },
-  { value: "Cost-Plus", label: "Cost + Fee" },
-];
+// NOTE: Payment-type (FFP/IDIQ/BPA/etc.) filter was removed — the
+// `contract_type` column in sam_opportunities stores opportunity types
+// ("Solicitation", "Sources Sought", …), not payment vehicles, so the
+// Payment select never matched anything. Use the Type select instead.
 
 const setAsideOptions = [
   { value: "Small Business", label: "Small Business" },
@@ -138,9 +136,7 @@ const setAsideOptions = [
   { value: "HUBZone", label: "HUBZone" },
   { value: "SDVOSB", label: "SDVOSB" },
   { value: "VOSB", label: "VOSB" },
-  { value: "SDB", label: "Small Disadv." },
 ];
-
 // ── Pill component ─────────────────────────────────────
 
 function Pill({
