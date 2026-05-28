@@ -191,6 +191,7 @@ export default function AdminSync() {
 
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
         {(Object.keys(SOURCE_META) as Source[]).map((src) => {
           const meta = SOURCE_META[src];
