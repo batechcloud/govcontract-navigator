@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { TrackedContract } from "@/hooks/useTrackedContracts";
-import { TrendingUp, DollarSign, Trophy, Clock, AlertTriangle, Lightbulb } from "lucide-react";
+import { TrendingUp, DollarSign, Trophy, AlertTriangle, Lightbulb } from "lucide-react";
 
 const STATUSES = [
   { value: "watching", label: "Saved", color: "bg-muted" },

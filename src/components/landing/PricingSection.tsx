@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, ArrowRight, HelpCircle, Sparkles } from "lucide-react";
+import { Check, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   Accordion,

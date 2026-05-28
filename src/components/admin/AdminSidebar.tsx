@@ -8,7 +8,6 @@ import {
   RefreshCw,
   Activity,
   LogOut,
-  ArrowLeft,
   ShieldCheck,
   Settings as SettingsIcon,
 } from "lucide-react";

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDollars } from "@/lib/usaspending-utils";
 import { useTopRecipients } from "@/hooks/useUSASpending";

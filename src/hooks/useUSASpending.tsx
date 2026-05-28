@@ -65,14 +65,6 @@ async function fetchWindow(startDate: string, endDate: string): Promise<AwardRow
   return all;
 }
 
-function useAwardWindow(fy: string, refreshKey: number) {
-  const dates = getFiscalYearDates(fy);
-  return useQuery({
-    queryKey: ["usa-local-window", fy, refreshKey],
-    queryFn: () => fetchWindow(dates.start_date, dates.end_date),
-    staleTime: 5 * 60 * 1000,
-  });
-}
 
 export function useSpendingSnapshot(fy: string, refreshKey: number) {
   return useQuery({
