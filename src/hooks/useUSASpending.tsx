@@ -1,73 +1,96 @@
-import { useQuery } from "@tanstack/react-query";
-import { USA_SPENDING_BASE, getFiscalYearDates } from "@/lib/usaspending-utils";
+// USASpending hooks — now read ONLY from the local `usaspending_awards`
+// table populated by the nightly sync. No live api.usaspending.gov calls.
+//
+// Aggregations that the old UI got from dedicated endpoints (spending by
+// agency, spending by geography, snapshot, trends, small-business
+// breakdown) are computed client-side from a rolling 12-month award window.
+// The shape returned by each hook matches the previous live version so the
+// downstream components don't change.
 
-async function postAPI(endpoint: string, body: object) {
-  const res = await fetch(`${USA_SPENDING_BASE}/${endpoint}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
-  return res.json();
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { getFiscalYearDates } from "@/lib/usaspending-utils";
+
+type AwardRow = {
+  award_id: string;
+  recipient_name: string | null;
+  recipient_uei: string | null;
+  awarding_agency: string | null;
+  awarding_sub_agency: string | null;
+  naics_code: string | null;
+  psc_code: string | null;
+  award_type: string | null;
+  award_amount: number | null;
+  description: string | null;
+  date_signed: string | null;
+  period_of_performance_start: string | null;
+  period_of_performance_end: string | null;
+  place_of_performance_state: string | null;
+  place_of_performance_city: string | null;
+  set_aside: string | null;
+};
+
+// Set-aside detection is best-effort. The /search/spending_by_award/ endpoint
+// does not return set-aside in basic field lists, so per-row classification
+// from the raw blob is opportunistic. We use it only for the SB snapshot.
+const SB_SET_ASIDE_PREFIXES = ["SBA", "8A", "WOSB", "EDWOSB", "HZC", "SDVOSBC", "VSA"];
+function isSmallBusiness(r: AwardRow & { raw?: any }): boolean {
+  const code: string | undefined = r?.set_aside ?? r?.raw?.type_set_aside ?? r?.raw?.set_aside;
+  if (!code) return false;
+  return SB_SET_ASIDE_PREFIXES.some((p) => code.toUpperCase().startsWith(p));
 }
 
-async function getAPI(endpoint: string) {
-  const res = await fetch(`${USA_SPENDING_BASE}/${endpoint}`);
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
-  return res.json();
+async function fetchWindow(startDate: string, endDate: string): Promise<AwardRow[]> {
+  // PostgREST caps at 1000 rows per request — page through.
+  const all: AwardRow[] = [];
+  const PAGE = 1000;
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from("usaspending_awards")
+      .select(
+        "award_id,recipient_name,recipient_uei,awarding_agency,awarding_sub_agency,naics_code,psc_code,award_type,award_amount,description,date_signed,period_of_performance_start,period_of_performance_end,place_of_performance_state,place_of_performance_city,set_aside",
+      )
+      .gte("date_signed", startDate)
+      .lte("date_signed", endDate)
+      .order("award_amount", { ascending: false, nullsFirst: false })
+      .range(from, from + PAGE - 1);
+    if (error) throw new Error(error.message);
+    const rows = (data || []) as AwardRow[];
+    all.push(...rows);
+    if (rows.length < PAGE) break;
+    from += PAGE;
+    if (from > 10_000) break; // hard cap for UI aggregation
+  }
+  return all;
+}
+
+function useAwardWindow(fy: string, refreshKey: number) {
+  const dates = getFiscalYearDates(fy);
+  return useQuery({
+    queryKey: ["usa-local-window", fy, refreshKey],
+    queryFn: () => fetchWindow(dates.start_date, dates.end_date),
+    staleTime: 5 * 60 * 1000,
+  });
 }
 
 export function useSpendingSnapshot(fy: string, refreshKey: number) {
-  const year = parseInt(fy.replace("FY", ""));
   return useQuery({
-    queryKey: ["usa-snapshot", fy, refreshKey],
+    queryKey: ["usa-snapshot-local", fy, refreshKey],
     queryFn: async () => {
       const dates = getFiscalYearDates(fy);
-
-      const [budgetRes, agencyRes, sbCountRes, allCountRes] = await Promise.all([
-        getAPI(`references/total_budgetary_resources/?fiscal_year=${year}`),
-        postAPI("spending/", {
-          type: "agency",
-          filters: { fy: String(year), quarter: "4" },
-        }),
-        postAPI("search/spending_by_award_count/", {
-          filters: {
-            award_type_codes: ["A", "B", "C", "D"],
-            time_period: [{ start_date: dates.start_date, end_date: dates.end_date }],
-            set_aside_type_codes: ["SBA", "8A", "WOSB", "HZC", "SDVOSBC", "VSA"],
-          },
-        }).catch(() => null),
-        postAPI("search/spending_by_award_count/", {
-          filters: {
-            award_type_codes: ["A", "B", "C", "D"],
-            time_period: [{ start_date: dates.start_date, end_date: dates.end_date }],
-          },
-        }).catch(() => null),
-      ]);
-
-      const totalBudget = budgetRes?.results?.[0]?.total_budgetary_resources || 0;
-      const totalSpending = agencyRes?.total || 0;
-      const agencyCount = agencyRes?.results?.filter((r: any) => r.name && r.name !== "Unreported Data")?.length || 0;
-
-      // Extract contract counts from award_count endpoint
-      let totalContracts = 0;
-      let sbContracts = 0;
-      if (allCountRes?.results) {
-        totalContracts = Object.values(allCountRes.results as Record<string, number>).reduce((sum: number, v) => sum + (v as number), 0);
-      }
-      if (sbCountRes?.results) {
-        sbContracts = Object.values(sbCountRes.results as Record<string, number>).reduce((sum: number, v) => sum + (v as number), 0);
-      }
-
-      const sbPercent = totalContracts > 0 ? (sbContracts / totalContracts) * 100 : 0;
-
+      const rows = await fetchWindow(dates.start_date, dates.end_date);
+      const totalSpending = rows.reduce((s, r) => s + (r.award_amount || 0), 0);
+      const agencies = new Set<string>();
+      rows.forEach((r) => r.awarding_agency && agencies.add(r.awarding_agency));
+      const sbCount = rows.filter(isSmallBusiness).length;
       return {
         totalSpending,
-        totalBudget,
-        totalContracts,
-        agencyCount,
-        avgContractValue: totalContracts > 0 ? totalSpending / totalContracts : 0,
-        sbPercent,
+        totalBudget: 0, // budgetary_resources endpoint not synced — show 0
+        totalContracts: rows.length,
+        agencyCount: agencies.size,
+        avgContractValue: rows.length > 0 ? totalSpending / rows.length : 0,
+        sbPercent: rows.length > 0 ? (sbCount / rows.length) * 100 : 0,
       };
     },
     staleTime: 5 * 60 * 1000,
@@ -75,54 +98,62 @@ export function useSpendingSnapshot(fy: string, refreshKey: number) {
 }
 
 export function useTopAgencies(fy: string, refreshKey: number) {
-  const year = parseInt(fy.replace("FY", ""));
   return useQuery({
-    queryKey: ["usa-agencies", fy, refreshKey],
-    queryFn: () =>
-      postAPI("spending/", {
-        type: "agency",
-        filters: { fy: String(year), quarter: "4" },
-      }),
-    staleTime: 5 * 60 * 1000,
-    select: (data) => {
-      const results = data?.results || [];
-      const total = data?.total || 1;
-      return results
-        .filter((item: any) => item.name && item.name !== "Unreported Data")
+    queryKey: ["usa-agencies-local", fy, refreshKey],
+    queryFn: async () => {
+      const dates = getFiscalYearDates(fy);
+      const rows = await fetchWindow(dates.start_date, dates.end_date);
+      const grouped = new Map<string, number>();
+      let total = 0;
+      for (const r of rows) {
+        const k = r.awarding_agency || "Unknown";
+        const v = r.award_amount || 0;
+        grouped.set(k, (grouped.get(k) || 0) + v);
+        total += v;
+      }
+      return Array.from(grouped.entries())
+        .map(([name, amount]) => ({ name, amount }))
+        .sort((a, b) => b.amount - a.amount)
         .slice(0, 10)
-        .map((item: any, i: number) => ({
+        .map((x, i) => ({
           rank: i + 1,
-          name: item.name || "Unknown",
-          amount: item.amount || 0,
-          percentage: total > 0 ? ((item.amount || 0) / total) * 100 : 0,
-          id: item.id,
+          name: x.name,
+          amount: x.amount,
+          percentage: total > 0 ? (x.amount / total) * 100 : 0,
+          id: x.name,
         }));
     },
+    staleTime: 5 * 60 * 1000,
   });
 }
 
 export function useSpendingByCategory(fy: string, refreshKey: number) {
-  const year = parseInt(fy.replace("FY", ""));
+  // Object-class breakdown isn't in the synced fields — use NAICS top-level
+  // groupings instead so the chart still tells a useful story.
   return useQuery({
-    queryKey: ["usa-categories", fy, refreshKey],
-    queryFn: () =>
-      postAPI("spending/", {
-        type: "object_class",
-        filters: { fy: String(year), quarter: "4" },
-      }),
-    staleTime: 5 * 60 * 1000,
-    select: (data) => {
-      const results = data?.results || [];
-      const total = data?.total || 1;
-      return results
-        .filter((item: any) => item.name && item.name !== "Unreported Data" && (item.amount || 0) > 0)
+    queryKey: ["usa-categories-local", fy, refreshKey],
+    queryFn: async () => {
+      const dates = getFiscalYearDates(fy);
+      const rows = await fetchWindow(dates.start_date, dates.end_date);
+      const grouped = new Map<string, number>();
+      let total = 0;
+      for (const r of rows) {
+        const k = r.naics_code ? r.naics_code.slice(0, 2) : "Other";
+        const v = r.award_amount || 0;
+        grouped.set(k, (grouped.get(k) || 0) + v);
+        total += v;
+      }
+      return Array.from(grouped.entries())
+        .filter(([, v]) => v > 0)
+        .sort((a, b) => b[1] - a[1])
         .slice(0, 10)
-        .map((item: any) => ({
-          name: item.name || "Other",
-          amount: item.amount || 0,
-          percentage: total > 0 ? ((item.amount || 0) / total) * 100 : 0,
+        .map(([name, amount]) => ({
+          name: `NAICS ${name}`,
+          amount,
+          percentage: total > 0 ? (amount / total) * 100 : 0,
         }));
     },
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -139,39 +170,46 @@ export interface AwardSearchFilters {
 
 export function useAwardSearch(filters: AwardSearchFilters, refreshKey: number) {
   const dates = getFiscalYearDates(filters.fy);
-  const awardTypeCodes =
-    filters.awardType === "contracts" ? ["A", "B", "C", "D"] :
-    filters.awardType === "grants" ? ["02", "03", "04", "05"] :
-    filters.awardType === "loans" ? ["07", "08"] :
-    ["A", "B", "C", "D"];
-
+  const limit = 25;
   return useQuery({
-    queryKey: ["usa-awards", filters, refreshKey],
-    queryFn: () => {
-      const body: any = {
-        filters: {
-          award_type_codes: awardTypeCodes,
-          time_period: [{ start_date: dates.start_date, end_date: dates.end_date }],
-        },
-        fields: [
-          "Award ID", "Recipient Name", "Award Amount", "Description",
-          "awarding_agency_name", "period_of_performance_start_date",
-          "period_of_performance_current_end_date", "naics_code",
-          "type_description", "place_of_performance_city_name",
-          "place_of_performance_state_code",
-        ],
-        sort: "Award Amount",
-        order: "desc",
-        limit: 25,
-        page: filters.page,
-      };
-      if (filters.keyword) body.filters.keywords = [filters.keyword];
-      if (filters.minValue) body.filters.award_amounts = [{ lower_bound: filters.minValue }];
-      if (filters.naicsCode) body.filters.naics_codes = [{ naics_code: filters.naicsCode }];
-      if (filters.state) {
-        body.filters.place_of_performance_locations = [{ state: filters.state }];
+    queryKey: ["usa-awards-local", filters, refreshKey],
+    queryFn: async () => {
+      let q = supabase
+        .from("usaspending_awards")
+        .select("*", { count: "exact" })
+        .gte("date_signed", dates.start_date)
+        .lte("date_signed", dates.end_date);
+      if (filters.keyword) {
+        q = q.or(
+          `description.ilike.%${filters.keyword}%,recipient_name.ilike.%${filters.keyword}%`,
+        );
       }
-      return postAPI("search/spending_by_award/", body);
+      if (filters.agency) q = q.ilike("awarding_agency", `%${filters.agency}%`);
+      if (filters.minValue) q = q.gte("award_amount", filters.minValue);
+      if (filters.naicsCode) q = q.eq("naics_code", filters.naicsCode);
+      if (filters.state) q = q.eq("place_of_performance_state", filters.state);
+      q = q.order("award_amount", { ascending: false, nullsFirst: false })
+        .range((filters.page - 1) * limit, filters.page * limit - 1);
+      const { data, error, count } = await q;
+      if (error) throw new Error(error.message);
+      // Reshape to the same field names the AwardExplorer table expects.
+      const results = (data || []).map((r: any) => ({
+        "Award ID": r.award_id,
+        "Recipient Name": r.recipient_name,
+        "Award Amount": r.award_amount,
+        "Description": r.description,
+        "awarding_agency_name": r.awarding_agency,
+        "type_description": r.award_type,
+        "naics_code": r.naics_code,
+        "place_of_performance_city_name": r.place_of_performance_city,
+        "place_of_performance_state_code": r.place_of_performance_state,
+        "period_of_performance_start_date": r.period_of_performance_start,
+        "period_of_performance_current_end_date": r.period_of_performance_end,
+      }));
+      return {
+        results,
+        page_metadata: { page: filters.page, total: count || 0, hasNext: (filters.page * limit) < (count || 0) },
+      };
     },
     enabled: false,
     staleTime: 60 * 1000,
@@ -179,75 +217,60 @@ export function useAwardSearch(filters: AwardSearchFilters, refreshKey: number) 
 }
 
 export function useTopRecipients(fy: string, refreshKey: number) {
-  const dates = getFiscalYearDates(fy);
   return useQuery({
-    queryKey: ["usa-recipients", fy, refreshKey],
-    queryFn: () =>
-      postAPI("search/spending_by_award/", {
-        filters: {
-          award_type_codes: ["A", "B", "C", "D"],
-          time_period: [{ start_date: dates.start_date, end_date: dates.end_date }],
-        },
-        fields: ["Award ID", "Recipient Name", "Award Amount", "naics_code", "awarding_agency_name"],
-        sort: "Award Amount",
-        order: "desc",
-        limit: 50,
-        page: 1,
-      }),
-    staleTime: 5 * 60 * 1000,
-    select: (data) => {
-      const results = data?.results || [];
+    queryKey: ["usa-recipients-local", fy, refreshKey],
+    queryFn: async () => {
+      const dates = getFiscalYearDates(fy);
+      const rows = await fetchWindow(dates.start_date, dates.end_date);
       const grouped: Record<string, { name: string; total: number; count: number; awards: any[] }> = {};
-      results.forEach((r: any) => {
-        const name = r["Recipient Name"] || "Unknown";
+      for (const r of rows) {
+        const name = r.recipient_name || "Unknown";
         if (!grouped[name]) grouped[name] = { name, total: 0, count: 0, awards: [] };
-        grouped[name].total += r["Award Amount"] || 0;
+        grouped[name].total += r.award_amount || 0;
         grouped[name].count += 1;
-        grouped[name].awards.push(r);
-      });
+        grouped[name].awards.push({
+          "Award ID": r.award_id,
+          "Recipient Name": r.recipient_name,
+          "Award Amount": r.award_amount,
+          "naics_code": r.naics_code,
+          "awarding_agency_name": r.awarding_agency,
+        });
+      }
       return Object.values(grouped)
         .sort((a, b) => b.total - a.total)
         .slice(0, 15)
-        .map((r, i) => ({ ...r, rank: i + 1, avg: r.total / r.count }));
+        .map((r, i) => ({ ...r, rank: i + 1, avg: r.count > 0 ? r.total / r.count : 0 }));
     },
+    staleTime: 5 * 60 * 1000,
   });
 }
 
 export function useSpendingTrends(refreshKey: number) {
   return useQuery({
-    queryKey: ["usa-trends", refreshKey],
+    queryKey: ["usa-trends-local", refreshKey],
     queryFn: async () => {
       const years = [2021, 2022, 2023, 2024, 2025];
       const results: { year: string; totalContracts: number; sbContracts: number }[] = [];
-
-      // Fetch sequentially with small delays to avoid rate limiting
       for (const year of years) {
         const dates = getFiscalYearDates(`FY${year}`);
         try {
-          const allCount = await postAPI("search/spending_by_award_count/", {
-            filters: {
-              award_type_codes: ["A", "B", "C", "D"],
-              time_period: [{ start_date: dates.start_date, end_date: dates.end_date }],
-            },
+          const { count: total } = await supabase
+            .from("usaspending_awards")
+            .select("*", { count: "exact", head: true })
+            .gte("date_signed", dates.start_date)
+            .lte("date_signed", dates.end_date);
+          // SB sub-count via in() on set_aside prefixes — best-effort.
+          const { count: sb } = await supabase
+            .from("usaspending_awards")
+            .select("*", { count: "exact", head: true })
+            .gte("date_signed", dates.start_date)
+            .lte("date_signed", dates.end_date)
+            .in("set_aside", ["SBA", "8A", "WOSB", "HZC", "SDVOSBC", "VSA", "EDWOSB"]);
+          results.push({
+            year: `FY${year}`,
+            totalContracts: total || 0,
+            sbContracts: sb || 0,
           });
-          // Small delay to avoid rate limiting
-          await new Promise((r) => setTimeout(r, 150));
-          const sbCount = await postAPI("search/spending_by_award_count/", {
-            filters: {
-              award_type_codes: ["A", "B", "C", "D"],
-              time_period: [{ start_date: dates.start_date, end_date: dates.end_date }],
-              set_aside_type_codes: ["SBA", "8A", "WOSB", "HZC", "SDVOSBC", "VSA"],
-            },
-          });
-          await new Promise((r) => setTimeout(r, 150));
-
-          const totalContracts = allCount?.results
-            ? Object.values(allCount.results as Record<string, number>).reduce((sum: number, v) => sum + (v as number), 0)
-            : 0;
-          const sbContracts = sbCount?.results
-            ? Object.values(sbCount.results as Record<string, number>).reduce((sum: number, v) => sum + (v as number), 0)
-            : 0;
-          results.push({ year: `FY${year}`, totalContracts, sbContracts });
         } catch {
           results.push({ year: `FY${year}`, totalContracts: 0, sbContracts: 0 });
         }
@@ -259,68 +282,60 @@ export function useSpendingTrends(refreshKey: number) {
 }
 
 export function useGeographicSpending(fy: string, refreshKey: number) {
-  const dates = getFiscalYearDates(fy);
   return useQuery({
-    queryKey: ["usa-geo", fy, refreshKey],
-    queryFn: () =>
-      postAPI("search/spending_by_geography/", {
-        scope: "place_of_performance",
-        geo_layer: "state",
-        filters: {
-          time_period: [{ start_date: dates.start_date, end_date: dates.end_date }],
-          award_type_codes: ["A", "B", "C", "D"],
-        },
-      }),
-    staleTime: 5 * 60 * 1000,
-    select: (data) => {
-      const results = data?.results || [];
-      return results
-        .filter((s: any) => s.shape_code && s.aggregated_amount)
-        .sort((a: any, b: any) => (b.aggregated_amount || 0) - (a.aggregated_amount || 0))
+    queryKey: ["usa-geo-local", fy, refreshKey],
+    queryFn: async () => {
+      const dates = getFiscalYearDates(fy);
+      const rows = await fetchWindow(dates.start_date, dates.end_date);
+      const grouped = new Map<string, { amount: number; count: number }>();
+      for (const r of rows) {
+        const k = r.place_of_performance_state;
+        if (!k) continue;
+        const cur = grouped.get(k) || { amount: 0, count: 0 };
+        cur.amount += r.award_amount || 0;
+        cur.count += 1;
+        grouped.set(k, cur);
+      }
+      return Array.from(grouped.entries())
+        .map(([code, v]) => ({ code, ...v }))
+        .sort((a, b) => b.amount - a.amount)
         .slice(0, 15)
-        .map((s: any, i: number) => ({
+        .map((s, i) => ({
           rank: i + 1,
-          state: s.display_name || s.shape_code,
-          code: s.shape_code,
-          amount: s.aggregated_amount || 0,
-          awardCount: s.per_capita || 0,
-          population: s.population || 0,
+          state: s.code,
+          code: s.code,
+          amount: s.amount,
+          awardCount: s.count,
+          population: 0,
         }));
     },
+    staleTime: 5 * 60 * 1000,
   });
 }
 
 export function useSmallBusinessData(fy: string, refreshKey: number) {
-  const dates = getFiscalYearDates(fy);
   return useQuery({
-    queryKey: ["usa-sb", fy, refreshKey],
+    queryKey: ["usa-sb-local", fy, refreshKey],
     queryFn: async () => {
-      const setAsideTypes = [
-        { code: ["SBA"], label: "Small Business" },
-        { code: ["8A"], label: "8(a)" },
-        { code: ["WOSB"], label: "WOSB" },
-        { code: ["HZC"], label: "HUBZone" },
-        { code: ["SDVOSBC"], label: "SDVOSB" },
-        { code: ["VSA"], label: "VOSB" },
+      const dates = getFiscalYearDates(fy);
+      const setAsideBuckets = [
+        { codes: ["SBA"], label: "Small Business" },
+        { codes: ["8A"], label: "8(a)" },
+        { codes: ["WOSB", "EDWOSB"], label: "WOSB" },
+        { codes: ["HZC"], label: "HUBZone" },
+        { codes: ["SDVOSBC"], label: "SDVOSB" },
+        { codes: ["VSA"], label: "VOSB" },
       ];
       const results = await Promise.all(
-        setAsideTypes.map(async (sa) => {
-          try {
-            const res = await postAPI("search/spending_by_award_count/", {
-              filters: {
-                award_type_codes: ["A", "B", "C", "D"],
-                time_period: [{ start_date: dates.start_date, end_date: dates.end_date }],
-                set_aside_type_codes: sa.code,
-              },
-            });
-            const count = res?.results
-              ? Object.values(res.results as Record<string, number>).reduce((sum: number, v) => sum + (v as number), 0)
-              : 0;
-            return { label: sa.label, count };
-          } catch {
-            return { label: sa.label, count: 0 };
-          }
-        })
+        setAsideBuckets.map(async (b) => {
+          const { count } = await supabase
+            .from("usaspending_awards")
+            .select("*", { count: "exact", head: true })
+            .gte("date_signed", dates.start_date)
+            .lte("date_signed", dates.end_date)
+            .in("set_aside", b.codes);
+          return { label: b.label, count: count || 0 };
+        }),
       );
       return results;
     },
