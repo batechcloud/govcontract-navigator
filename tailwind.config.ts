@@ -118,6 +118,6 @@ export default {
         "gradient-glass": "linear-gradient(135deg, hsl(222 47% 15% / 0.4) 0%, hsl(222 47% 10% / 0.2) 100%)",
       },
     },
-  },
+  plugins: [animate],
   plugins: [require("tailwindcss-animate")],
 } satisfies Config;
