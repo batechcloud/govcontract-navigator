@@ -93,7 +93,6 @@ const whoCanBidPills = [
   { label: "Woman-Owned", icon: "👩‍💼", tooltip: "Reserved for woman-owned businesses" },
   { label: "Minority-Owned", icon: "🤝", tooltip: "Reserved for minority-owned businesses" },
   { label: "HUBZone", icon: "📍", tooltip: "Businesses in underutilized areas" },
-  { label: "Federal", icon: "🏛️", tooltip: "U.S. federal government agencies" },
 ];
 
 const agencyOptions = [
