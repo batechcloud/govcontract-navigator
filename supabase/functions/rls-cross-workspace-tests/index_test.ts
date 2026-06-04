@@ -172,7 +172,7 @@ Deno.test({
         const { error } = await a.client.from("tracked_contracts").insert({
           user_id: b.userId,
           contract_id: `evil-${crypto.randomUUID()}`,
-          title: "cross-tenant write attempt",
+          contract_title: "cross-tenant write attempt",
         });
         assert(error !== null, "insert as B from A's session should be blocked");
       });
@@ -194,7 +194,7 @@ Deno.test({
 
         const { data, error } = await a.client
           .from("tracked_contracts")
-          .update({ title: "tampered" })
+          .update({ contract_title: "tampered" })
           .eq("id", brow!.id)
           .select();
         // RLS makes the row invisible to A: no error, but zero rows affected.
@@ -203,8 +203,8 @@ Deno.test({
 
         // Confirm via B that the title is unchanged.
         const { data: after } = await b.client
-          .from("tracked_contracts").select("title").eq("id", brow!.id).single();
-        assert(after?.title !== "tampered", "B's row title must not have been mutated");
+          .from("tracked_contracts").select("contract_title").eq("id", brow!.id).single();
+        assert(after?.contract_title !== "tampered", "B's row title must not have been mutated");
       });
 
       await t.step("A cannot DELETE B's tracked_contracts row", async () => {
