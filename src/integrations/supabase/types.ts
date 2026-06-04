@@ -279,6 +279,7 @@ export type Database = {
           psc_code: string | null
           tracked_competitor_id: string
           user_id: string
+          workspace_id: string | null
         }
         Insert: {
           award_amount?: number | null
@@ -293,6 +294,7 @@ export type Database = {
           psc_code?: string | null
           tracked_competitor_id: string
           user_id: string
+          workspace_id?: string | null
         }
         Update: {
           award_amount?: number | null
@@ -307,6 +309,7 @@ export type Database = {
           psc_code?: string | null
           tracked_competitor_id?: string
           user_id?: string
+          workspace_id?: string | null
         }
         Relationships: [
           {
@@ -314,6 +317,13 @@ export type Database = {
             columns: ["tracked_competitor_id"]
             isOneToOne: false
             referencedRelation: "tracked_competitors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competitor_awards_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
@@ -1114,6 +1124,7 @@ export type Database = {
           total_value: number | null
           updated_at: string | null
           user_id: string
+          workspace_id: string | null
         }
         Insert: {
           competitor_cage?: string | null
@@ -1128,6 +1139,7 @@ export type Database = {
           total_value?: number | null
           updated_at?: string | null
           user_id: string
+          workspace_id?: string | null
         }
         Update: {
           competitor_cage?: string | null
@@ -1142,8 +1154,17 @@ export type Database = {
           total_value?: number | null
           updated_at?: string | null
           user_id?: string
+          workspace_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tracked_competitors_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tracked_contracts: {
         Row: {
