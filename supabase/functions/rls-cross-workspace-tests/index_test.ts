@@ -96,13 +96,14 @@ async function seed(ctx: Ctx) {
   const { error: tcErr } = await ctx.client.from("tracked_contracts").insert({
     user_id: ctx.userId,
     contract_id: `seed-${ctx.userId}`,
-    title: "seed contract",
+    contract_title: "seed contract",
   });
   if (tcErr) throw new Error(`seed tracked_contracts: ${tcErr.message}`);
 
   const { error: ssErr } = await ctx.client.from("saved_searches").insert({
     user_id: ctx.userId,
     name: "seed search",
+    query: "seed",
     filters: { keyword: "seed" },
   });
   if (ssErr) throw new Error(`seed saved_searches: ${ssErr.message}`);
