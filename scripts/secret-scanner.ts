@@ -116,7 +116,6 @@ export function secretScannerPlugin(): Plugin {
         console.log("\x1b[32m✓ secret-scanner: no secrets detected in client bundle\x1b[0m");
         return;
       }
-      }
       const summary = findings
         .map((f) => `  • [${f.pattern}] ${f.file} → ${f.sample}`)
         .join("\n");
