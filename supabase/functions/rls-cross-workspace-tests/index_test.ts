@@ -4,9 +4,10 @@
 // handle_new_user trigger) and verifies that user A cannot read or write
 // user B's workspace-scoped data, and vice versa.
 //
-// Requires: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY
-// (the Edge Function runtime injects these automatically; for local runs
-// they're loaded from the project .env via the dotenv import below).
+// Requires: SUPABASE_URL + SUPABASE_ANON_KEY (loaded from .env).
+// SUPABASE_SERVICE_ROLE_KEY is optional — when present we clean up the
+// ephemeral users at the end of the run. Without it the test users remain
+// in auth.users (harmless, just noise in the dashboard).
 
 import "https://deno.land/std@0.224.0/dotenv/load.ts";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -14,16 +15,21 @@ import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.t
 
 const SUPABASE_URL =
   Deno.env.get("SUPABASE_URL") ?? Deno.env.get("VITE_SUPABASE_URL")!;
-const SERVICE_ROLE =
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY =
   Deno.env.get("SUPABASE_ANON_KEY") ??
   Deno.env.get("VITE_SUPABASE_PUBLISHABLE_KEY") ??
   Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
+const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
+if (!SUPABASE_URL || !ANON_KEY) {
+  throw new Error("SUPABASE_URL and SUPABASE_ANON_KEY/PUBLISHABLE_KEY must be set");
+}
+
+const admin = SERVICE_ROLE
+  ? createClient(SUPABASE_URL, SERVICE_ROLE, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+  : null;
 
 type Ctx = {
   userId: string;
@@ -37,38 +43,48 @@ async function provisionUser(label: string): Promise<Ctx> {
   const email = `rls-${label}-${crypto.randomUUID()}@example.test`;
   const password = `Test!${crypto.randomUUID()}`;
 
-  const { data: created, error: createErr } = await admin.auth.admin.createUser({
+  const client = createClient(SUPABASE_URL, ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  // Sign up via anon client. Requires email confirmations to be OFF (the
+  // default for new Supabase projects). handle_new_user provisions a workspace.
+  const { data: signUp, error: signUpErr } = await client.auth.signUp({
     email,
     password,
-    email_confirm: true,
-    user_metadata: { first_name: `RLS-${label}` },
+    options: { data: { first_name: `RLS-${label}` } },
   });
-  if (createErr || !created.user) throw new Error(`createUser: ${createErr?.message}`);
-  const userId = created.user.id;
+  if (signUpErr || !signUp.user) throw new Error(`signUp ${label}: ${signUpErr?.message}`);
 
-  // Wait briefly for handle_new_user trigger to create workspace
+  if (!signUp.session) {
+    const { error: signInErr } = await client.auth.signInWithPassword({ email, password });
+    if (signInErr) {
+      throw new Error(
+        `Cannot establish a session for ${email} (${signInErr.message}). ` +
+        `Disable "Confirm email" in Supabase auth settings to run these tests.`,
+      );
+    }
+  }
+  const userId = signUp.user.id;
+
   let workspaceId: string | null = null;
-  for (let i = 0; i < 10; i++) {
-    const { data } = await admin
+  for (let i = 0; i < 15; i++) {
+    const { data } = await client
       .from("workspace_members")
       .select("workspace_id")
       .eq("user_id", userId)
       .maybeSingle();
     if (data?.workspace_id) { workspaceId = data.workspace_id; break; }
-    await new Promise((r) => setTimeout(r, 200));
+    await new Promise((r) => setTimeout(r, 250));
   }
   if (!workspaceId) throw new Error(`workspace not provisioned for ${label}`);
-
-  const client = createClient(SUPABASE_URL, ANON_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  const { error: signInErr } = await client.auth.signInWithPassword({ email, password });
-  if (signInErr) throw new Error(`signIn ${label}: ${signInErr.message}`);
 
   return { userId, email, password, workspaceId, client };
 }
 
 async function cleanup(ctx: Ctx) {
+  try { await ctx.client.auth.signOut(); } catch (_) { /* noop */ }
+  if (!admin) return;
   try { await admin.rpc("delete_user_cascade", { _user_id: ctx.userId }); } catch (_) { /* noop */ }
   try { await admin.from("workspaces").delete().eq("owner_id", ctx.userId); } catch (_) { /* noop */ }
   try { await admin.auth.admin.deleteUser(ctx.userId); } catch (_) { /* noop */ }
