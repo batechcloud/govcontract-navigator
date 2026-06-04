@@ -186,11 +186,9 @@ Deno.test({
       });
 
       await t.step("A cannot UPDATE B's tracked_contracts row", async () => {
-        // Fetch B's row via admin to get its id
-        const { data: brow } = await admin
-          .from("tracked_contracts")
-          .select("id")
-          .eq("user_id", b.userId).limit(1).single();
+        // B reads its own row (this is the only way to learn the id without service_role).
+        const { data: brow } = await b.client
+          .from("tracked_contracts").select("id").eq("user_id", b.userId).limit(1).single();
         assert(brow?.id, "B should have a seed row");
 
         const { data, error } = await a.client
@@ -198,16 +196,19 @@ Deno.test({
           .update({ title: "tampered" })
           .eq("id", brow!.id)
           .select();
-        // RLS makes the row invisible: no error, but zero rows affected.
+        // RLS makes the row invisible to A: no error, but zero rows affected.
         assertEquals(error, null);
         assertEquals(data?.length ?? 0, 0, "A must not be able to update B's row");
+
+        // Confirm via B that the title is unchanged.
+        const { data: after } = await b.client
+          .from("tracked_contracts").select("title").eq("id", brow!.id).single();
+        assert(after?.title !== "tampered", "B's row title must not have been mutated");
       });
 
       await t.step("A cannot DELETE B's tracked_contracts row", async () => {
-        const { data: brow } = await admin
-          .from("tracked_contracts")
-          .select("id")
-          .eq("user_id", b.userId).limit(1).single();
+        const { data: brow } = await b.client
+          .from("tracked_contracts").select("id").eq("user_id", b.userId).limit(1).single();
         const { data, error } = await a.client
           .from("tracked_contracts")
           .delete()
@@ -216,11 +217,12 @@ Deno.test({
         assertEquals(error, null);
         assertEquals(data?.length ?? 0, 0);
 
-        // Confirm via admin that the row is still there.
-        const { data: still } = await admin
+        // B still sees its row.
+        const { data: still } = await b.client
           .from("tracked_contracts").select("id").eq("id", brow!.id).maybeSingle();
         assert(still, "B's row must still exist");
       });
+
 
       await t.step("A cannot DELETE B's workspace", async () => {
         const { data, error } = await a.client
