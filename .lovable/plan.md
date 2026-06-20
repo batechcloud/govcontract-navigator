@@ -1,87 +1,70 @@
-# Codebase Audit & Cleanup — Phased Plan
+## Why pages load slowly
 
-No new features. No design/UX changes. Conservative deletions only. Each phase ends with a static check (typecheck/lint/build) plus a manual smoke test in the preview, then I stop and wait for your approval before starting the next phase.
+I profiled the database (pg_stat_statements) and the client. Page load time is dominated by a handful of slow Supabase queries, not by the React bundle. The two biggest offenders:
 
-## Ground rules
+| Query | Calls | Mean | Max |
+|---|---|---|---|
+| `sam_opportunities_compat` filtered by `deadline > now()` ordered by `deadline, match_score` | 10 | **1,479 ms** | **5,876 ms** |
+| `contracts` ilike on title/description/agency + deadline | 3 | 1,887 ms | 2,874 ms |
+| `usaspending_awards` filtered by `date_signed` range + `set_aside IN (...)` | 148 | 82 ms | 664 ms |
+| `SELECT * FROM contracts LIMIT/OFFSET` with `count: 'exact'` | 1,336 | 54 ms | 1,770 ms |
 
-- Do not touch: `src/integrations/supabase/types.ts`, `supabase/config.toml` JWT settings, RLS policies, design tokens, public API contracts of edge functions.
-- Keep all legacy `<Navigate>` redirect routes in `App.tsx` (inbound links may rely on them).
-- Keep exports that are only consumed across module boundaries even if unused inside the file.
-- No DB schema changes unless a phase uncovers an actual bug. If one is needed, I will pause and propose a migration before writing it.
-- Every change is small and reviewable. If a phase grows beyond ~10 files, I split it.
+Root causes:
 
-## Phase 1 — Dead code & redundancy (in-file only)
+1. **`sam_opportunities` is missing a `deadline` index.** The user-facing search reads through the `sam_opportunities_compat` view and filters/sorts by `deadline` — every call does a sequential scan + sort over the full table. This is the single biggest hit on Dashboard / Search / Sector pages.
+2. **`sam_opportunities` is missing `set_aside`, `value`, and a composite `(deadline, match_score)` index** that matches the default sort.
+3. **`usaspending_awards` is missing a `set_aside` index** used by the USASpending intel page.
+4. **Every list query uses `count: 'exact'`**, which forces Postgres to scan the entire table to produce a total row count even when the page only needs 20 rows. On the `contracts` / `sam_opportunities` tables this is the main source of the long tail (max latencies > 1.5 s).
+5. Minor: the Dashboard `AIRecommendationsCard` and `useProfile` both kick off network work on mount; they're already cached via React Query persist, so no change needed there.
 
-Scope:
-- Remove unused imports, unused local vars, unreferenced helper functions inside a file.
-- Remove commented-out code blocks (not doc comments).
-- Consolidate obvious duplicate helpers into existing `src/lib/` modules only when call sites are identical.
-- Run `depcheck` (read-only) and **report** unused npm deps; remove only ones that are 100% safe (no dynamic import, no peer-dep usage). Anything ambiguous stays.
+## Plan
 
-Out of scope: deleting components, routes, hooks, or edge functions even if they look unused.
+### 1. Add missing indexes (migration)
 
-Verify: `npm run lint`, `npm run build`, load `/`, `/auth`, `/dashboard`, `/admin/sync` in preview.
+```sql
+CREATE INDEX IF NOT EXISTS sam_opportunities_deadline_idx
+  ON public.sam_opportunities (deadline);
 
-## Phase 2 — Broken or incomplete features
+-- Matches default sort: deadline ASC NULLS LAST, match_score DESC NULLS LAST
+CREATE INDEX IF NOT EXISTS sam_opportunities_deadline_score_idx
+  ON public.sam_opportunities (deadline ASC NULLS LAST, match_score DESC NULLS LAST);
 
-Walk every route in `App.tsx` plus every admin route. For each:
-- Render check via preview (no console errors, no blank screens).
-- Click every primary button/form/link; confirm it triggers its handler and the handler completes.
-- Confirm `supabase.functions.invoke` and direct DB calls handle `{ data, error }` and surface errors via `toast`.
-- Confirm navigation targets exist (no dead `<Link to=...>`).
+CREATE INDEX IF NOT EXISTS sam_opportunities_set_aside_idx
+  ON public.sam_opportunities (set_aside);
 
-Deliverable: a short list of actual defects found, with a targeted fix per defect. No speculative refactors.
+CREATE INDEX IF NOT EXISTS sam_opportunities_value_idx
+  ON public.sam_opportunities (value);
 
-Verify: re-walk the same routes after fixes.
+CREATE INDEX IF NOT EXISTS usaspending_awards_set_aside_idx
+  ON public.usaspending_awards (set_aside);
 
-## Phase 3 — Data & state integrity
+ANALYZE public.sam_opportunities;
+ANALYZE public.usaspending_awards;
+```
 
-- Confirm `ProtectedRoute` and `AdminRoute` redirect unauthenticated users (smoke via incognito-style preview navigation).
-- For every `useQuery`/`useMutation` in `src/hooks/`, confirm loading + empty + error states render something visible. Patch only the ones that silently swallow.
-- Confirm Zustand `contractStore` persist key still hydrates correctly.
-- Re-check RLS-dependent reads from the client surface a toast on error rather than rendering empty.
+Tradeoff: ~20–40 MB extra storage and a small (<5 %) slowdown on inserts during the nightly sync, in exchange for ~10–50× faster reads on every page that lists opportunities.
 
-## Phase 4 — Sync & background jobs
+### 2. Stop requesting exact counts on hot paths
 
-- Verify the `pg_cron` schedule for `nightly-sync-dispatch` exists at 02:00 UTC and points at the right function URL (read `cron.job`).
-- Manually trigger SAM + USASpending from `/admin/sync` and confirm:
-  - `sync_runs` row written with correct status (`success` / `rate_limited` / `failure`).
-  - `sync_metadata.last_synced_at` updates on success.
-  - Rate-limit guard (added last loop) still blocks re-runs within 24h.
-  - Admin page renders the latest run and toast fires once per `rate_limited` run.
-- Check `nightly-sync-dispatch` Edge Function logs for the most recent invocation.
+Change the list queries from `select("*", { count: "exact" })` to `{ count: "estimated" }` (or drop `count` entirely where the UI only needs "more results available"). Files:
 
-No code changes unless a defect is found.
+- `src/hooks/useSearch.tsx` — main search list
+- `src/hooks/useCachedContracts.ts` — dashboard / sector cards
+- `src/lib/contracts-query.ts` — shared builder
+- `src/hooks/useUSASpending.tsx` — USASpending list
 
-## Phase 5 — Console, runtime, and type errors
+Where the UI shows a real total (e.g. "1,284 results"), keep `count: 'exact'` but issue it as a separate, debounced query so the first page renders immediately.
 
-- Open key routes in the preview, collect console errors/warnings, fix only real ones (React key warnings, act warnings, missing deps in `useEffect` that cause real bugs — not cosmetic ones).
-- Run `npm run lint` and fix actionable rule violations. `no-unused-vars` is off in this repo per `eslint.config.js`, so I will not flip it on.
-- `tsc --noEmit` clean pass (project has `strictNullChecks: false`; I will not tighten it).
+### 3. Verify
 
-## Phase 6 — Performance & secret hygiene
+After the migration runs:
 
-- Spot-check for `useEffect` with missing/over-broad deps causing extra fetches; fix only the ones with measurable impact.
-- Confirm large list pages (`SearchHub`, `TrackedContracts`, `AdminUsers`, `AdminWorkspaces`) cap rows (pagination/limit already exists per memory — verify).
-- Grep the client bundle source for any hardcoded keys/secrets. The build's `secretScannerPlugin` should already catch JWTs/API keys; I will verify it runs clean on `npm run build`.
+1. Re-run `EXPLAIN (ANALYZE, BUFFERS)` on the `sam_opportunities_compat` query with a real `now()` value to confirm the new `(deadline, match_score)` index is used (Index Scan, not Seq Scan + Sort).
+2. Reload `/dashboard`, `/dashboard/search`, and `/dashboard/sectors` and confirm first-paint and "results visible" times drop noticeably.
+3. Re-check `supabase--slow_queries` after a few minutes of normal use; the `sam_opportunities_compat` entry should disappear from the top of the list.
 
-## Phase 7 — Consistency pass
+## Out of scope
 
-- Naming: only rename when a file/symbol is clearly misnamed and unimported elsewhere. No mass renames.
-- Confirm every page sets a document title via `react-helmet-async` (per memory). Add `<Helmet>` only where missing.
-- Folder structure: report mislocated files; move only with explicit per-file approval.
-
-## Deliverable per phase
-
-Each phase ends with:
-1. List of files changed (or "no changes needed").
-2. List of issues found and how each was fixed.
-3. Smoke-test summary (routes walked, console clean, build green).
-4. Stop and wait for your go-ahead before the next phase.
-
-## Technical notes
-
-- Tools used: ripgrep for usage analysis, `depcheck` for unused deps (report-only first), `tsc --noEmit`, `eslint`, `vite build`, browser tool for preview smoke, `supabase--read_query` for `sync_runs` / `sync_metadata` / `cron.job` inspection, `supabase--edge_function_logs` for dispatcher health.
-- No edits to `types.ts`, no RLS changes, no design token changes, no removal of redirect routes.
-
-Ready to start Phase 1 on approval.
+- No changes to bundle splitting, lazy loading, or the React Query persist layer — those are already configured correctly.
+- No schema changes to `contracts` (it already has trigram + tsvector indexes); only the count-mode change applies there.
+- No edge-function changes; the SAM/USASpending sync paths are unaffected aside from a marginal write cost from the new indexes.
