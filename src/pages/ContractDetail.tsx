@@ -227,7 +227,7 @@ const ContractDetail = () => {
   // Fetch resourceLinks from local cache. React Query handles dedup +
   // caching, so navigating away and back returns instantly.
   const needsLinks = !contract?.resourceLinks?.length && !!contractId;
-  const { data: fetchedLinksData } = useQuery({
+  const { data: fetchedLinksData, isFetching: fetchingLinks } = useQuery({
     queryKey: ["contract-resource-links", contractId],
     enabled: needsLinks,
     staleTime: 10 * 60 * 1000,
