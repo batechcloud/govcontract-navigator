@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import { PageContainer } from "@/components/layout/PageContainer";
@@ -223,31 +224,24 @@ const ContractDetail = () => {
     fetchContract();
   }, [contractId, stateData, tracked, fetchedContract, fetchLoading]);
 
-  // Fetch resourceLinks from SAM.gov if not already available
-  const [fetchedLinks, setFetchedLinks] = useState<string[] | null>(null);
-  const [fetchingLinks, setFetchingLinks] = useState(false);
-  useEffect(() => {
-    // Skip if we already have links from state or tracked data, or if already fetching/fetched
-    if (contract?.resourceLinks?.length || fetchedLinks !== null || fetchingLinks || !contractId) return;
-    
-    const fetchLinks = async () => {
-      setFetchingLinks(true);
-      try {
-        // Read attachments from local contracts cache only.
-        const { data } = await supabase
-          .from("sam_opportunities_compat" as any)
-          .select("resource_links")
-          .eq("contract_id", contractId)
-          .maybeSingle();
-        setFetchedLinks(((data as any)?.resource_links as string[]) || []);
-      } catch {
-        setFetchedLinks([]);
-      } finally {
-        setFetchingLinks(false);
-      }
-    };
-    fetchLinks();
-  }, [contractId, contract?.resourceLinks, fetchedLinks, fetchingLinks]);
+  // Fetch resourceLinks from local cache. React Query handles dedup +
+  // caching, so navigating away and back returns instantly.
+  const needsLinks = !contract?.resourceLinks?.length && !!contractId;
+  const { data: fetchedLinksData } = useQuery({
+    queryKey: ["contract-resource-links", contractId],
+    enabled: needsLinks,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("sam_opportunities_compat" as any)
+        .select("resource_links")
+        .eq("contract_id", contractId!)
+        .maybeSingle();
+      return ((data as any)?.resource_links as string[]) || [];
+    },
+  });
+  const fetchedLinks = needsLinks ? (fetchedLinksData ?? null) : null;
 
   // Merge: prefer existing links, fallback to fetched
   const effectiveLinks = contract?.resourceLinks?.length ? contract.resourceLinks : (fetchedLinks || []);
