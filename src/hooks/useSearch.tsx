@@ -90,10 +90,26 @@ function formatVal(v: number | null): string {
   return `$${v}`;
 }
 
+// Stable cache key for a (filters, page, limit) tuple. Sort arrays so
+// {a,b} and {b,a} share a cache entry.
+function searchCacheKey(filters: SearchFilters, page: number, limit: number) {
+  const norm = {
+    keywords: [...(filters.keywords || [])].sort(),
+    naics_codes: [...(filters.naics_codes || [])].sort(),
+    psc_codes: [...(filters.psc_codes || [])].sort(),
+    set_aside: [...(filters.set_aside || [])].sort(),
+    agencies: [...(filters.agencies || [])].sort(),
+    min_value: filters.min_value ?? null,
+    max_value: filters.max_value ?? null,
+    location: filters.location ?? null,
+    opportunity_type: filters.opportunity_type ?? null,
+  };
+  return ["search-contracts", norm, page, limit] as const;
+}
+
 export function useSearchContracts() {
+  const queryClient = useQueryClient();
   // Drop stale responses if a newer request started while we were waiting.
-  // Without this, rapid clicks on Search can cause an earlier slow query's
-  // results to overwrite a later fast query's results.
   const requestIdRef = useRef(0);
 
   return useMutation({
@@ -107,44 +123,58 @@ export function useSearchContracts() {
       limit?: number;
     }) => {
       const myReqId = ++requestIdRef.current;
-      let query = supabase.from("sam_opportunities_compat" as any).select("*", { count: "estimated" });
-      query = applyContractFilters(query, filters);
 
-      query = query
-        .order("match_score", { ascending: false, nullsFirst: false })
-        .order("posted_date", { ascending: false, nullsFirst: false })
-        .range(page * limit, (page + 1) * limit - 1);
+      // React Query handles dedup + caching: identical (filters, page, limit)
+      // tuples within staleTime return the cached payload instantly with no
+      // network round-trip. Concurrent calls for the same key share a single
+      // in-flight request.
+      const result = await queryClient.fetchQuery({
+        queryKey: searchCacheKey(filters, page, limit),
+        staleTime: 5 * 60 * 1000,
+        gcTime: 30 * 60 * 1000,
+        queryFn: async () => {
+          let query = supabase
+            .from("sam_opportunities_compat" as any)
+            .select("*", { count: "estimated" });
+          query = applyContractFilters(query, filters);
+          query = query
+            .order("match_score", { ascending: false, nullsFirst: false })
+            .order("posted_date", { ascending: false, nullsFirst: false })
+            .range(page * limit, (page + 1) * limit - 1);
 
-      const { data, error, count } = await query;
-      if (error) throw new Error(error.message);
+          const { data, error, count } = await query;
+          if (error) throw new Error(error.message);
 
-      // Stale-response guard: if a newer request started while we were
-      // waiting on this one, throw so React Query treats it as cancelled.
+          const results: SearchResult[] = ((data || []) as any[]).map((r) => ({
+            id: r.contract_id,
+            title: r.title || "Untitled",
+            agency: r.agency || "Federal Agency",
+            parentAgency: r.parent_agency ?? null,
+            type: r.contract_type || "Solicitation",
+            setAside: r.set_aside || "Full & Open",
+            value: formatVal(r.value),
+            deadline: r.deadline || "",
+            postedDate: r.posted_date || "",
+            location: r.location || "Various",
+            naicsCode: r.naics_code || "",
+            pscCode: r.psc_code ?? null,
+            matchScore: r.match_score || 70,
+            description: r.description || "",
+            solicitationNumber: r.solicitation_number || "",
+            link: r.url || "",
+            resourceLinks: r.resource_links || [],
+          }));
+
+          return { results, total: count || 0 };
+        },
+      });
+
+      // Stale-response guard: drop superseded responses.
       if (requestIdRef.current !== myReqId) {
         throw new Error("__superseded__");
       }
 
-      const results: SearchResult[] = ((data || []) as any[]).map((r) => ({
-        id: r.contract_id,
-        title: r.title || "Untitled",
-        agency: r.agency || "Federal Agency",
-        parentAgency: r.parent_agency ?? null,
-        type: r.contract_type || "Solicitation",
-        setAside: r.set_aside || "Full & Open",
-        value: formatVal(r.value),
-        deadline: r.deadline || "",
-        postedDate: r.posted_date || "",
-        location: r.location || "Various",
-        naicsCode: r.naics_code || "",
-        pscCode: r.psc_code ?? null,
-        matchScore: r.match_score || 70,
-        description: r.description || "",
-        solicitationNumber: r.solicitation_number || "",
-        link: r.url || "",
-        resourceLinks: r.resource_links || [],
-      }));
-
-      return { results, total: count || 0, page, limit };
+      return { results: result.results, total: result.total, page, limit };
     },
     onError: (error: Error) => {
       if (error.message === "__superseded__") return; // stale race, silent
@@ -152,6 +182,7 @@ export function useSearchContracts() {
     },
   });
 }
+
 
 // Combined search: parse query then search
 export function useSmartSearch() {

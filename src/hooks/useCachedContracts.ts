@@ -67,19 +67,39 @@ function formatCachedValue(v: number | null): string {
 /** Search contracts from the shared global contracts table */
 export type SortOption = "match_score" | "deadline" | "value" | "posted_date";
 
+// Stable cache key for a (filters, sort, page) tuple.
+function cachedSearchKey(
+  filters: SearchFilters & { active_only?: boolean; expiring_soon?: boolean; new_this_week?: boolean },
+  sort: SortOption,
+  page: number,
+  limit: number,
+) {
+  const norm = {
+    keywords: [...(filters.keywords || [])].sort(),
+    naics_codes: [...(filters.naics_codes || [])].sort(),
+    psc_codes: [...(filters.psc_codes || [])].sort(),
+    set_aside: [...(filters.set_aside || [])].sort(),
+    agencies: [...(filters.agencies || [])].sort(),
+    min_value: filters.min_value ?? null,
+    max_value: filters.max_value ?? null,
+    location: filters.location ?? null,
+    opportunity_type: filters.opportunity_type ?? null,
+    active_only: !!filters.active_only,
+    expiring_soon: !!filters.expiring_soon,
+    new_this_week: !!filters.new_this_week,
+  };
+  return ["cached-search", norm, sort, page, limit] as const;
+}
+
 export function useCachedSearch() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [results, setResults] = useState<(SearchResult & { fetchedAt: string })[]>([]);
   const [total, setTotal] = useState(0);
   const [isSearching, setIsSearching] = useState(false);
-  // Default to "deadline" (soonest first) since match_score is currently a
-  // static 70 from the sync — sorting by it is effectively random. Deadline
-  // surfaces actionable opportunities (the ones closing soon). When per-contract
-  // match scoring lands, this can move back to "match_score".
   const [currentSort, setCurrentSort] = useState<SortOption>("deadline");
 
-  // Stale-response guard — see comment in useSearchContracts. Rapid Search
-  // clicks can race; we drop any result whose request was superseded.
+  // Stale-response guard — see comment in useSearchContracts.
   const requestIdRef = useRef(0);
 
   const searchLocal = async (
@@ -93,71 +113,78 @@ export function useCachedSearch() {
     const myReqId = ++requestIdRef.current;
     setIsSearching(true);
     try {
-      let query = supabase
-        .from("sam_opportunities_compat" as any)
-        .select("*", { count: "estimated" });
+      // React Query dedupes + caches identical searches. Re-navigating to
+      // /dashboard/search with the same filters returns instantly.
+      const payload = await queryClient.fetchQuery({
+        queryKey: cachedSearchKey(filters, effectiveSort, page, limit),
+        staleTime: 5 * 60 * 1000,
+        gcTime: 30 * 60 * 1000,
+        queryFn: async () => {
+          let query = supabase
+            .from("sam_opportunities_compat" as any)
+            .select("*", { count: "estimated" });
 
-      // Date-toggle filters specific to this hook (not part of SearchFilters).
-      if (filters.active_only) {
-        query = query.gt("deadline", new Date().toISOString());
-      }
-      if (filters.expiring_soon) {
-        const now = new Date().toISOString();
-        const twoWeeks = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
-        query = query.gt("deadline", now).lt("deadline", twoWeeks);
-      }
-      if (filters.new_this_week) {
-        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-        query = query.gte("posted_date", sevenDaysAgo);
-      }
+          if (filters.active_only) {
+            query = query.gt("deadline", new Date().toISOString());
+          }
+          if (filters.expiring_soon) {
+            const now = new Date().toISOString();
+            const twoWeeks = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+            query = query.gt("deadline", now).lt("deadline", twoWeeks);
+          }
+          if (filters.new_this_week) {
+            const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+            query = query.gte("posted_date", sevenDaysAgo);
+          }
 
-      // Standard contract filters (shared with useSearchContracts).
-      query = applyContractFilters(query, filters);
+          query = applyContractFilters(query, filters);
 
-      // Pagination & ordering
-      if (effectiveSort === "deadline") {
-        query = query
-          .order("deadline", { ascending: true, nullsFirst: false })
-          .order("match_score", { ascending: false, nullsFirst: false });
-      } else if (effectiveSort === "value") {
-        query = query
-          .order("value", { ascending: false, nullsFirst: false })
-          .order("match_score", { ascending: false, nullsFirst: false });
-      } else if (effectiveSort === "posted_date") {
-        query = query
-          .order("posted_date", { ascending: false, nullsFirst: false })
-          .order("match_score", { ascending: false, nullsFirst: false });
-      } else {
-        query = query
-          .order("match_score", { ascending: false, nullsFirst: false })
-          .order("fetched_at", { ascending: false });
-      }
-      query = query.range(page * limit, (page + 1) * limit - 1);
+          if (effectiveSort === "deadline") {
+            query = query
+              .order("deadline", { ascending: true, nullsFirst: false })
+              .order("match_score", { ascending: false, nullsFirst: false });
+          } else if (effectiveSort === "value") {
+            query = query
+              .order("value", { ascending: false, nullsFirst: false })
+              .order("match_score", { ascending: false, nullsFirst: false });
+          } else if (effectiveSort === "posted_date") {
+            query = query
+              .order("posted_date", { ascending: false, nullsFirst: false })
+              .order("match_score", { ascending: false, nullsFirst: false });
+          } else {
+            query = query
+              .order("match_score", { ascending: false, nullsFirst: false })
+              .order("fetched_at", { ascending: false });
+          }
+          query = query.range(page * limit, (page + 1) * limit - 1);
 
-      const { data, error, count } = await query;
+          const { data, error, count } = await query;
+          if (error) throw error;
 
-      if (error) throw error;
+          const mapped = (data || []).map(row => toSearchResult(row as unknown as CachedContract));
+          return { mapped, count: count || 0 };
+        },
+      });
 
-      // If a newer request started while we were waiting, drop this result.
+      // Drop superseded responses.
       if (requestIdRef.current !== myReqId) {
         return { results: [], total: 0, superseded: true };
       }
 
-      const mapped = (data || []).map(row => toSearchResult(row as unknown as CachedContract));
-      setResults(mapped);
-      setTotal(count || 0);
-      return { results: mapped, total: count || 0 };
+      setResults(payload.mapped);
+      setTotal(payload.count);
+      return { results: payload.mapped, total: payload.count };
     } catch (err) {
       console.error("Contract search error:", err);
       toast.error("Failed to search contracts");
     } finally {
-      // Only flip the spinner off if we're still the latest request.
       if (requestIdRef.current === myReqId) setIsSearching(false);
     }
   };
 
   return { results, total, isSearching, searchLocal, currentSort, setCurrentSort };
 }
+
 
 /** Get the total count of contracts in the shared cache */
 export function useCacheCount() {
