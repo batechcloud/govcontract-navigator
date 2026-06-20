@@ -98,6 +98,9 @@ const App = () => (
               "profile",
               "company-profile",
               "tracked-contracts",
+              "search-contracts",
+              "cached-search",
+              "contract-resource-links",
             ].includes(k);
           },
         },
