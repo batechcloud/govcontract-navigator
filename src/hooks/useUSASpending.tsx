@@ -168,7 +168,7 @@ export function useAwardSearch(filters: AwardSearchFilters, refreshKey: number) 
     queryFn: async () => {
       let q = supabase
         .from("usaspending_awards")
-        .select("*", { count: "exact" })
+        .select("*", { count: "estimated" })
         .gte("date_signed", dates.start_date)
         .lte("date_signed", dates.end_date);
       if (filters.keyword) {
