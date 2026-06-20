@@ -95,7 +95,7 @@ export function useCachedSearch() {
     try {
       let query = supabase
         .from("sam_opportunities_compat" as any)
-        .select("*", { count: "exact" });
+        .select("*", { count: "estimated" });
 
       // Date-toggle filters specific to this hook (not part of SearchFilters).
       if (filters.active_only) {
