@@ -324,7 +324,8 @@ const ContractDetail = () => {
     if (contract && !summaryFetchedRef.current) {
       fetchSummary();
     }
-  }, [contract?.id]);
+  }, [contract?.id, effectiveLinks?.length]);
+
 
   const handleTrack = () => {
     if (!contract) return;
