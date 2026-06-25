@@ -52,6 +52,30 @@ function fallbackFromOpportunities(opportunities: any[]): Response {
   });
 }
 
+const CACHE_TTL_HOURS = 6;
+
+function sortedOrEmpty(arr: unknown): unknown[] {
+  if (!Array.isArray(arr)) return [];
+  return [...arr].map((v) => (v == null ? "" : String(v))).sort();
+}
+
+async function computeProfileHash(profile: any): Promise<string> {
+  const fingerprint = {
+    naics: sortedOrEmpty(profile.naics_codes),
+    psc: sortedOrEmpty(profile.psc_codes),
+    certifications: sortedOrEmpty(profile.certifications),
+    capabilities: sortedOrEmpty(profile.capabilities),
+    employees: profile.employee_count ?? null,
+    revenue: profile.annual_revenue ?? null,
+    preferred_agencies: sortedOrEmpty(profile.preferred_agencies),
+  };
+  const bytes = new TextEncoder().encode(JSON.stringify(fingerprint));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -68,6 +92,11 @@ serve(async (req) => {
     { global: { headers: { Authorization: authHeader } } }
   );
 
+  const serviceClient = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -76,6 +105,8 @@ serve(async (req) => {
   }
 
   const userId = user.id;
+  const url = new URL(req.url);
+  const bypassCache = url.searchParams.get("fresh") === "1";
 
   try {
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
@@ -107,6 +138,41 @@ serve(async (req) => {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // ── Cache lookup ──
+    const profileHash = await computeProfileHash(profile);
+    if (!bypassCache) {
+      const { data: cached } = await serviceClient
+        .from("ai_recommendation_cache")
+        .select("payload, profile_hash, expires_at")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (
+        cached &&
+        cached.profile_hash === profileHash &&
+        new Date(cached.expires_at).getTime() > Date.now()
+      ) {
+        return new Response(JSON.stringify(cached.payload), {
+          headers: { ...corsHeaders, "Content-Type": "application/json", "x-cache": "hit" },
+        });
+      }
+    }
+
+    const writeCache = async (payload: Record<string, unknown>) => {
+      const expiresAt = new Date(Date.now() + CACHE_TTL_HOURS * 3600 * 1000).toISOString();
+      const { error } = await serviceClient
+        .from("ai_recommendation_cache")
+        .upsert({
+          user_id: userId,
+          profile_hash: profileHash,
+          payload,
+          source: (payload as any).source ?? null,
+          expires_at: expiresAt,
+          updated_at: new Date().toISOString(),
+        });
+      if (error) console.error("cache upsert error:", error);
+    };
+
 
     const profileContext = `Company: ${profile.company_name}
 NAICS: ${profile.naics_codes?.join(", ") || "None"}
@@ -218,8 +284,10 @@ Set-aside eligibility: ${profile.certifications?.length ? profile.certifications
           priority: r.priority,
         }));
 
-      return new Response(JSON.stringify({ recommendations: enriched }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      const payload = { recommendations: enriched, source: "sam_live" };
+      await writeCache(payload);
+      return new Response(JSON.stringify(payload), {
+        headers: { ...corsHeaders, "Content-Type": "application/json", "x-cache": "miss" },
       });
     }
 
@@ -303,8 +371,10 @@ Set-aside eligibility: ${profile.certifications?.length ? profile.certifications
       search_tip: r.search_tip,
     }));
 
-    return new Response(JSON.stringify({ recommendations: enriched, source: "ai_generated" }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    const payload = { recommendations: enriched, source: "ai_generated" };
+    await writeCache(payload);
+    return new Response(JSON.stringify(payload), {
+      headers: { ...corsHeaders, "Content-Type": "application/json", "x-cache": "miss" },
     });
   } catch (e) {
     console.error("recommend error:", e);

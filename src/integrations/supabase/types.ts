@@ -29,6 +29,36 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_recommendation_cache: {
+        Row: {
+          created_at: string
+          expires_at: string
+          payload: Json
+          profile_hash: string
+          source: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          payload: Json
+          profile_hash: string
+          source?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          payload?: Json
+          profile_hash?: string
+          source?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       api_rate_limits: {
         Row: {
           api_name: string
