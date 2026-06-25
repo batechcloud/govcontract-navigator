@@ -298,6 +298,20 @@ const ContractDetail = () => {
     summaryFetchedRef.current = true;
     setSummaryLoading(true);
     setAiSummary(null);
+    setSummaryProcessed(null);
+    setSummaryStage(0);
+
+    const hasLinks = !!effectiveLinks?.length;
+    // Stage timeline (purely visual; advances on a timer until response arrives):
+    // 0 = Fetching attachments, 1 = Extracting text / OCR, 2 = Analyzing with AI
+    const stageTimers: number[] = [];
+    if (hasLinks) {
+      stageTimers.push(window.setTimeout(() => setSummaryStage((s) => Math.max(s, 1)), 2500));
+      stageTimers.push(window.setTimeout(() => setSummaryStage((s) => Math.max(s, 2)), 7000));
+    } else {
+      setSummaryStage(2);
+    }
+
     try {
       const { data, error } = await supabase.functions.invoke('ai-contract-summary', {
         body: {
@@ -319,10 +333,12 @@ const ContractDetail = () => {
 
       if (error) throw error;
       setAiSummary(data.summary);
+      if (data.processed) setSummaryProcessed(data.processed);
     } catch (err: any) {
       console.error("Summary error:", err);
       setAiSummary(null);
     } finally {
+      stageTimers.forEach((t) => window.clearTimeout(t));
       setSummaryLoading(false);
     }
   };
@@ -332,6 +348,7 @@ const ContractDetail = () => {
       fetchSummary();
     }
   }, [contract?.id, effectiveLinks?.length]);
+
 
 
   const handleTrack = () => {
