@@ -632,9 +632,26 @@ const ContractDetail = () => {
               </div>
 
             ) : aiSummary ? (
-              <div className="prose prose-sm prose-invert max-w-none text-muted-foreground [&_h2]:text-foreground [&_h2]:text-base [&_h2]:font-semibold [&_h2]:mt-4 [&_h2]:mb-2 [&_ul]:my-1 [&_li]:my-0.5 [&_strong]:text-foreground">
-                <ReactMarkdown>{aiSummary}</ReactMarkdown>
+              <div className="space-y-3">
+                <div className="prose prose-sm prose-invert max-w-none text-muted-foreground [&_h2]:text-foreground [&_h2]:text-base [&_h2]:font-semibold [&_h2]:mt-4 [&_h2]:mb-2 [&_ul]:my-1 [&_li]:my-0.5 [&_strong]:text-foreground">
+                  <ReactMarkdown>{aiSummary}</ReactMarkdown>
+                </div>
+                {summaryProcessed && (summaryProcessed.extracted.length > 0 || summaryProcessed.visionOcr.length > 0) && (
+                  <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/30">
+                    {summaryProcessed.extracted.map((d) => (
+                      <Badge key={`ex-${d.filename}`} variant="outline" className="text-[10px] gap-1 font-normal">
+                        <ScanText className="w-3 h-3" /> {d.filename} <span className="text-muted-foreground/60">· text</span>
+                      </Badge>
+                    ))}
+                    {summaryProcessed.visionOcr.map((d) => (
+                      <Badge key={`v-${d.filename}`} variant="outline" className="text-[10px] gap-1 font-normal">
+                        <FileSearch className="w-3 h-3" /> {d.filename} <span className="text-muted-foreground/60">· {d.scanned ? "OCR" : "vision"}</span>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </div>
+
             ) : (
               <p className="text-sm text-muted-foreground">
                 Summary unavailable.{" "}
