@@ -52,6 +52,30 @@ function fallbackFromOpportunities(opportunities: any[]): Response {
   });
 }
 
+const CACHE_TTL_HOURS = 6;
+
+function sortedOrEmpty(arr: unknown): unknown[] {
+  if (!Array.isArray(arr)) return [];
+  return [...arr].map((v) => (v == null ? "" : String(v))).sort();
+}
+
+async function computeProfileHash(profile: any): Promise<string> {
+  const fingerprint = {
+    naics: sortedOrEmpty(profile.naics_codes),
+    psc: sortedOrEmpty(profile.psc_codes),
+    certifications: sortedOrEmpty(profile.certifications),
+    capabilities: sortedOrEmpty(profile.capabilities),
+    employees: profile.employee_count ?? null,
+    revenue: profile.annual_revenue ?? null,
+    preferred_agencies: sortedOrEmpty(profile.preferred_agencies),
+  };
+  const bytes = new TextEncoder().encode(JSON.stringify(fingerprint));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -68,6 +92,11 @@ serve(async (req) => {
     { global: { headers: { Authorization: authHeader } } }
   );
 
+  const serviceClient = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -76,6 +105,8 @@ serve(async (req) => {
   }
 
   const userId = user.id;
+  const url = new URL(req.url);
+  const bypassCache = url.searchParams.get("fresh") === "1";
 
   try {
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
