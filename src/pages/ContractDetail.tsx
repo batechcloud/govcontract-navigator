@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   ArrowLeft, Building2, Clock, DollarSign, MapPin, FileText, Heart,
   ExternalLink, MessageSquare, Sparkles, Hash, Calendar, Globe, Tag,
-  StickyNote, Shield, Save, Paperclip, Download, Brain, Loader2, RefreshCw, Copy, Check,
+  StickyNote, Shield, Save, Paperclip, Download, Brain, Loader2, RefreshCw, Copy, Check, CheckCircle2, FileSearch, ScanText, Cpu,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTrackedContracts, useTrackContract, useUpdateContractNotes, useUpdateContractStatus, TrackedContract } from "@/hooks/useTrackedContracts";
@@ -120,7 +120,14 @@ const ContractDetail = () => {
   // AI Summary state
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryStage, setSummaryStage] = useState<number>(0);
+  const [summaryProcessed, setSummaryProcessed] = useState<{
+    extracted: { filename: string; method: string; chars: number }[];
+    visionOcr: { filename: string; scanned: boolean }[];
+    notes: string[];
+  } | null>(null);
   const summaryFetchedRef = useRef(false);
+
 
   // Find tracked version by contract_id or by table id
   const tracked = trackedContracts?.find(
@@ -291,6 +298,20 @@ const ContractDetail = () => {
     summaryFetchedRef.current = true;
     setSummaryLoading(true);
     setAiSummary(null);
+    setSummaryProcessed(null);
+    setSummaryStage(0);
+
+    const hasLinks = !!effectiveLinks?.length;
+    // Stage timeline (purely visual; advances on a timer until response arrives):
+    // 0 = Fetching attachments, 1 = Extracting text / OCR, 2 = Analyzing with AI
+    const stageTimers: number[] = [];
+    if (hasLinks) {
+      stageTimers.push(window.setTimeout(() => setSummaryStage((s) => Math.max(s, 1)), 2500));
+      stageTimers.push(window.setTimeout(() => setSummaryStage((s) => Math.max(s, 2)), 7000));
+    } else {
+      setSummaryStage(2);
+    }
+
     try {
       const { data, error } = await supabase.functions.invoke('ai-contract-summary', {
         body: {
@@ -312,10 +333,12 @@ const ContractDetail = () => {
 
       if (error) throw error;
       setAiSummary(data.summary);
+      if (data.processed) setSummaryProcessed(data.processed);
     } catch (err: any) {
       console.error("Summary error:", err);
       setAiSummary(null);
     } finally {
+      stageTimers.forEach((t) => window.clearTimeout(t));
       setSummaryLoading(false);
     }
   };
@@ -325,6 +348,7 @@ const ContractDetail = () => {
       fetchSummary();
     }
   }, [contract?.id, effectiveLinks?.length]);
+
 
 
   const handleTrack = () => {
@@ -561,21 +585,73 @@ const ContractDetail = () => {
             </div>
 
             {summaryLoading ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="w-4 h-4 animate-spin text-accent" />
-                  Generating summary…
+              <div className="space-y-4">
+                {(() => {
+                  const hasLinks = !!effectiveLinks?.length;
+                  const steps = hasLinks
+                    ? [
+                        { icon: FileSearch, label: "Fetching attachments from SAM.gov" },
+                        { icon: ScanText, label: "Extracting text & running OCR on scanned pages" },
+                        { icon: Cpu, label: "Analyzing requirements with AI" },
+                      ]
+                    : [{ icon: Cpu, label: "Analyzing contract with AI" }];
+                  return (
+                    <ul className="space-y-2">
+                      {steps.map((step, idx) => {
+                        const active = idx === summaryStage;
+                        const done = idx < summaryStage;
+                        const Icon = step.icon;
+                        return (
+                          <li
+                            key={idx}
+                            className={`flex items-center gap-2.5 text-sm transition-colors ${
+                              done ? "text-foreground/80" : active ? "text-foreground" : "text-muted-foreground/50"
+                            }`}
+                          >
+                            {done ? (
+                              <CheckCircle2 className="w-4 h-4 text-accent shrink-0" />
+                            ) : active ? (
+                              <Loader2 className="w-4 h-4 animate-spin text-accent shrink-0" />
+                            ) : (
+                              <Icon className="w-4 h-4 shrink-0" />
+                            )}
+                            <span>{step.label}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  );
+                })()}
+                <div className="space-y-2 pt-1">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-5/6" />
+                  <Skeleton className="h-4 w-4/6" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
                 </div>
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-5/6" />
-                <Skeleton className="h-4 w-4/6" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-3/4" />
               </div>
+
             ) : aiSummary ? (
-              <div className="prose prose-sm prose-invert max-w-none text-muted-foreground [&_h2]:text-foreground [&_h2]:text-base [&_h2]:font-semibold [&_h2]:mt-4 [&_h2]:mb-2 [&_ul]:my-1 [&_li]:my-0.5 [&_strong]:text-foreground">
-                <ReactMarkdown>{aiSummary}</ReactMarkdown>
+              <div className="space-y-3">
+                <div className="prose prose-sm prose-invert max-w-none text-muted-foreground [&_h2]:text-foreground [&_h2]:text-base [&_h2]:font-semibold [&_h2]:mt-4 [&_h2]:mb-2 [&_ul]:my-1 [&_li]:my-0.5 [&_strong]:text-foreground">
+                  <ReactMarkdown>{aiSummary}</ReactMarkdown>
+                </div>
+                {summaryProcessed && (summaryProcessed.extracted.length > 0 || summaryProcessed.visionOcr.length > 0) && (
+                  <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/30">
+                    {summaryProcessed.extracted.map((d) => (
+                      <Badge key={`ex-${d.filename}`} variant="outline" className="text-[10px] gap-1 font-normal">
+                        <ScanText className="w-3 h-3" /> {d.filename} <span className="text-muted-foreground/60">· text</span>
+                      </Badge>
+                    ))}
+                    {summaryProcessed.visionOcr.map((d) => (
+                      <Badge key={`v-${d.filename}`} variant="outline" className="text-[10px] gap-1 font-normal">
+                        <FileSearch className="w-3 h-3" /> {d.filename} <span className="text-muted-foreground/60">· {d.scanned ? "OCR" : "vision"}</span>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </div>
+
             ) : (
               <p className="text-sm text-muted-foreground">
                 Summary unavailable.{" "}

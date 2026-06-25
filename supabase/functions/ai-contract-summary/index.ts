@@ -92,9 +92,10 @@ serve(async (req) => {
       }
     }
 
-    // ── Fetch attachments (PDFs / docs from SAM.gov resourceLinks) ──
+    // ── Fetch & process attachments (PDFs / HTML / DOC from SAM.gov resourceLinks) ──
     const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024; // 8MB per file
     const MAX_TOTAL_BYTES = 20 * 1024 * 1024; // 20MB combined
+    const MAX_EXTRACTED_CHARS = 60_000; // total extracted text across attachments
     const ALLOWED_MIMES = new Set([
       "application/pdf",
       "application/msword",
@@ -103,10 +104,42 @@ serve(async (req) => {
       "text/html",
     ]);
 
-    type Attachment = { filename: string; mime: string; dataUrl: string };
-    const attachments: Attachment[] = [];
+    type Attachment = { filename: string; mime: string; dataUrl: string; scanned?: boolean };
+    const attachments: Attachment[] = []; // sent to model as multimodal (e.g. scanned PDFs)
+    const extractedTexts: { filename: string; text: string; method: string }[] = [];
     const attachmentNotes: string[] = [];
     let totalBytes = 0;
+    let extractedChars = 0;
+
+    // Minimal HTML → text extraction.
+    const htmlToText = (html: string): string => {
+      return html
+        .replace(/<script[\s\S]*?<\/script>/gi, " ")
+        .replace(/<style[\s\S]*?<\/style>/gi, " ")
+        .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+        .replace(/<!--[\s\S]*?-->/g, " ")
+        .replace(/<\/?(p|div|br|li|tr|h[1-6])[^>]*>/gi, "\n")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&nbsp;/g, " ")
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/[ \t]+/g, " ")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+    };
+
+    // PDF text extraction via unpdf (Deno-compatible, pure JS).
+    const extractPdfText = async (buf: Uint8Array): Promise<string> => {
+      const { extractText, getDocumentProxy } = await import(
+        "https://esm.sh/unpdf@0.12.1"
+      );
+      const pdf = await getDocumentProxy(buf);
+      const { text } = await extractText(pdf, { mergePages: true });
+      return Array.isArray(text) ? text.join("\n\n") : text;
+    };
 
     if (resourceLinks && resourceLinks.length > 0) {
       for (const link of resourceLinks.slice(0, 5)) {
@@ -137,21 +170,77 @@ serve(async (req) => {
             continue;
           }
           totalBytes += buf.byteLength;
-          // base64 encode
-          let binary = "";
-          for (let i = 0; i < buf.byteLength; i++) binary += String.fromCharCode(buf[i]);
-          const b64 = btoa(binary);
           const filename = decodeURIComponent(link.split("/").pop()?.split("?")[0] || "attachment");
-          attachments.push({
-            filename,
-            mime,
-            dataUrl: `data:${mime};base64,${b64}`,
-          });
+
+          // Text-first extraction by type.
+          let extracted = "";
+          let method = "";
+          let isScanned = false;
+
+          if (mime === "text/html") {
+            const html = new TextDecoder("utf-8", { fatal: false }).decode(buf);
+            extracted = htmlToText(html);
+            method = "html-strip";
+          } else if (mime === "text/plain") {
+            extracted = new TextDecoder("utf-8", { fatal: false }).decode(buf);
+            method = "plaintext";
+          } else if (mime === "application/pdf") {
+            try {
+              extracted = await extractPdfText(buf);
+              method = "pdf-text";
+              // Heuristic: if very little text relative to file size, treat as scanned.
+              const density = extracted.length / Math.max(1, buf.byteLength);
+              if (extracted.trim().length < 200 || density < 0.001) {
+                isScanned = true;
+                method = "pdf-scanned-vision-ocr";
+              }
+            } catch (e) {
+              isScanned = true;
+              method = "pdf-extract-failed-vision-ocr";
+              console.warn("PDF text extraction failed", filename, e);
+            }
+          } else {
+            // DOC/DOCX — pass to model as file (Gemini handles it natively).
+            isScanned = true;
+            method = "binary-vision";
+          }
+
+          if (extracted && !isScanned) {
+            const truncated = extracted.slice(0, MAX_EXTRACTED_CHARS - extractedChars);
+            if (truncated.length > 0) {
+              extractedTexts.push({ filename, text: truncated, method });
+              extractedChars += truncated.length;
+            }
+            if (truncated.length < extracted.length) {
+              attachmentNotes.push(`- ${filename} (truncated to fit ${MAX_EXTRACTED_CHARS} char budget)`);
+            }
+          } else {
+            // Send to model as multimodal file (vision OCR for scanned PDFs, DOCs).
+            let binary = "";
+            for (let i = 0; i < buf.byteLength; i++) binary += String.fromCharCode(buf[i]);
+            const b64 = btoa(binary);
+            attachments.push({
+              filename,
+              mime,
+              dataUrl: `data:${mime};base64,${b64}`,
+              scanned: isScanned,
+            });
+            if (isScanned) {
+              attachmentNotes.push(`- ${filename} (using AI vision OCR — scanned or no extractable text)`);
+            }
+          }
         } catch (e) {
           attachmentNotes.push(`- ${link} (error: ${e instanceof Error ? e.message : "unknown"})`);
         }
       }
     }
+
+    const extractedBlock = extractedTexts.length > 0
+      ? `\n\nExtracted Document Text (verbatim from attachments):\n` +
+        extractedTexts
+          .map((d) => `\n----- BEGIN ${d.filename} (${d.method}) -----\n${d.text}\n----- END ${d.filename} -----`)
+          .join("\n")
+      : "";
 
     const contractContext = [
       title && `Title: ${title}`,
@@ -164,11 +253,13 @@ serve(async (req) => {
       deadline && `Response Deadline: ${deadline}`,
       location && `Place of Performance: ${location}`,
       description && `Full Description / Statement of Work:\n${description}`,
-      attachments.length > 0 && `\nAttached Documents (${attachments.length}): ${attachments.map(a => a.filename).join(", ")}`,
-      attachmentNotes.length > 0 && `\nAttachments not analyzed:\n${attachmentNotes.join("\n")}`,
+      attachments.length > 0 && `\nAttached Documents sent for vision OCR (${attachments.length}): ${attachments.map(a => a.filename).join(", ")}`,
+      extractedBlock,
+      attachmentNotes.length > 0 && `\nAttachment processing notes:\n${attachmentNotes.join("\n")}`,
     ]
       .filter(Boolean)
       .join("\n");
+
 
     const systemPrompt = `You are a senior government contracting advisor. Your job is to give a 100% accurate, thorough summary of a federal contract opportunity. Use ONLY the facts provided in the listing AND any attached solicitation documents — never guess, infer, or fabricate details. When a detail comes from an attachment, prefer it over the short listing description. If a detail is missing from both, explicitly say "Not specified in the listing."
 
@@ -269,9 +360,16 @@ Be thorough but concise — 3-6 bullets per section. Accuracy is paramount: quot
         );
     }
 
-    return new Response(JSON.stringify({ summary, cached: false }), {
+    const processed = {
+      extracted: extractedTexts.map((d) => ({ filename: d.filename, method: d.method, chars: d.text.length })),
+      visionOcr: attachments.map((a) => ({ filename: a.filename, scanned: !!a.scanned })),
+      notes: attachmentNotes,
+    };
+
+    return new Response(JSON.stringify({ summary, cached: false, processed }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+
   } catch (error) {
     console.error("ai-contract-summary error:", error);
     return new Response(
