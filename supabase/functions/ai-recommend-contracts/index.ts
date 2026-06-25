@@ -371,8 +371,10 @@ Set-aside eligibility: ${profile.certifications?.length ? profile.certifications
       search_tip: r.search_tip,
     }));
 
-    return new Response(JSON.stringify({ recommendations: enriched, source: "ai_generated" }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    const payload = { recommendations: enriched, source: "ai_generated" };
+    await writeCache(payload);
+    return new Response(JSON.stringify(payload), {
+      headers: { ...corsHeaders, "Content-Type": "application/json", "x-cache": "miss" },
     });
   } catch (e) {
     console.error("recommend error:", e);
