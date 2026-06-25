@@ -139,6 +139,41 @@ serve(async (req) => {
       });
     }
 
+    // ── Cache lookup ──
+    const profileHash = await computeProfileHash(profile);
+    if (!bypassCache) {
+      const { data: cached } = await serviceClient
+        .from("ai_recommendation_cache")
+        .select("payload, profile_hash, expires_at")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (
+        cached &&
+        cached.profile_hash === profileHash &&
+        new Date(cached.expires_at).getTime() > Date.now()
+      ) {
+        return new Response(JSON.stringify(cached.payload), {
+          headers: { ...corsHeaders, "Content-Type": "application/json", "x-cache": "hit" },
+        });
+      }
+    }
+
+    const writeCache = async (payload: Record<string, unknown>) => {
+      const expiresAt = new Date(Date.now() + CACHE_TTL_HOURS * 3600 * 1000).toISOString();
+      const { error } = await serviceClient
+        .from("ai_recommendation_cache")
+        .upsert({
+          user_id: userId,
+          profile_hash: profileHash,
+          payload,
+          source: (payload as any).source ?? null,
+          expires_at: expiresAt,
+          updated_at: new Date().toISOString(),
+        });
+      if (error) console.error("cache upsert error:", error);
+    };
+
+
     const profileContext = `Company: ${profile.company_name}
 NAICS: ${profile.naics_codes?.join(", ") || "None"}
 PSC Codes: ${profile.psc_codes?.join(", ") || "None"}
