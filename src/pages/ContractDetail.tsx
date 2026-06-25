@@ -306,8 +306,10 @@ const ContractDetail = () => {
           type: contract.type,
           location: contract.location,
           solicitationNumber: contract.solicitationNumber,
+          resourceLinks: effectiveLinks?.length ? effectiveLinks.slice(0, 5) : undefined,
         },
       });
+
       if (error) throw error;
       setAiSummary(data.summary);
     } catch (err: any) {
@@ -322,7 +324,8 @@ const ContractDetail = () => {
     if (contract && !summaryFetchedRef.current) {
       fetchSummary();
     }
-  }, [contract?.id]);
+  }, [contract?.id, effectiveLinks?.length]);
+
 
   const handleTrack = () => {
     if (!contract) return;

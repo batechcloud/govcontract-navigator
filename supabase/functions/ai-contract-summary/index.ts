@@ -48,6 +48,7 @@ serve(async (req) => {
       location: z.string().max(200).optional(),
       contractId: z.string().max(200).optional(),
       solicitationNumber: z.string().max(200).optional(),
+      resourceLinks: z.array(z.string().url()).max(10).optional(),
       forceRegenerate: z.boolean().default(false),
     });
 
@@ -58,7 +59,8 @@ serve(async (req) => {
       });
     }
 
-    const { title, agency, description, value, setAside, naicsCode, deadline, type, location, contractId, solicitationNumber, forceRegenerate } = parsed.data;
+    const { title, agency, description, value, setAside, naicsCode, deadline, type, location, contractId, solicitationNumber, resourceLinks, forceRegenerate } = parsed.data;
+
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -70,7 +72,8 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Check cache first (unless force regenerate)
+    // Check cache first (unless force regenerate). Bust legacy cached summaries
+    // that pre-date the Requirements / Qualification Criteria sections.
     if (contractId && !forceRegenerate) {
       const { data: cached } = await serviceClient
         .from("contract_summaries")
@@ -78,10 +81,75 @@ serve(async (req) => {
         .eq("contract_id", contractId)
         .maybeSingle();
 
-      if (cached?.summary) {
+      if (
+        cached?.summary &&
+        cached.summary.includes("Requirements") &&
+        cached.summary.includes("Qualification Criteria")
+      ) {
         return new Response(JSON.stringify({ summary: cached.summary, cached: true }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+      }
+    }
+
+    // ── Fetch attachments (PDFs / docs from SAM.gov resourceLinks) ──
+    const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024; // 8MB per file
+    const MAX_TOTAL_BYTES = 20 * 1024 * 1024; // 20MB combined
+    const ALLOWED_MIMES = new Set([
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "text/plain",
+      "text/html",
+    ]);
+
+    type Attachment = { filename: string; mime: string; dataUrl: string };
+    const attachments: Attachment[] = [];
+    const attachmentNotes: string[] = [];
+    let totalBytes = 0;
+
+    if (resourceLinks && resourceLinks.length > 0) {
+      for (const link of resourceLinks.slice(0, 5)) {
+        try {
+          const resp = await fetch(link, {
+            redirect: "follow",
+            signal: AbortSignal.timeout(15000),
+          });
+          if (!resp.ok) {
+            attachmentNotes.push(`- ${link} (fetch failed: HTTP ${resp.status})`);
+            continue;
+          }
+          const mime = (resp.headers.get("content-type") || "application/octet-stream")
+            .split(";")[0]
+            .trim()
+            .toLowerCase();
+          if (!ALLOWED_MIMES.has(mime)) {
+            attachmentNotes.push(`- ${link} (unsupported type: ${mime})`);
+            continue;
+          }
+          const buf = new Uint8Array(await resp.arrayBuffer());
+          if (buf.byteLength > MAX_ATTACHMENT_BYTES) {
+            attachmentNotes.push(`- ${link} (too large: ${Math.round(buf.byteLength / 1024 / 1024)}MB)`);
+            continue;
+          }
+          if (totalBytes + buf.byteLength > MAX_TOTAL_BYTES) {
+            attachmentNotes.push(`- ${link} (skipped: combined size cap reached)`);
+            continue;
+          }
+          totalBytes += buf.byteLength;
+          // base64 encode
+          let binary = "";
+          for (let i = 0; i < buf.byteLength; i++) binary += String.fromCharCode(buf[i]);
+          const b64 = btoa(binary);
+          const filename = decodeURIComponent(link.split("/").pop()?.split("?")[0] || "attachment");
+          attachments.push({
+            filename,
+            mime,
+            dataUrl: `data:${mime};base64,${b64}`,
+          });
+        } catch (e) {
+          attachmentNotes.push(`- ${link} (error: ${e instanceof Error ? e.message : "unknown"})`);
+        }
       }
     }
 
@@ -96,49 +164,63 @@ serve(async (req) => {
       deadline && `Response Deadline: ${deadline}`,
       location && `Place of Performance: ${location}`,
       description && `Full Description / Statement of Work:\n${description}`,
+      attachments.length > 0 && `\nAttached Documents (${attachments.length}): ${attachments.map(a => a.filename).join(", ")}`,
+      attachmentNotes.length > 0 && `\nAttachments not analyzed:\n${attachmentNotes.join("\n")}`,
     ]
       .filter(Boolean)
       .join("\n");
 
-    const systemPrompt = `You are a senior government contracting advisor. Your job is to give a 100% accurate, thorough summary of a federal contract opportunity. Use ONLY the facts provided — never guess, infer, or fabricate details. If a detail is missing, explicitly say "Not specified in the listing."
+    const systemPrompt = `You are a senior government contracting advisor. Your job is to give a 100% accurate, thorough summary of a federal contract opportunity. Use ONLY the facts provided in the listing AND any attached solicitation documents — never guess, infer, or fabricate details. When a detail comes from an attachment, prefer it over the short listing description. If a detail is missing from both, explicitly say "Not specified in the listing."
 
-Write in simple language a non-expert can understand. Use bullet points. Structure your response with these exact markdown headings:
+Write in simple language a non-expert can understand. Use bullet points. Structure your response with these exact markdown headings, in this order:
 
 ## 📋 What They're Buying
 - Plain-English explanation of exactly what the government needs (goods, services, or both).
 - Mention the NAICS code and what industry it maps to.
 - Include the solicitation number if provided.
 
-## 📝 What's Required
-- Specific deliverables, tasks, or scope of work extracted from the description.
-- Any certifications, clearances, experience levels, or technical qualifications mentioned.
-- Performance standards or service levels if stated.
+## 📌 Requirements
+- Specific deliverables, tasks, and scope of work (pull directly from the SOW / PWS in attachments when available).
+- Technical specifications, performance standards, service levels, reporting cadence.
+- Security, compliance, or regulatory requirements (e.g., FedRAMP, FISMA, CMMC, HIPAA, Section 508).
+- Period of performance, place of performance, and any travel obligations.
+- Be specific: cite section numbers or quote short phrases from the attachment when helpful.
 
-## 👤 Who Can Bid
-- Set-aside type (e.g., Small Business, 8(a), WOSB, HUBZone, SDVOSB) and what it means.
-- SBA size standard for the NAICS code if you know it.
-- Any other eligibility requirements from the listing.
+## 🎯 Qualification Criteria
+- Mandatory eligibility: set-aside type (Small Business, 8(a), WOSB, HUBZone, SDVOSB) and what it means.
+- SBA size standard for the NAICS code.
+- Required certifications, clearances, licenses, or registrations (e.g., SAM active, CAGE code, GSA schedule, top-secret clearance).
+- Past performance requirements (number of similar projects, dollar thresholds, recency).
+- Key personnel qualifications (degrees, certifications, years of experience).
+- Bonding, insurance, or financial responsibility requirements.
 
 ## 💰 Value & Pricing
 - Estimated contract value (exact figure if provided).
 - Contract type (FFP, T&M, IDIQ, BPA, Cost-Plus) and what it means for pricing risk.
 - Whether this is a single award or multiple award.
 
-## 📍 Location & Performance
-- Place of performance (city, state, or remote/nationwide).
-- Any travel requirements mentioned.
-
 ## 📅 Key Dates & Timeline
 - Response/proposal deadline with how many days remain from today.
-- Expected period of performance or contract duration if stated.
-- Any pre-bid conference or Q&A deadlines.
+- Period of performance or contract duration.
+- Pre-bid conference, Q&A cutoff, or site-visit dates.
 
 ## ✅ Bid / No-Bid Recommendation
 - Who this contract is ideal for (company size, capabilities, industry).
 - Potential risks or red flags (tight deadline, complex requirements, incumbent advantage).
 - Clear bottom-line recommendation for a small business considering this opportunity.
 
-Be thorough but concise — 3-5 bullets per section. Accuracy is paramount: quote specifics from the description rather than paraphrasing loosely.`;
+Be thorough but concise — 3-6 bullets per section. Accuracy is paramount: quote specifics from the description and attachments rather than paraphrasing loosely.`;
+
+    // Build multimodal user message
+    const userContent: any[] = [
+      { type: "text", text: `Summarize this government contract. Read every attached document carefully before writing the Requirements and Qualification Criteria sections.\n\n${contractContext}` },
+    ];
+    for (const att of attachments) {
+      userContent.push({
+        type: "file",
+        file: { filename: att.filename, file_data: att.dataUrl },
+      });
+    }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -150,10 +232,11 @@ Be thorough but concise — 3-5 bullets per section. Accuracy is paramount: quot
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Summarize this government contract:\n\n${contractContext}` },
+          { role: "user", content: userContent },
         ],
       }),
     });
+
 
     if (!response.ok) {
       if (response.status === 429) {
