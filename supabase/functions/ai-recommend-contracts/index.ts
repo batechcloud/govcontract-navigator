@@ -284,8 +284,10 @@ Set-aside eligibility: ${profile.certifications?.length ? profile.certifications
           priority: r.priority,
         }));
 
-      return new Response(JSON.stringify({ recommendations: enriched }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      const payload = { recommendations: enriched, source: "sam_live" };
+      await writeCache(payload);
+      return new Response(JSON.stringify(payload), {
+        headers: { ...corsHeaders, "Content-Type": "application/json", "x-cache": "miss" },
       });
     }
 
