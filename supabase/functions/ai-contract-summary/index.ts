@@ -360,9 +360,16 @@ Be thorough but concise — 3-6 bullets per section. Accuracy is paramount: quot
         );
     }
 
-    return new Response(JSON.stringify({ summary, cached: false }), {
+    const processed = {
+      extracted: extractedTexts.map((d) => ({ filename: d.filename, method: d.method, chars: d.text.length })),
+      visionOcr: attachments.map((a) => ({ filename: a.filename, scanned: !!a.scanned })),
+      notes: attachmentNotes,
+    };
+
+    return new Response(JSON.stringify({ summary, cached: false, processed }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+
   } catch (error) {
     console.error("ai-contract-summary error:", error);
     return new Response(
