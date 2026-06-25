@@ -120,7 +120,14 @@ const ContractDetail = () => {
   // AI Summary state
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryStage, setSummaryStage] = useState<number>(0);
+  const [summaryProcessed, setSummaryProcessed] = useState<{
+    extracted: { filename: string; method: string; chars: number }[];
+    visionOcr: { filename: string; scanned: boolean }[];
+    notes: string[];
+  } | null>(null);
   const summaryFetchedRef = useRef(false);
+
 
   // Find tracked version by contract_id or by table id
   const tracked = trackedContracts?.find(
