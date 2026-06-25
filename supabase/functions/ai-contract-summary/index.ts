@@ -48,6 +48,7 @@ serve(async (req) => {
       location: z.string().max(200).optional(),
       contractId: z.string().max(200).optional(),
       solicitationNumber: z.string().max(200).optional(),
+      resourceLinks: z.array(z.string().url()).max(10).optional(),
       forceRegenerate: z.boolean().default(false),
     });
 
@@ -58,7 +59,8 @@ serve(async (req) => {
       });
     }
 
-    const { title, agency, description, value, setAside, naicsCode, deadline, type, location, contractId, solicitationNumber, forceRegenerate } = parsed.data;
+    const { title, agency, description, value, setAside, naicsCode, deadline, type, location, contractId, solicitationNumber, resourceLinks, forceRegenerate } = parsed.data;
+
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
