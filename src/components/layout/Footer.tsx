@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ArrowUp, Mail, Lock, Server } from "lucide-react";
+import { ArrowUp, Lock, Server } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 
@@ -42,7 +41,6 @@ const trustBadges = [
 
 export function Footer() {
   const [showBackToTop, setShowBackToTop] = useState(false);
-  const [email, setEmail] = useState("");
 
   useEffect(() => {
     const handleScroll = () => {
@@ -57,44 +55,9 @@ export function Footer() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleNewsletterSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Newsletter coming soon
-    alert("Thanks for your interest! Newsletter notifications coming soon.");
-    setEmail("");
-  };
-
   return (
     <footer className="border-t border-border/50 bg-background/50 relative">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
-        {/* Newsletter Section */}
-        <div className="glass rounded-2xl p-6 sm:p-8 mb-12">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
-            <div className="text-center lg:text-left">
-              <h3 className="font-heading font-semibold text-foreground text-xl mb-2">
-                Stay Ahead of the Competition
-              </h3>
-              <p className="text-muted-foreground text-sm">
-                Get weekly contract alerts and bidding tips delivered to your inbox.
-              </p>
-            </div>
-            <form onSubmit={handleNewsletterSubmit} className="flex gap-3 w-full lg:w-auto">
-              <Input
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full lg:w-64"
-                required
-              />
-              <Button type="submit" variant="hero">
-                <Mail className="w-4 h-4 mr-2" />
-                Subscribe
-              </Button>
-            </form>
-          </div>
-        </div>
-
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 lg:gap-12">
           {/* Brand */}
           <div className="col-span-2 md:col-span-4 lg:col-span-1">
