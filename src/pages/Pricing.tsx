@@ -9,7 +9,7 @@ export default function Pricing() {
     <div className="min-h-screen bg-background">
       <Helmet>
         <title>Pricing – GC Navigator Plans for Government Contracting</title>
-        <meta name="description" content="Choose a GC Navigator plan to find and win government contracts. Free tier available. AI search, proposals, and pipeline tracking." />
+        <meta name="description" content="Compare GC Navigator plans for government contracting: Starter, Professional, and Enterprise. AI search, proposals, and pipeline tracking." />
         <link rel="canonical" href="https://gc-navigator.lovable.app/pricing" />
       </Helmet>
       <Navbar />

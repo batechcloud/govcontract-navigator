@@ -63,6 +63,7 @@ export function SavedSearchesList({ onLoadSearch }: SavedSearchesListProps) {
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Delete saved search"
                 className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                 onClick={(e) => {
                   e.stopPropagation();

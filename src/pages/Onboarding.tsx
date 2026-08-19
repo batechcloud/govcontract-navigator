@@ -12,6 +12,16 @@ import CompanyInfoStep from "@/components/onboarding/CompanyInfoStep";
 import CapabilitiesStep from "@/components/onboarding/CapabilitiesStep";
 import PreferencesStep from "@/components/onboarding/PreferencesStep";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export interface OnboardingData {
   // Company Info
@@ -65,6 +75,7 @@ const Onboarding = () => {
   const [data, setData] = useState<OnboardingData>(initialData);
   const [direction, setDirection] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [skipConfirmOpen, setSkipConfirmOpen] = useState(false);
 
   const progress = (currentStep / steps.length) * 100;
 
@@ -162,7 +173,12 @@ const Onboarding = () => {
     }
   };
 
-  const handleSkip = async () => {
+  const handleSkip = () => {
+    setSkipConfirmOpen(true);
+  };
+
+  const confirmSkip = async () => {
+    setSkipConfirmOpen(false);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -319,6 +335,22 @@ const Onboarding = () => {
           </div>
         </footer>
       )}
+
+      <AlertDialog open={skipConfirmOpen} onOpenChange={setSkipConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Skip profile setup?</AlertDialogTitle>
+            <AlertDialogDescription>
+              AI recommendations and match scoring won't work well until you complete
+              your profile — you can finish it anytime in Settings.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep setting up</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmSkip}>Skip anyway</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -27,7 +27,7 @@ const features = [
   {
     icon: FileText,
     title: "One-Click Proposals",
-    description: "Found a contract you like? Click 'Start Bid' and let AI write your proposal draft. Edit it, then submit.",
+    description: "Found a contract you like? Click 'Start Bid' and let AI write your proposal draft. Review and edit it, then submit through the agency's official channel and mark it as submitted to keep your pipeline up to date.",
   },
   {
     icon: Heart,

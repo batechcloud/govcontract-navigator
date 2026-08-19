@@ -295,6 +295,7 @@ export default function WorkspaceDetailDrawer({ row, open, onOpenChange }: Props
                               size="icon"
                               variant="ghost"
                               className="h-7 w-7"
+                              aria-label="Impersonate user"
                               title="Impersonate"
                               onClick={() => handleImpersonate(m.user_id, m.email)}
                             >
@@ -306,6 +307,7 @@ export default function WorkspaceDetailDrawer({ row, open, onOpenChange }: Props
                                   size="icon"
                                   variant="ghost"
                                   className="h-7 w-7"
+                                  aria-label={m.is_suspended ? "Reactivate user" : "Suspend user"}
                                   title={m.is_suspended ? "Reactivate" : "Suspend"}
                                   onClick={() => handleToggleActive(m.user_id, m.is_suspended, label)}
                                 >
@@ -319,6 +321,7 @@ export default function WorkspaceDetailDrawer({ row, open, onOpenChange }: Props
                                   size="icon"
                                   variant="ghost"
                                   className="h-7 w-7 text-destructive hover:text-destructive"
+                                  aria-label="Remove from workspace"
                                   title="Remove from workspace"
                                   onClick={() => handleRemove(m.user_id, label)}
                                 >

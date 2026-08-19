@@ -194,6 +194,7 @@ export function UsersTab() {
                       <Button
                         variant="outline"
                         size="icon"
+                        aria-label="Copy password"
                         onClick={() => {
                           navigator.clipboard.writeText(createdPassword);
                           toast.success("Password copied");
@@ -284,6 +285,7 @@ export function UsersTab() {
                           type="button"
                           variant="outline"
                           size="icon"
+                          aria-label="Generate random password"
                           onClick={() => setTempPassword(randomPassword())}
                           title="Generate"
                         >
@@ -401,6 +403,7 @@ export function UsersTab() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          aria-label="Remove member"
                           disabled={removingId === m.user_id}
                           className="text-destructive hover:text-destructive hover:bg-destructive/10"
                         >

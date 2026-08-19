@@ -5,7 +5,6 @@ import { FeaturesSection } from "@/components/landing/FeaturesSection";
 import { PricingSection } from "@/components/landing/PricingSection";
 import { TestimonialsSection } from "@/components/landing/TestimonialsSection";
 import { CTASection } from "@/components/landing/CTASection";
-import { TrustedBySection } from "@/components/landing/TrustedBySection";
 import { ComparisonSection } from "@/components/landing/ComparisonSection";
 import { BackToTop } from "@/components/ui/back-to-top";
 import { Helmet } from "react-helmet-async";
@@ -27,9 +26,6 @@ const Index = () => {
         <Navbar />
         <main>
           <HeroSection />
-          <section id="trusted">
-            <TrustedBySection />
-          </section>
           <section id="features">
             <FeaturesSection />
           </section>

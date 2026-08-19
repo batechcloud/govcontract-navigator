@@ -72,6 +72,7 @@ const OpportunityCardImpl = ({ contract, onRemove, showRemove }: OpportunityCard
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Remove opportunity"
             className="h-8 w-8 text-muted-foreground hover:text-destructive"
             onClick={() => onRemove(contract.contract_id)}
           >

@@ -157,7 +157,7 @@ const Dashboard = () => {
                 {[
                   { step: "1", text: "Search for contracts in your industry", link: "/dashboard/search" },
                   { step: "2", text: "Save the ones that interest you", link: "/dashboard/tracked" },
-                  { step: "3", text: "Use AI to help write your proposal", link: "/dashboard/ai" },
+                  { step: "3", text: "Use AI to help write your proposal", link: "/dashboard/proposals/generator" },
                 ].map(tip => (
                   <Link key={tip.step} to={tip.link} className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 border border-border/50 hover:border-primary/30 transition-colors group">
                     <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm shrink-0">
