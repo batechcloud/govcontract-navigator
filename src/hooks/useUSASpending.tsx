@@ -98,7 +98,9 @@ export function useTopAgencies(fy: string, refreshKey: number) {
       const grouped = new Map<string, number>();
       let total = 0;
       for (const r of rows) {
-        const k = r.awarding_agency || "Unknown";
+        // Skip records without a named agency — they'd render as a meaningless "Unknown" bar
+        const k = r.awarding_agency?.trim();
+        if (!k) continue;
         const v = r.award_amount || 0;
         grouped.set(k, (grouped.get(k) || 0) + v);
         total += v;
