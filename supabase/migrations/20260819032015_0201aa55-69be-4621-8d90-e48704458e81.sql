@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.prevent_self_unsuspend() FROM PUBLIC, anon, authenticated;
