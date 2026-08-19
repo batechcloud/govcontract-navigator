@@ -12,13 +12,14 @@ interface SpendingHeaderProps {
 }
 
 export const SpendingHeader = ({ fy, onFyChange, onRefresh, lastRefreshed }: SpendingHeaderProps) => (
-  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
     <div>
       <h2 className="text-2xl sm:text-3xl font-heading font-bold text-foreground">
-        USASpending Intelligence
+        Where the Government Spends
       </h2>
-      <p className="text-muted-foreground mt-1">
-        Real-time federal spending data powered by USASpending.gov
+      <p className="text-muted-foreground mt-1 max-w-2xl">
+        See which agencies buy what, who they buy from, and where the money goes — using official
+        USASpending.gov records.
       </p>
       <div className="flex items-center gap-3 mt-2">
         <Badge variant="outline" className="border-emerald-500/50 text-emerald-400 gap-1.5">
@@ -33,17 +34,20 @@ export const SpendingHeader = ({ fy, onFyChange, onRefresh, lastRefreshed }: Spe
       </div>
     </div>
     <div className="flex items-center gap-3">
-      <Select value={fy} onValueChange={onFyChange}>
-        <SelectTrigger className="w-[130px]">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {FISCAL_YEARS.map((y) => (
-            <SelectItem key={y} value={y}>{y}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Button variant="outline" size="sm" onClick={onRefresh} className="gap-2">
+      <div className="flex flex-col gap-1">
+        <span className="text-xs text-muted-foreground">Budget year</span>
+        <Select value={fy} onValueChange={onFyChange}>
+          <SelectTrigger className="w-[130px]" aria-label="Select budget year">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {FISCAL_YEARS.map((y) => (
+              <SelectItem key={y} value={y}>{y}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <Button variant="outline" size="sm" onClick={onRefresh} className="gap-2 mt-5">
         <RefreshCw className="w-4 h-4" />
         Refresh
       </Button>
