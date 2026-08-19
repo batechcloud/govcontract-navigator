@@ -12,6 +12,16 @@ import CompanyInfoStep from "@/components/onboarding/CompanyInfoStep";
 import CapabilitiesStep from "@/components/onboarding/CapabilitiesStep";
 import PreferencesStep from "@/components/onboarding/PreferencesStep";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export interface OnboardingData {
   // Company Info
@@ -162,7 +172,12 @@ const Onboarding = () => {
     }
   };
 
-  const handleSkip = async () => {
+  const handleSkip = () => {
+    setSkipConfirmOpen(true);
+  };
+
+  const confirmSkip = async () => {
+    setSkipConfirmOpen(false);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
