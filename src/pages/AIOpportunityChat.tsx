@@ -295,7 +295,7 @@ export default function AIOpportunityChat() {
               <Card variant="glass" className="h-full flex flex-col rounded-r-none border-r-0">
                 <div className="p-3 border-b border-border/50 flex items-center justify-between">
                   <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">History</span>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleNewChat}>
+                  <Button variant="ghost" size="icon" aria-label="Start new chat" className="h-7 w-7" onClick={handleNewChat}>
                     <Plus className="w-4 h-4" />
                   </Button>
                 </div>
@@ -343,6 +343,7 @@ export default function AIOpportunityChat() {
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label={showSidebar ? "Hide chat history" : "Show chat history"}
                 className="h-8 w-8 shrink-0"
                 onClick={() => setShowSidebar(!showSidebar)}
               >
@@ -496,6 +497,7 @@ export default function AIOpportunityChat() {
                   disabled={isLoading || !input.trim()}
                   variant="hero"
                   size="icon"
+                  aria-label="Send message"
                   className="h-12 w-12 shrink-0"
                 >
                   {isLoading ? (

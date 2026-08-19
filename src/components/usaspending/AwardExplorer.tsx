@@ -145,12 +145,12 @@ export const AwardExplorer = ({ fy, refreshKey, prefilledAgency }: Props) => {
                           </td>
                           <td className="p-2">
                             <div className="flex gap-1">
-                              <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+                              <Button variant="ghost" size="icon" aria-label="Open award on USASpending.gov" className="h-7 w-7" asChild>
                                 <a href={`https://www.usaspending.gov/award/${award["Award ID"]}`} target="_blank" rel="noreferrer">
                                   <ExternalLink className="w-3.5 h-3.5" />
                                 </a>
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleSave(award)}>
+                              <Button variant="ghost" size="icon" aria-label="Save award" className="h-7 w-7" onClick={() => handleSave(award)}>
                                 <Bookmark className="w-3.5 h-3.5" />
                               </Button>
                             </div>

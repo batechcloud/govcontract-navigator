@@ -148,6 +148,7 @@ const CapabilitiesStep = ({ data, updateData }: CapabilitiesStepProps) => {
             <Button
               variant="secondary"
               size="icon"
+              aria-label="Add NAICS code"
               onClick={() => addNaicsCode(naicsInput)}
               disabled={!naicsInput}
             >
@@ -249,6 +250,7 @@ const CapabilitiesStep = ({ data, updateData }: CapabilitiesStepProps) => {
             <Button
               variant="secondary"
               size="icon"
+              aria-label="Add capability"
               onClick={() => addCapability(capabilityInput)}
               disabled={!capabilityInput}
             >

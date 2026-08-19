@@ -84,6 +84,7 @@ function KanbanCardImpl({ contract, index, onDelete, onCardClick }: Props) {
                 <Button
                   variant="ghost"
                   size="icon"
+                  aria-label="Remove opportunity"
                   className="h-6 w-6 text-muted-foreground hover:text-destructive"
                   onClick={(e) => { e.stopPropagation(); onDelete(contract.id); }}
                 >

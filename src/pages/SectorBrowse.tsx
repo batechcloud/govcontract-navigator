@@ -91,7 +91,7 @@ export default function SectorBrowse() {
               <Badge variant="outline" className="text-xs border-primary/30 text-primary">
                 {contracts.length.toLocaleString()} loaded{totalFromApi > contracts.length ? ` of ${totalFromApi.toLocaleString()}` : ""}
               </Badge>
-              <Button variant="ghost" size="icon" onClick={() => refetch()} className="h-8 w-8">
+              <Button variant="ghost" size="icon" aria-label="Refresh industry counts" onClick={() => refetch()} className="h-8 w-8">
                 <RefreshCw className="w-4 h-4" />
               </Button>
             </div>

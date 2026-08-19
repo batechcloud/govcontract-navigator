@@ -158,7 +158,7 @@ export function ListView({ contracts, onStatusChange, onDelete }: Props) {
                   {new Date(c.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                 </td>
                 <td className="p-3">
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => onDelete(c.id)}>
+                  <Button variant="ghost" size="icon" aria-label="Remove opportunity" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => onDelete(c.id)}>
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
                 </td>
