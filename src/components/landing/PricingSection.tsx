@@ -95,7 +95,7 @@ const faqs = [
   },
   {
     question: "Can I cancel anytime?",
-    answer: "Absolutely. Cancel with one click, no questions asked. You'll keep access until the end of your billing period."
+    answer: "Yes. Contact our team and we'll cancel your plan — you keep access until the end of your current billing period."
   },
   {
     question: "How does AI proposal writing work?",
