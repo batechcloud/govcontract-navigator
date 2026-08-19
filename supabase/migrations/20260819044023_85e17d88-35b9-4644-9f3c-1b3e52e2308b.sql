@@ -1,0 +1,1 @@
+delete from public.sync_cursors where source = 'usaspending';
