@@ -1,57 +1,42 @@
+# GC Navigator — Trust, Navigation & Polish Fixes
 
-## Goal
-Avoid repeated SAM.gov + OpenAI calls in `ai-recommend-contracts` when the same user reloads the dashboard. Cache the response server-side for 6 hours, keyed by a hash of the user's profile inputs.
+Scope excludes SAM.gov sync logic, heuristic scoring, and edge function auth patterns.
 
-## Approach
-Add a new `ai_recommendation_cache` table that stores the most recent recommendation payload per user, with a profile fingerprint and expiry. The edge function checks the cache first and only calls SAM.gov / OpenAI on a miss or when the profile fingerprint changes.
+## P0 — Trust & monetization
 
-## Database (migration)
-```sql
-CREATE TABLE public.ai_recommendation_cache (
-  user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  profile_hash text NOT NULL,
-  payload jsonb NOT NULL,         -- { recommendations, source, ... }
-  source text,
-  expires_at timestamptz NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
+**Remove fabricated social proof**
+- `TestimonialsSection.tsx`: replace the 6 invented people (names, Unsplash headshots, company names, metrics) with a neutral "Why small businesses choose GC Navigator" benefit grid — no people, photos, or company names. Remove the stats bar (4.9/5, 10K+, 50K+, 90%).
+- `TrustedBySection.tsx`: delete the fake scrolling logo strip; remove its usage from `Index.tsx`.
 
-GRANT SELECT ON public.ai_recommendation_cache TO authenticated;
-GRANT ALL ON public.ai_recommendation_cache TO service_role;
+**Pricing matches the database**
+- `PricingSection.tsx`: render three plans from `subscription_plans` — Starter $49/mo ($39/mo yearly), Professional $149/mo ($119/mo yearly), Enterprise $399/mo ($319/mo yearly) — via `useSubscriptionPlans()`, with a static fallback so the marketing page never renders empty. Professional keeps the "Most Popular" badge.
+- FAQ "Can I try it for free?" rewritten to describe reality: no self-serve free trial; plans start after a demo/contact.
+- `Pricing.tsx`: drop the "Free tier available" meta description claim.
 
-ALTER TABLE public.ai_recommendation_cache ENABLE ROW LEVEL SECURITY;
+**Consistent Contact Sales (no Stripe this pass)**
+- All plan CTAs stay "Book a Demo" → `/contact`.
+- `Settings.tsx` billing buttons: replace the "Stripe integration required" toasts with "Contact Sales" actions that link to `/contact` (payment method + billing history blocks reworded to match).
 
-CREATE POLICY "Users read own ai cache"
-  ON public.ai_recommendation_cache FOR SELECT
-  TO authenticated USING (user_id = auth.uid());
+## P1 — Navigation & discoverability
 
-CREATE INDEX ai_recommendation_cache_expires_idx
-  ON public.ai_recommendation_cache(expires_at);
-```
-Writes go through `service_role` from the edge function. No anon access. No client mutations.
+- `DashboardSidebar.tsx`: add **Browse by Industry** (`/dashboard/sectors`) and **Capability Statement** (`/dashboard/capability-statement`) to the nav list.
+- `DashboardLayout.tsx`: swap the header `Bell` for `LifeBuoy`, add `aria-label="Support"` and a tooltip; add a Capability Statement item to the account dropdown.
+- `Dashboard.tsx`: Getting Started step 3 links to `/dashboard/proposals/generator`.
+- Reword "submit" copy in `PricingSection.tsx` FAQ and `FeaturesSection.tsx` to: review and edit, then submit through the agency's official channel and mark it submitted to keep the pipeline current.
 
-## Edge function (`supabase/functions/ai-recommend-contracts/index.ts`)
-1. After auth + profile fetch, compute a stable fingerprint:
-   - `sha256` of JSON `{ naics, psc, certifications, capabilities, employees, revenue, preferred_agencies }` with arrays sorted.
-2. Create a `serviceClient` using `SUPABASE_SERVICE_ROLE_KEY` (separate from the user-auth client) for cache reads/writes.
-3. **Cache lookup**: `select payload, profile_hash, expires_at from ai_recommendation_cache where user_id = $userId`.
-   - If row exists, `expires_at > now()`, and `profile_hash` matches → return `payload` immediately with header `x-cache: hit`.
-4. **Miss / stale / profile changed** → run existing SAM.gov + OpenAI flow unchanged.
-5. On a successful response (Branch A or Branch B only — never `busyFallback` / `fallbackFromOpportunities` / `no_profile`), upsert into the cache:
-   - `expires_at = now() + 6 hours`
-   - `payload = { recommendations, source }`
-6. Add a `?fresh=1` query param to bypass cache (used by an optional "refresh" button later; not exposed in UI now).
+## P2 — Polish & accessibility
 
-## Client (`src/hooks/useAIRecommendations.tsx`)
-No behavioral change required — React Query `staleTime` stays at 30 min. The server cache is transparent. Optionally lower client `staleTime` to 5 min so users get fresher data once the server cache is in place, but keep current default to minimize churn.
+- `Onboarding.tsx`: "Skip for now" opens a confirm dialog warning that AI recommendations and match scoring need a completed profile, finishable later in Settings.
+- Add descriptive `aria-label` to every icon-only button in: `ListView.tsx`, `KanbanCard.tsx`, `OpportunityCard.tsx`, `SectorBrowse.tsx`, `AIOpportunityChat.tsx`, `SavedSearchesList.tsx`, `UsersTab.tsx`, `AwardExplorer.tsx`, `CapabilitiesStep.tsx`, `WorkspaceDetailDrawer.tsx`.
+- `Footer.tsx`: remove the newsletter block entirely (form, state, `alert()` handler, unused imports).
+- `supabase/functions/sam-search/`: delete it — no frontend call sites (`sam-search` is unreferenced in `src/`); also remove its `supabase/config.toml` entry.
 
-## Cache invalidation
-- 6-hour TTL.
-- Automatic invalidation when the user edits their profile (fingerprint changes → cache miss).
-- No manual purge UI for now; cron cleanup not needed (1 row per user, upserted in place).
+## Technical notes
 
-## Out of scope
-- Sharing cache across users with similar profiles.
-- Background refresh / pre-warming.
-- Surfacing cache age in the UI.
+- Route paths for the two new sidebar entries will be confirmed against `App.tsx` before wiring.
+- Pricing card prices read from `subscription_plans` (public read) with a hardcoded fallback matching current DB values.
+- No database migrations, no new dependencies.
+
+## Acceptance
+
+No invented people, companies, or statistics on public pages; three plans shown at real DB prices; Sector Browse and Capability Statement reachable from the dashboard; no `alert()` and no button that silently does nothing.
