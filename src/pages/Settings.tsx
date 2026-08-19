@@ -385,7 +385,7 @@ export default function Settings() {
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-muted-foreground">No payment method on file</p>
-                      <p className="text-xs text-muted-foreground/70">Add a payment method to subscribe to a paid plan</p>
+                      <p className="text-xs text-muted-foreground/70">Billing is handled by our team — contact sales to start or change a plan</p>
                     </div>
                   </div>
 
@@ -393,10 +393,10 @@ export default function Settings() {
                     variant="outline"
                     size="sm"
                     className="mt-4"
-                    onClick={() => toast.info("Stripe integration required", { description: "Payment method management will be available once Stripe is connected." })}
+                    onClick={() => navigate("/contact")}
                   >
                     <ExternalLink className="w-4 h-4 mr-1" />
-                    Update Payment Method
+                    Contact Sales
                   </Button>
                 </div>
 
@@ -410,10 +410,10 @@ export default function Settings() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => toast.info("Stripe integration required", { description: "Full billing portal will be available once Stripe is connected." })}
+                      onClick={() => navigate("/contact")}
                     >
                       <ExternalLink className="w-4 h-4 mr-1" />
-                      Manage Billing
+                      Contact Sales
                     </Button>
                   </div>
 
